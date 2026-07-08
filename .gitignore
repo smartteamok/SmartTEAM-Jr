@@ -2,3 +2,6 @@
 tmp/*
 *.ini
 all_MAX.js
+firmware/build/
+firmware/libraries/
+firmware/tests/host/build/
