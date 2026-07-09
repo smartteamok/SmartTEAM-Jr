@@ -61,12 +61,13 @@ static uint8_t transfer(const uint8_t *image, uint16_t len) {
 
     uint8_t seq = 0;
     for (uint16_t off = 0; off < len; off += STX_CHUNK_DATA_SIZE) {
-        uint8_t chunk[2 + STX_CHUNK_DATA_SIZE];
+        uint8_t chunk[3 + STX_CHUNK_DATA_SIZE];
         uint8_t n = (len - off) < STX_CHUNK_DATA_SIZE ? (len - off) : STX_CHUNK_DATA_SIZE;
         chunk[0] = STX_CMD_XFER_CHUNK;
         chunk[1] = seq++;
-        memcpy(chunk + 2, image + off, n);
-        stx_proto_on_packet(&pe, chunk, 2 + n);
+        chunk[2] = n;
+        memcpy(chunk + 3, image + off, n);
+        stx_proto_on_packet(&pe, chunk, 3 + n);
         if (last_resp[2] != STX_STATUS_OK) return last_resp[2];
     }
     uint8_t end[1] = { STX_CMD_XFER_END };
@@ -134,14 +135,15 @@ static void test_transport_crc_mismatch(void) {
         0xEF, 0xBE, 0xAD, 0xDE /* CRC de transporte incorrecto */
     };
     stx_proto_on_packet(&pe, begin, sizeof(begin));
-    uint8_t chunk[2 + 64];
+    uint8_t chunk[3 + 64];
     uint8_t seq = 0;
     for (uint16_t off = 0; off < len; off += STX_CHUNK_DATA_SIZE) {
         uint8_t n = (len - off) < STX_CHUNK_DATA_SIZE ? (len - off) : STX_CHUNK_DATA_SIZE;
         chunk[0] = STX_CMD_XFER_CHUNK;
         chunk[1] = seq++;
-        memcpy(chunk + 2, image + off, n);
-        stx_proto_on_packet(&pe, chunk, 2 + n);
+        chunk[2] = n;
+        memcpy(chunk + 3, image + off, n);
+        stx_proto_on_packet(&pe, chunk, 3 + n);
     }
     const uint8_t end[1] = { STX_CMD_XFER_END };
     stx_proto_on_packet(&pe, end, 1);
@@ -161,20 +163,21 @@ static void test_duplicate_chunk_reacked(void) {
     };
     stx_proto_on_packet(&pe, begin, sizeof(begin));
 
-    uint8_t chunk[2 + 16];
+    uint8_t chunk[3 + 16];
     chunk[0] = STX_CMD_XFER_CHUNK;
     chunk[1] = 0;
-    memcpy(chunk + 2, image, 16);
-    stx_proto_on_packet(&pe, chunk, 18);
+    chunk[2] = 16;
+    memcpy(chunk + 3, image, 16);
+    stx_proto_on_packet(&pe, chunk, 19);
     CHECK(last_resp[2] == STX_STATUS_OK);
 
     /* chunk 0 repetido (se perdió el ACK): re-ACK sin duplicar datos */
-    stx_proto_on_packet(&pe, chunk, 18);
+    stx_proto_on_packet(&pe, chunk, 19);
     CHECK(last_resp[1] == 0 && last_resp[2] == STX_STATUS_OK);
 
     /* chunk fuera de orden (salta al 5): BAD_SEQ */
     chunk[1] = 5;
-    stx_proto_on_packet(&pe, chunk, 18);
+    stx_proto_on_packet(&pe, chunk, 19);
     CHECK(last_resp[2] == STX_STATUS_BAD_SEQ);
 }
 
@@ -248,7 +251,57 @@ static void test_erase(void) {
     CHECK(last_resp[1] == STX_STATUS_NO_PROGRAM);
 }
 
+static void test_stream_reassembly(void) {
+    /* la misma transferencia, pero alimentada byte a byte por on_bytes
+     * (simula que el UART service fragmenta arbitrariamente) */
+    setup();
+    uint8_t image[64];
+    const uint8_t code[] = { STX_OP_LED_CLEAR, STX_OP_HALT };
+    uint16_t len = tu_build_start_image(image, code, sizeof(code));
+    uint32_t crc = stx_crc32(image, len);
+
+    uint8_t stream[256];
+    uint16_t n = 0;
+    stream[n++] = STX_CMD_XFER_BEGIN;
+    stream[n++] = len & 0xFF;
+    stream[n++] = (len >> 8) & 0xFF;
+    stream[n++] = crc & 0xFF;
+    stream[n++] = (crc >> 8) & 0xFF;
+    stream[n++] = (crc >> 16) & 0xFF;
+    stream[n++] = (crc >> 24) & 0xFF;
+    uint8_t seq = 0;
+    for (uint16_t off = 0; off < len; off += STX_CHUNK_DATA_SIZE) {
+        uint8_t c = (len - off) < STX_CHUNK_DATA_SIZE ? (len - off) : STX_CHUNK_DATA_SIZE;
+        stream[n++] = STX_CMD_XFER_CHUNK;
+        stream[n++] = seq++;
+        stream[n++] = c;
+        memcpy(stream + n, image + off, c);
+        n += c;
+    }
+    stream[n++] = STX_CMD_XFER_END;
+    stream[n++] = STX_CMD_RUN;
+
+    for (uint16_t i = 0; i < n; i++) {
+        stx_proto_on_bytes(&pe, stream + i, 1); /* de a un byte */
+    }
+    CHECK(last_resp[0] == (STX_CMD_RUN | STX_RESP_FLAG));
+    CHECK(last_resp[1] == STX_STATUS_OK);
+    stx_vm_tick(&vm);
+    CHECK(fake_trace_len == 1 && fake_trace[0].type == T_LED_CLEAR);
+}
+
+static void test_stream_resync_on_garbage(void) {
+    setup();
+    /* basura + un comando válido: el framing debe re-sincronizar */
+    const uint8_t garbage_then_status[4] = { 0x77, 0x99, 0xFE, STX_CMD_GET_STATUS };
+    stx_proto_on_bytes(&pe, garbage_then_status, 4);
+    CHECK(resp_count >= 1);
+    CHECK(last_resp[0] == (STX_CMD_GET_STATUS | STX_RESP_FLAG));
+}
+
 int main(void) {
+    test_stream_reassembly();
+    test_stream_resync_on_garbage();
     test_full_transfer_and_run();
     test_run_without_program();
     test_bad_crc_rejected();

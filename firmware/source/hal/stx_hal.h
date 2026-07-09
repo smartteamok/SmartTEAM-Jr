@@ -13,6 +13,10 @@
 #ifndef STX_HAL_H
 #define STX_HAL_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -40,5 +44,10 @@ typedef struct stx_hal {
     void (*motors_ticks)(int8_t speed_l, int8_t speed_r, uint16_t ticks);
     void (*motors_stop)(void);
 } stx_hal_t;
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* STX_HAL_H */

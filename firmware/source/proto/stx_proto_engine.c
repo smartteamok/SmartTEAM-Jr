@@ -60,16 +60,17 @@ static void handle_begin(stx_proto_engine_t *pe, const uint8_t *d, uint8_t len) 
 }
 
 static void handle_chunk(stx_proto_engine_t *pe, const uint8_t *d, uint8_t len) {
+    /* formato: [cmd][seq][len][data...] */
     if (!pe->session_active) {
         reply_chunk(pe, len >= 2 ? d[1] : 0, STX_STATUS_NO_SESSION);
         return;
     }
-    if (len < 3) {
-        reply_chunk(pe, 0, STX_STATUS_BAD_LENGTH);
+    if (len < 4 || d[2] == 0 || d[2] != len - 3) {
+        reply_chunk(pe, len >= 2 ? d[1] : 0, STX_STATUS_BAD_LENGTH);
         return;
     }
     uint8_t seq = d[1];
-    uint8_t data_len = len - 2;
+    uint8_t data_len = d[2];
     pe->last_rx_ms = pe->now_ms();
     if (seq != pe->next_seq) {
         /* chunk repetido (ACK perdido): re-ACK; adelantado: pedir reenvío */
@@ -85,7 +86,7 @@ static void handle_chunk(stx_proto_engine_t *pe, const uint8_t *d, uint8_t len) 
         reply_chunk(pe, seq, STX_STATUS_BAD_LENGTH);
         return;
     }
-    memcpy(pe->buffer + pe->received, d + 2, data_len);
+    memcpy(pe->buffer + pe->received, d + 3, data_len);
     pe->received += data_len;
     pe->next_seq++;
     reply_chunk(pe, seq, STX_STATUS_OK);
@@ -170,6 +171,14 @@ void stx_proto_on_packet(stx_proto_engine_t *pe, const uint8_t *data, uint8_t le
         case STX_CMD_GET_STATUS:
             handle_get_status(pe);
             break;
+        case STX_CMD_GET_SENSORS: {
+            uint8_t out[5] = { STX_CMD_GET_SENSORS | STX_RESP_FLAG, 0, 0, 0, 0 };
+            if (pe->read_sensors != 0) {
+                pe->read_sensors(out + 1);
+            }
+            pe->send(out, 5);
+            break;
+        }
         case STX_CMD_ERASE:
             stx_vm_stop(pe->vm);
             pe->vm->loaded = false;
@@ -184,6 +193,53 @@ void stx_proto_on_packet(stx_proto_engine_t *pe, const uint8_t *data, uint8_t le
         default:
             reply1(pe, data[0], STX_STATUS_REJECTED);
             break;
+    }
+}
+
+/* Longitud total esperada del paquete según sus primeros bytes; 0 = aún no se
+ * puede saber (faltan bytes); 0xFF = primer byte inválido (descartar) */
+static uint8_t packet_len(const uint8_t *buf, uint8_t have) {
+    switch (buf[0]) {
+        case STX_CMD_XFER_BEGIN:  return 7;
+        case STX_CMD_XFER_CHUNK:
+            if (have < 3) return 0;
+            if (buf[2] == 0 || buf[2] > STX_CHUNK_DATA_SIZE) return 0xFF;
+            return 3 + buf[2];
+        case STX_CMD_XFER_END:    return 1;
+        case STX_CMD_RUN:         return 1;
+        case STX_CMD_STOP:        return 1;
+        case STX_CMD_GET_STATUS:  return 1;
+        case STX_CMD_ERASE:       return 1;
+        case STX_CMD_GET_SENSORS: return 1;
+        case STX_CMD_LIVE_EXEC: {
+            if (have < 2) return 0;
+            uint8_t ilen = stx_instr_len(buf[1]);
+            return ilen == 0 ? 0xFF : (uint8_t)(1 + ilen);
+        }
+        default: return 0xFF;
+    }
+}
+
+void stx_proto_on_bytes(stx_proto_engine_t *pe, const uint8_t *data, uint16_t len) {
+    for (uint16_t i = 0; i < len; i++) {
+        if (pe->rx_have < STX_PKT_MAX) {
+            pe->rx_buf[pe->rx_have++] = data[i];
+        }
+        while (pe->rx_have > 0) {
+            uint8_t need = packet_len(pe->rx_buf, pe->rx_have);
+            if (need == 0xFF) {
+                /* comando/instrucción inválida: descartar el primer byte y
+                 * re-sincronizar con el resto */
+                memmove(pe->rx_buf, pe->rx_buf + 1, --pe->rx_have);
+                continue;
+            }
+            if (need == 0 || pe->rx_have < need) {
+                break; /* faltan bytes */
+            }
+            stx_proto_on_packet(pe, pe->rx_buf, need);
+            memmove(pe->rx_buf, pe->rx_buf + need, pe->rx_have - need);
+            pe->rx_have -= need;
+        }
     }
 }
 

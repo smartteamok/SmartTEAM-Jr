@@ -7,6 +7,10 @@
 #ifndef STX_PROTO_ENGINE_H
 #define STX_PROTO_ENGINE_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdint.h>
 #include <stdbool.h>
 #include "stx_proto.h"
@@ -19,6 +23,8 @@ typedef struct stx_proto_engine {
     /* Envía una respuesta por BLE TX notify (≤ STX_PKT_MAX bytes) */
     void (*send)(const uint8_t *data, uint8_t len);
     uint32_t (*now_ms)(void);
+    /* Opcional (puede ser NULL): llena [luz, sonido, botones, temp] */
+    void (*read_sensors)(uint8_t out[4]);
 
     /* Sesión de transferencia en curso */
     bool session_active;
@@ -28,6 +34,10 @@ typedef struct stx_proto_engine {
     uint8_t next_seq;
     uint32_t last_rx_ms;
     uint8_t buffer[STX_MAX_IMAGE_SIZE];
+
+    /* Framing sobre stream (MicroBitUARTService no conserva límites de write) */
+    uint8_t rx_buf[STX_PKT_MAX];
+    uint8_t rx_have;
 } stx_proto_engine_t;
 
 void stx_proto_init(stx_proto_engine_t *pe, stx_vm_t *vm,
@@ -35,10 +45,19 @@ void stx_proto_init(stx_proto_engine_t *pe, stx_vm_t *vm,
                     void (*send)(const uint8_t *, uint8_t),
                     uint32_t (*now_ms)(void));
 
-/* Procesa un paquete entrante completo */
+/* Procesa un paquete entrante completo (ya delimitado) */
 void stx_proto_on_packet(stx_proto_engine_t *pe, const uint8_t *data, uint8_t len);
+
+/* Alimenta bytes crudos del stream UART; re-arma los paquetes y despacha.
+ * Bytes con comando desconocido se descartan de a uno (re-sincronización). */
+void stx_proto_on_bytes(stx_proto_engine_t *pe, const uint8_t *data, uint16_t len);
 
 /* Llamar periódicamente: aborta la sesión de transferencia por timeout */
 void stx_proto_tick(stx_proto_engine_t *pe);
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* STX_PROTO_ENGINE_H */

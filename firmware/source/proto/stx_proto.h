@@ -14,12 +14,17 @@
  * Multi-byte little-endian. Primer byte = comando; la respuesta del firmware
  * usa (comando | 0x80).
  *
+ * El transporte UART es un stream de bytes (MicroBitUARTService no conserva
+ * los límites de cada write BLE), así que cada mensaje es auto-delimitado: los
+ * comandos tienen longitud fija conocida por su primer byte, salvo XFER_CHUNK
+ * y LIVE_EXEC que llevan longitud explícita/derivable.
+ *
  * Transferencia de imagen (stop-and-wait, ACK por chunk, reintento x3 en el
  * editor con timeout de 500 ms; el firmware aborta la sesión a los 5 s sin
  * datos):
  *   → XFER_BEGIN  [0x01][imageLen u16][crc32 u32]                    (7 B)
  *   ← 0x81        [status]
- *   → XFER_CHUNK  [0x02][seq u8][data ≤16 B]   offset = seq*16       (≤18 B)
+ *   → XFER_CHUNK  [0x02][seq u8][len u8][data len B]  offset = seq*16 (≤19 B)
  *   ← 0x82        [seq][status]
  *   → XFER_END    [0x03]
  *   ← 0x83        [status]      (0 = CRC ok + grabado en flash)
@@ -35,12 +40,17 @@
  *
  * Live passthrough (modo en vivo del editor):
  *   → LIVE_EXEC   [0x20][instrucción STX completa: opcode + operandos]
+ *                 (la longitud se deriva del opcode con stx_instr_len)
  *   ← 0xA0        [status]
  *   La instrucción se ejecuta inmediatamente con el mismo dispatcher de la VM.
  *   Opcodes de control (WAIT/LOOP/HALT/JMP) rechazados con STATUS_REJECTED.
  */
 #ifndef STX_PROTO_H
 #define STX_PROTO_H
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /* ---- Versión de protocolo / firmware ---- */
 #define STX_PROTO_VERSION 1
@@ -78,5 +88,10 @@
 #define STX_CHUNK_DATA_SIZE 16        // bytes de datos por XFER_CHUNK
 #define STX_XFER_TIMEOUT_MS 5000      // el firmware aborta la sesión sin datos
 #define STX_PKT_MAX 20                // tamaño máximo de paquete de aplicación
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* STX_PROTO_H */

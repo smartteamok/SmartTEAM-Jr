@@ -212,10 +212,11 @@ WebBLE.sendProgram = async function(bytes) {
   for (let seq = 0; seq < total; seq++) {
     const offset = seq * chunkSize;
     const data = bytes.subarray(offset, Math.min(offset + chunkSize, bytes.length));
-    const chunk = new Uint8Array(2 + data.length);
+    const chunk = new Uint8Array(3 + data.length);
     chunk[0] = STX.CMD_XFER_CHUNK;
     chunk[1] = seq & 0xFF;
-    chunk.set(data, 2);
+    chunk[2] = data.length;
+    chunk.set(data, 3);
     resp = await WebBLE.commandWithRetry(chunk);
     if (resp[2] !== STX.STATUS_OK) {
       throw new Error("XFER_CHUNK " + seq + " status " + resp[2]);

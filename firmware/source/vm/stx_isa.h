@@ -37,6 +37,10 @@
 #ifndef STX_ISA_H
 #define STX_ISA_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* ---- Versión y límites ---- */
 #define STX_MAGIC_0 0x53              // 'S'
 #define STX_MAGIC_1 0x54              // 'T'
@@ -105,5 +109,10 @@
 #define STX_ERR_LOOP_OVERFLOW 0x03    // más de STX_MAX_LOOP_DEPTH loops anidados
 #define STX_ERR_LOOP_UNDERFLOW 0x04   // LOOP_END sin loop abierto
 #define STX_ERR_BAD_IMAGE 0x05        // imagen inválida (magic/CRC/longitud)
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* STX_ISA_H */

@@ -16,6 +16,10 @@
 #ifndef STX_VM_H
 #define STX_VM_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdint.h>
 #include <stdbool.h>
 #include "stx_isa.h"
@@ -80,5 +84,13 @@ void stx_vm_tick(stx_vm_t *vm);
 /* Ejecuta UNA instrucción suelta (live passthrough). Rechaza opcodes de
  * control. Devuelve STX_ERR_NONE o el error. */
 uint8_t stx_vm_exec_one(stx_vm_t *vm, const uint8_t *instr, uint8_t len);
+
+/* Longitud total (opcode + operandos) de una instrucción; 0 = inválida */
+uint8_t stx_instr_len(uint8_t op);
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* STX_VM_H */

@@ -1,7 +1,6 @@
 #include "stx_vm.h"
 
-/* Longitud total (opcode + operandos) de cada instrucción; 0 = inválida */
-static uint8_t instr_len(uint8_t op) {
+uint8_t stx_instr_len(uint8_t op) {
     switch (op) {
         case STX_OP_NOP:          return 1;
         case STX_OP_HALT:         return 1;
@@ -111,7 +110,7 @@ static bool step(stx_vm_t *vm, stx_context_t *c) {
     }
     const uint8_t *p = img->code + c->pc;
     uint8_t op = p[0];
-    uint8_t len = instr_len(op);
+    uint8_t len = stx_instr_len(op);
     if (len == 0 || c->pc + len > img->code_len) {
         vm_fault(vm, (len == 0) ? STX_ERR_BAD_OPCODE : STX_ERR_PC_RANGE);
         return false;
@@ -271,7 +270,7 @@ uint8_t stx_vm_exec_one(stx_vm_t *vm, const uint8_t *instr, uint8_t len) {
         return STX_ERR_BAD_OPCODE;
     }
     uint8_t op = instr[0];
-    uint8_t need = instr_len(op);
+    uint8_t need = stx_instr_len(op);
     if (need == 0 || need != len) {
         return STX_ERR_BAD_OPCODE;
     }

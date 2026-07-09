@@ -25,6 +25,10 @@
 #ifndef STX_STORE_H
 #define STX_STORE_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -53,5 +57,10 @@ const uint8_t *stx_store_load(const stx_flash_ops_t *ops,
 
 /* Invalida todos los slots. Devuelve STX_STATUS_OK o STX_STATUS_FLASH_ERROR. */
 uint8_t stx_store_erase_all(const stx_flash_ops_t *ops);
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* STX_STORE_H */

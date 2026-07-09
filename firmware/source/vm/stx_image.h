@@ -4,6 +4,10 @@
 #ifndef STX_IMAGE_H
 #define STX_IMAGE_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdint.h>
 #include <stdbool.h>
 #include "stx_isa.h"
@@ -34,5 +38,10 @@ void stx_image_event(const stx_image_t *img, uint8_t i, stx_event_entry_t *out);
 
 /* CRC-32/IEEE (igual que zlib y que BytecodeAssembler.crc32) */
 uint32_t stx_crc32(const uint8_t *data, uint32_t len);
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* STX_IMAGE_H */
