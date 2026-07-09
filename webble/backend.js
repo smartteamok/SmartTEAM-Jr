@@ -237,6 +237,85 @@ WebBLE.liveExec = function(instrBytes) {
   return WebBLE.commandWithRetry(packet);
 };
 
+/* ---------------------------------------------------- almacenamiento de archivos
+ * Implementa el contrato data/* documentado en README.md ("Overview for
+ * backend developers"): data/new y data/open no solo deben responder 200 —
+ * el backend además tiene que EMPUJAR CallbackManager.data.open(fileName, data)
+ * para que SaveManager.backendOpen() cargue el XML y saque el bloqueo modal
+ * (GuiElements.dialogBlock). Sin este push el editor queda con la pantalla
+ * gris para siempre (LevelManager.loadLevelSavePoint -> data/new -> data/open
+ * nunca se completa). data/autoSave no manda filename: hay que recordar cuál
+ * es el archivo abierto (FileStore.currentFile).
+ */
+const FileStore = {};
+FileStore.INDEX_KEY = "fbfile_index";
+FileStore.currentFile = null;
+
+FileStore.contentKey = function(name) {
+  return "fbfilecontent_" + name;
+};
+
+FileStore.listFiles = function() {
+  try {
+    return JSON.parse(localStorage.getItem(FileStore.INDEX_KEY)) || [];
+  } catch (e) {
+    return [];
+  }
+};
+
+FileStore.saveIndex = function(files) {
+  localStorage.setItem(FileStore.INDEX_KEY, JSON.stringify(files));
+};
+
+FileStore.exists = function(name) {
+  return FileStore.listFiles().indexOf(name) >= 0;
+};
+
+FileStore.write = function(name, content) {
+  const files = FileStore.listFiles();
+  if (files.indexOf(name) < 0) {
+    files.push(name);
+    FileStore.saveIndex(files);
+  }
+  localStorage.setItem(FileStore.contentKey(name), content);
+};
+
+FileStore.read = function(name) {
+  const content = localStorage.getItem(FileStore.contentKey(name));
+  return content == null ? "" : content;
+};
+
+FileStore.remove = function(name) {
+  const files = FileStore.listFiles().filter(function(f) { return f !== name; });
+  FileStore.saveIndex(files);
+  localStorage.removeItem(FileStore.contentKey(name));
+};
+
+FileStore.rename = function(oldName, newName) {
+  FileStore.write(newName, FileStore.read(oldName));
+  FileStore.remove(oldName);
+};
+
+/** Réplica de SaveManager.invalidCharactersFriendly: \/:*?<>|.$ */
+FileStore.sanitize = function(name) {
+  return name.replace(/[\\/:*?<>|.$]/g, "_");
+};
+
+FileStore.availableName = function(requested) {
+  const sanitized = FileStore.sanitize(requested);
+  let candidate = sanitized;
+  let n = 2;
+  while (FileStore.exists(candidate)) {
+    candidate = sanitized + "_" + n;
+    n++;
+  }
+  return {
+    availableName: candidate,
+    alreadySanitized: sanitized === requested,
+    alreadyAvailable: candidate === requested
+  };
+};
+
 /* ------------------------------------------------------------- router */
 
 const routes = {};
@@ -252,6 +331,53 @@ routes["settings/get"] = function(id, params) {
 
 routes["settings/set"] = function(id, params) {
   localStorage.setItem("fbsetting_" + params.key, params.value);
+  respond(id, 200, "");
+};
+
+routes["data/files"] = function(id) {
+  respond(id, 200, JSON.stringify({ files: FileStore.listFiles(), signedIn: false }));
+};
+
+routes["data/new"] = function(id, params, body) {
+  FileStore.write(params.filename, body || "");
+  respond(id, 200, "");
+};
+
+routes["data/open"] = function(id, params) {
+  const content = FileStore.read(params.filename);
+  FileStore.currentFile = params.filename;
+  respond(id, 200, "");
+  // El ack por sí solo no alcanza: SaveManager.backendOpen (disparado por este
+  // push) es quien realmente carga el XML y saca GuiElements.dialogBlock.
+  pushCallback(function(cb) { cb.data.open(params.filename, content); });
+};
+
+routes["data/autoSave"] = function(id, params, body) {
+  if (FileStore.currentFile != null) {
+    FileStore.write(FileStore.currentFile, body || "");
+  }
+  respond(id, 200, "");
+};
+
+routes["data/getAvailableName"] = function(id, params) {
+  respond(id, 200, JSON.stringify(FileStore.availableName(params.filename)));
+};
+
+routes["data/rename"] = function(id, params) {
+  FileStore.rename(params.oldFilename, params.newFilename);
+  if (FileStore.currentFile === params.oldFilename) {
+    FileStore.currentFile = params.newFilename;
+  }
+  respond(id, 200, "");
+};
+
+routes["data/delete"] = function(id, params) {
+  FileStore.remove(params.filename);
+  respond(id, 200, "");
+};
+
+routes["data/duplicate"] = function(id, params) {
+  FileStore.write(params.newFilename, FileStore.read(params.filename));
   respond(id, 200, "");
 };
 
