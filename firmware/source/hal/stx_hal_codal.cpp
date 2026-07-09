@@ -87,7 +87,6 @@ static bool h_read_cond(uint8_t cond, uint8_t param) {
     }
 }
 
-extern "C" {
 const stx_hal_t stx_hal_codal = {
     h_now_ms,
     h_led_pattern,
@@ -101,4 +100,3 @@ const stx_hal_t stx_hal_codal = {
     0, /* motors_ticks */
     0  /* motors_stop */
 };
-}
