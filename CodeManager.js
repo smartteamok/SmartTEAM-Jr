@@ -576,8 +576,14 @@ CodeManager.checkBroadcastRunning = function(message) {
 
 /**
  * Recursively passes on the message that the flag button was tapped.
+ * En FinchBlox con modo programa activo, la bandera corre el programa ya
+ * transferido a la placa en vez de ejecutar los bloques en vivo.
  */
 CodeManager.eventFlagClicked = function() {
+  if (FinchBlox && ProgramModeManager.isProgramMode()) {
+    ProgramModeManager.flagClicked();
+    return;
+  }
   TabManager.eventFlagClicked();
 };
 

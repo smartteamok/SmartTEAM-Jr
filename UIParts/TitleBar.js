@@ -219,6 +219,30 @@ TitleBar.makeButtons = function() {
     TB.stopBn.addIcon(VectorPaths.stop, TB.bnIconH * 0.9);
     TB.stopBn.setCallbackFunction(CodeManager.stop, false);
 
+    // Modo programa: botón Enviar (a la izquierda de la bandera) transfiere el
+    // bytecode a la placa; el toggle live/programa (a la derecha del stop) es
+    // la opción del docente. Ver ProgramModeManager.
+    TB.sendBn = new Button(TB.flagBnX - TB.buttonW - TB.buttonMargin, y, TB.buttonW, h,
+      TBLayer, Colors.seance, r, r);
+    TB.sendBn.addIcon(VectorPaths.microbit, TB.bnIconH * 0.8);
+    TB.sendBn.setCallbackFunction(ProgramModeManager.sendClicked, true);
+
+    TB.modeBn = new Button(TB.stopBnX + TB.longButtonW + TB.buttonMargin, y, TB.buttonW, h,
+      TBLayer, Colors.fbGray, r, r);
+    TB.modeBn.addIcon(VectorPaths.faSyncAlt, TB.bnIconH * 0.7);
+    TB.modeBn.setCallbackFunction(ProgramModeManager.toggle, true);
+
+    TB.updateModeButtons = function() {
+      const programMode = ProgramModeManager.isProgramMode();
+      TB.modeBn.updateBgColor(programMode ? Colors.seance : Colors.fbGray);
+      if (programMode) {
+        TB.sendBn.show();
+      } else {
+        TB.sendBn.hide();
+      }
+    };
+    TB.updateModeButtons();
+
     //TB.undoButton = new Button(TB.undoBnX, (TB.height/2) - (TB.buttonH/2), TB.buttonW, TB.buttonH, TBLayer, Colors.neonCarrot, r, r);
     TB.undoButton = new Button(TB.undoBnX, y, TB.buttonW, h, TBLayer, Colors.neonCarrot, r, r);
     TB.undoButton.addIcon(VectorPaths.faUndoAlt, TB.bnIconH * 0.8);
