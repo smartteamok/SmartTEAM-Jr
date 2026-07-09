@@ -7936,6 +7936,25 @@ GuiElements.removeVideo = function(videoElement) {
   container.parentNode.removeChild(container);
 };
 
+
+
+/**
+ * Si este frontend corre embebido en un iframe cuyo padre implementa
+ * parseFinchBloxRequest (la página host webble/ con Web Bluetooth, o cualquier
+ * otro host PWA), activa el modo PWA de HtmlServer ANTES del primer request.
+ * Debe cargarse después de GuiElements.js y antes de que dispare window.load.
+ */
+(function() {
+  try {
+    if (window.parent !== window &&
+      typeof window.parent.parseFinchBloxRequest === "function") {
+      GuiElements.isPWA = true;
+    }
+  } catch (e) {
+    // window.parent de otro origen: no es nuestro host
+  }
+})();
+
 /* BlockList is a static class that holds a list of blocks and categories.
  * It is in charge of populating the BlockPalette by helping to create Category objects.
  */
@@ -11748,6 +11767,30 @@ TitleBar.makeButtons = function() {
     TB.stopBn = new Button(TB.stopBnX, y, TB.longButtonW, h, TBLayer, Colors.stopRed, r, r);
     TB.stopBn.addIcon(VectorPaths.stop, TB.bnIconH * 0.9);
     TB.stopBn.setCallbackFunction(CodeManager.stop, false);
+
+    // Modo programa: botón Enviar (a la izquierda de la bandera) transfiere el
+    // bytecode a la placa; el toggle live/programa (a la derecha del stop) es
+    // la opción del docente. Ver ProgramModeManager.
+    TB.sendBn = new Button(TB.flagBnX - TB.buttonW - TB.buttonMargin, y, TB.buttonW, h,
+      TBLayer, Colors.seance, r, r);
+    TB.sendBn.addIcon(VectorPaths.microbit, TB.bnIconH * 0.8);
+    TB.sendBn.setCallbackFunction(ProgramModeManager.sendClicked, true);
+
+    TB.modeBn = new Button(TB.stopBnX + TB.longButtonW + TB.buttonMargin, y, TB.buttonW, h,
+      TBLayer, Colors.fbGray, r, r);
+    TB.modeBn.addIcon(VectorPaths.faSyncAlt, TB.bnIconH * 0.7);
+    TB.modeBn.setCallbackFunction(ProgramModeManager.toggle, true);
+
+    TB.updateModeButtons = function() {
+      var programMode = ProgramModeManager.isProgramMode();
+      TB.modeBn.updateBgColor(programMode ? Colors.seance : Colors.fbGray);
+      if (programMode) {
+        TB.sendBn.show();
+      } else {
+        TB.sendBn.hide();
+      }
+    };
+    TB.updateModeButtons();
 
     //TB.undoButton = new Button(TB.undoBnX, (TB.height/2) - (TB.buttonH/2), TB.buttonW, TB.buttonH, TBLayer, Colors.neonCarrot, r, r);
     TB.undoButton = new Button(TB.undoBnX, y, TB.buttonW, h, TBLayer, Colors.neonCarrot, r, r);
@@ -20531,8 +20574,14 @@ CodeManager.checkBroadcastRunning = function(message) {
 
 /**
  * Recursively passes on the message that the flag button was tapped.
+ * En FinchBlox con modo programa activo, la bandera corre el programa ya
+ * transferido a la placa en vez de ejecutar los bloques en vivo.
  */
 CodeManager.eventFlagClicked = function() {
+  if (FinchBlox && ProgramModeManager.isProgramMode()) {
+    ProgramModeManager.flagClicked();
+    return;
+  }
   TabManager.eventFlagClicked();
 };
 
@@ -20760,6 +20809,764 @@ CodeManager.dragRelToAbsX = function(x) {
  */
 CodeManager.dragRelToAbsY = function(y) {
   return y * TabManager.getActiveZoom();
+};
+
+
+
+/* STXConstants — GENERADO por firmware/tools/gen_js_constants.py.
+ * NO editar a mano: cambiar firmware/source/vm/stx_isa.h o
+ * firmware/source/proto/stx_proto.h y regenerar. */
+var STX = {};
+
+/* ---- stx_isa.h ---- */
+STX.MAGIC_0 = 0x53;  // 'S'
+STX.MAGIC_1 = 0x54;  // 'T'
+STX.MAGIC_2 = 0x58;  // 'X'
+STX.MAGIC_3 = 0x31;  // '1'
+STX.BC_VERSION = 0x01;  // versión del bytecode
+STX.HEADER_SIZE = 0x0C;  // bytes de header antes de la tabla de eventos
+STX.EVENT_ENTRY_SIZE = 0x04;  // bytes por entrada de la tabla de eventos
+STX.MAX_IMAGE_SIZE = 0x800;  // tamaño máximo de la imagen completa (header incluido)
+STX.MAX_EVENTS = 0x08;  // entradas máximas en la tabla de eventos
+STX.MAX_CONTEXTS = 0x04;  // contextos de ejecución concurrentes en la VM
+STX.MAX_LOOP_DEPTH = 0x08;  // profundidad máxima de loops anidados por contexto
+STX.EVT_ON_START = 0x00;  // al arrancar el programa (RUN o boot)
+STX.EVT_ON_DARK = 0x01;  // luz < param
+STX.EVT_ON_LOUD = 0x02;  // nivel de sonido > param (requiere V2)
+STX.EVT_ON_BUTTON_A = 0x03;  // botón A presionado
+STX.EVT_ON_BUTTON_B = 0x04;  // botón B presionado
+STX.OP_NOP = 0x00;  // sin operandos
+STX.OP_HALT = 0x01;  // sin operandos — termina el handler
+STX.OP_WAIT_MS = 0x02;  // u16 ms — espera no bloqueante
+STX.OP_LOOP_N = 0x03;  // u8 n (1-255) — abre loop de n vueltas
+STX.OP_LOOP_END = 0x04;  // sin operandos — cierra loop
+STX.OP_LOOP_FOREVER = 0x05;  // sin operandos — abre loop infinito
+STX.OP_JMP = 0x06;  // i16 rel — RESERVADO v1 (la VM lo rechaza)
+STX.OP_WAIT_UNTIL = 0x07;  // u8 cond, u8 param — espera condición
+STX.OP_LED_PATTERN = 0x10;  // 4 bytes: 25 bits row-major LSB-first, bit0 = LED(0,0)
+STX.OP_LED_CLEAR = 0x11;  // sin operandos
+STX.OP_LED_BRIGHT = 0x12;  // u8 brillo 0-255
+STX.OP_RGB_SET = 0x18;  // u8 r, u8 g, u8 b (0-255) — color abstracto, mapea el HAL
+STX.OP_TONE = 0x20;  // u8 nota MIDI, u16 durMs — NO bloqueante
+STX.OP_TONE_STOP = 0x21;  // sin operandos
+STX.OP_MOTORS = 0x30;  // i8 spdL, i8 spdR (-100..100) — continuo
+STX.OP_MOTORS_TICKS = 0x31;  // i8 spdL, i8 spdR, u16 ticks — bloqueante hasta completar
+STX.OP_MOTORS_STOP = 0x32;  // sin operandos
+STX.COND_DARK = 0x01;  // luz < param
+STX.COND_BRIGHT = 0x02;  // luz > param
+STX.COND_LOUD = 0x03;  // sonido > param (requiere V2)
+STX.COND_BTN_A = 0x04;  // botón A presionado
+STX.COND_BTN_B = 0x05;  // botón B presionado
+STX.COND_OBSTACLE = 0x10;  // distancia < param cm (v2)
+STX.COND_LINE = 0x11;  // sensor de línea activo (v2)
+STX.COND_SOIL_DRY = 0x12;  // humedad < param (v2)
+STX.VMSTATE_STOPPED = 0x00;
+STX.VMSTATE_RUNNING = 0x01;
+STX.VMSTATE_PAUSED = 0x02;  // reservado
+STX.ERR_NONE = 0x00;
+STX.ERR_BAD_OPCODE = 0x01;  // opcode desconocido o reservado
+STX.ERR_PC_RANGE = 0x02;  // PC fuera de la sección de código
+STX.ERR_LOOP_OVERFLOW = 0x03;  // más de STX_MAX_LOOP_DEPTH loops anidados
+STX.ERR_LOOP_UNDERFLOW = 0x04;  // LOOP_END sin loop abierto
+STX.ERR_BAD_IMAGE = 0x05;  // imagen inválida (magic/CRC/longitud)
+
+/* ---- stx_proto.h ---- */
+STX.PROTO_VERSION = 0x01;
+STX.FW_MAJOR = 0x00;
+STX.FW_MINOR = 0x01;
+STX.CMD_XFER_BEGIN = 0x01;  // [len u16][crc32 u32]
+STX.CMD_XFER_CHUNK = 0x02;  // [seq u8][data ≤16B]
+STX.CMD_XFER_END = 0x03;  // sin payload
+STX.CMD_RUN = 0x10;  // sin payload
+STX.CMD_STOP = 0x11;  // sin payload
+STX.CMD_GET_STATUS = 0x12;  // sin payload
+STX.CMD_ERASE = 0x13;  // sin payload
+STX.CMD_GET_SENSORS = 0x14;  // sin payload
+STX.CMD_LIVE_EXEC = 0x20;  // [instrucción STX cruda]
+STX.RESP_FLAG = 0x80;  // respuesta = comando | STX_RESP_FLAG
+STX.STATUS_OK = 0x00;
+STX.STATUS_TOO_LARGE = 0x01;  // imageLen > STX_MAX_IMAGE_SIZE
+STX.STATUS_BUSY = 0x02;  // transferencia u operación en curso
+STX.STATUS_BAD_CRC = 0x03;  // CRC32 no coincide en XFER_END
+STX.STATUS_BAD_LENGTH = 0x04;  // faltan/sobran bytes al terminar
+STX.STATUS_FLASH_ERROR = 0x05;  // error al grabar en flash
+STX.STATUS_BAD_SEQ = 0x06;  // chunk fuera de orden — reenviar
+STX.STATUS_NO_PROGRAM = 0x07;  // RUN sin imagen válida cargada
+STX.STATUS_REJECTED = 0x08;  // comando/instrucción no permitida (ej. WAIT en live)
+STX.STATUS_NO_SESSION = 0x09;  // chunk/end sin XFER_BEGIN previo
+STX.CHUNK_DATA_SIZE = 0x10;  // bytes de datos por XFER_CHUNK
+STX.XFER_TIMEOUT_MS = 0x1388;  // el firmware aborta la sesión sin datos
+STX.PKT_MAX = 0x14;  // tamaño máximo de paquete de aplicación
+
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = STX;
+}
+
+
+
+/**
+ * ProgramCompiler compila el árbol vivo de bloques FinchBlox a una
+ * representación intermedia (IR) JSON, independiente del bytecode.
+ * Es puro: no toca GuiElements/TabManager/DeviceFinch, así que puede
+ * testearse en Node con fixtures duck-typed. Quien junta los stacks del
+ * editor (TabManager.activeTab.stackList) es ProgramModeManager.
+ *
+ * IR = { version: 1, handlers: [Handler] }
+ * Handler = { trigger: "start"|"dark"|"loud", param: number, body: [Op] }
+ * Op:
+ *   {op:"tone", note, ms}                — bloqueante (el assembler emite TONE+WAIT)
+ *   {op:"ledMatrix", pattern}            — string de 25 chars "0"/"1", row-major
+ *   {op:"ledClear"}
+ *   {op:"rgb", target, r, g, b}          — target 0=beak 1=tail; valores 0-100
+ *   {op:"wait", ms}
+ *   {op:"motors", speedL, speedR, ticksL, ticksR}   — kit v2
+ *   {op:"motorsFree", speedL, speedR}               — kit v2
+ *   {op:"motorsStop"}                               — kit v2
+ *   {op:"waitUntil", cond, param}        — cond: "dark"|"loud"|"obstacle"
+ *   {op:"repeat", count, body:[Op]}      — count 0 = forever
+ */
+function ProgramCompiler() {}
+
+/** Umbrales idénticos al modo live (BlockDefs_control.js:558-589) */
+ProgramCompiler.DARK_THRESHOLD = 5;
+ProgramCompiler.LOUD_THRESHOLD = 50;
+/** Umbral de obstáculo en cm (BlockDefs_fbMotion.js, B_FBForwardUntilObstacle) */
+ProgramCompiler.OBSTACLE_THRESHOLD_CM = 20;
+/** Límites que impone la VM (ver firmware/source/vm/stx_isa.h) */
+ProgramCompiler.MAX_HANDLERS = 8;
+ProgramCompiler.MAX_START_HANDLERS = 4;
+
+/**
+ * Punto de entrada.
+ * @param {Array} firstBlocks - primer Block de cada stack top-level, en orden
+ * @param {object} [options] - {allowMotors: boolean} (default false: slice on-board)
+ * @return {{ir: object|null, errors: Array, warnings: Array}}
+ */
+ProgramCompiler.compile = function(firstBlocks, options) {
+  if (options == null) {
+    options = {};
+  }
+  var errors = [];
+  var warnings = [];
+  var handlers = [];
+
+  for (var i = 0; i < firstBlocks.length; i++) {
+    var firstBlock = firstBlocks[i];
+    if (firstBlock == null) {
+      continue;
+    }
+    var handler = ProgramCompiler.compileStack(firstBlock, errors, warnings);
+    if (handler != null && handler.body.length > 0) {
+      handlers.push(handler);
+    }
+  }
+
+  ProgramCompiler.validate(handlers, options, errors, warnings);
+
+  if (errors.length > 0) {
+    return { ir: null, errors: errors, warnings: warnings };
+  }
+  return {
+    ir: { version: 1, handlers: handlers },
+    errors: errors,
+    warnings: warnings
+  };
+};
+
+/**
+ * Compila un stack completo a un Handler. El hat (si hay) define el trigger;
+ * un stack sin hat es un handler "start" directo (niveles 1-2).
+ */
+ProgramCompiler.compileStack = function(firstBlock, errors, warnings) {
+  var trigger = "start";
+  var param = 0;
+  var bodyStart = firstBlock;
+
+  var hat = ProgramCompiler.hats[firstBlock.blockTypeName];
+  if (hat != null) {
+    trigger = hat.trigger;
+    param = hat.param;
+    bodyStart = firstBlock.nextBlock;
+  } else if (firstBlock.isStartBlock) {
+    // Hat desconocido (ej. bloque nuevo de BirdBlox): error explícito
+    errors.push(ProgramCompiler.unsupportedError(firstBlock.blockTypeName));
+    return null;
+  }
+
+  var body = ProgramCompiler.compileSequence(bodyStart, errors, warnings);
+  return { trigger: trigger, param: param, body: body };
+};
+
+/**
+ * Sigue la cadena nextBlock y concatena la IR de cada bloque.
+ * @param {object|null} block - primer Block de la secuencia
+ * @return {Array} lista de Ops
+ */
+ProgramCompiler.compileSequence = function(block, errors, warnings) {
+  var ops = [];
+  while (block != null) {
+    var encoder = ProgramCompiler.encoders[block.blockTypeName];
+    if (encoder == null) {
+      errors.push(ProgramCompiler.unsupportedError(block.blockTypeName));
+      return ops;
+    }
+    var blockOps = encoder(block, errors, warnings);
+    for (var i = 0; i < blockOps.length; i++) {
+      ops.push(blockOps[i]);
+    }
+    if (ProgramCompiler.isForever(blockOps) && block.nextBlock != null) {
+      warnings.push({
+        code: "W_UNREACHABLE_AFTER_FOREVER",
+        blockType: block.blockTypeName
+      });
+      return ops;
+    }
+    block = block.nextBlock;
+  }
+  return ops;
+};
+
+ProgramCompiler.isForever = function(ops) {
+  return ops.length === 1 && ops[0].op === "repeat" && ops[0].count === 0;
+};
+
+ProgramCompiler.unsupportedError = function(blockTypeName) {
+  return { code: "E_UNSUPPORTED_BLOCK", blockType: blockTypeName };
+};
+
+/** Validaciones globales post-compilación */
+ProgramCompiler.validate = function(handlers, options, errors, warnings) {
+  var totalOps = 0;
+  var startCount = 0;
+  for (var i = 0; i < handlers.length; i++) {
+    totalOps += ProgramCompiler.countOps(handlers[i].body);
+    if (handlers[i].trigger === "start") {
+      startCount++;
+    }
+  }
+  if (handlers.length === 0 || totalOps === 0) {
+    errors.push({ code: "E_EMPTY" });
+    return;
+  }
+  if (handlers.length > ProgramCompiler.MAX_HANDLERS) {
+    errors.push({ code: "E_TOO_MANY_STACKS", count: handlers.length });
+  }
+  if (startCount > ProgramCompiler.MAX_START_HANDLERS) {
+    errors.push({ code: "E_TOO_MANY_STACKS", count: startCount });
+  }
+  if (!options.allowMotors) {
+    var motorOps = { motors: true, motorsFree: true, motorsStop: true };
+    for (var i = 0; i < handlers.length; i++) {
+      if (ProgramCompiler.usesOps(handlers[i].body, motorOps)) {
+        errors.push({ code: "E_UNSUPPORTED_ON_BOARD", trigger: handlers[i].trigger });
+      }
+    }
+  }
+};
+
+ProgramCompiler.countOps = function(body) {
+  var n = 0;
+  for (var i = 0; i < body.length; i++) {
+    n++;
+    if (body[i].op === "repeat") {
+      n += ProgramCompiler.countOps(body[i].body);
+    }
+  }
+  return n;
+};
+
+ProgramCompiler.usesOps = function(body, opNames) {
+  for (var i = 0; i < body.length; i++) {
+    if (opNames[body[i].op]) {
+      return true;
+    }
+    if (body[i].op === "repeat" && ProgramCompiler.usesOps(body[i].body, opNames)) {
+      return true;
+    }
+  }
+  return false;
+};
+
+/* ---------------------------------------------------------------------------
+ * Tabla de hats: blockTypeName -> trigger de handler.
+ * Umbrales idénticos a los del modo live.
+ */
+ProgramCompiler.hats = {
+  B_WhenFlagTapped: { trigger: "start", param: 0 },
+  B_StartWhenDark: { trigger: "dark", param: ProgramCompiler.DARK_THRESHOLD },
+  B_StartWhenClap: { trigger: "loud", param: ProgramCompiler.LOUD_THRESHOLD }
+};
+
+/* ---------------------------------------------------------------------------
+ * Tabla de encoders: blockTypeName -> function(block, errors, warnings) -> [Op].
+ * Se construye programáticamente: un encoder compartido registrado bajo N
+ * nombres. Los campos leídos son los que cada bloque cachea vía updateValues()
+ * (ver BlockDefs_fbSound.js:18, BlockDefs_fbColor.js:18-23,
+ * BlockDefs_fbMotion.js:92-177, BlockDefs_control.js:69/176).
+ */
+ProgramCompiler.encoders = {};
+
+(function() {
+  var enc = ProgramCompiler.encoders;
+
+  function register(names, fn) {
+    for (var i = 0; i < names.length; i++) {
+      enc[names[i]] = fn;
+    }
+  }
+
+  // Sound: nota midi + beats (cada beat = 0.1 s, igual que el modo live)
+  register(["B_FBC", "B_FBD", "B_FBE", "B_FBF", "B_FBG", "B_FBA",
+    "B_FBSoundL2", "B_FBSoundL3"], function(block) {
+    return [{ op: "tone", note: block.midiNote, ms: block.beats * 100 }];
+  });
+
+  // LED array: patrón + duración (duration en décimas de segundo) + apagar
+  register(["B_FBLedArrayL2", "B_FBLedArrayL3"], function(block) {
+    return [
+      { op: "ledMatrix", pattern: block.ledStatusString },
+      { op: "wait", ms: block.duration * 100 },
+      { op: "ledClear" }
+    ];
+  });
+
+  // Beak/Tail: color RGB (0-100) + duración + apagar
+  register(["B_FBBeakRed", "B_FBBeakGreen", "B_FBBeakBlue", "B_FBBeakL2", "B_FBBeakL3",
+    "B_FBTailRed", "B_FBTailGreen", "B_FBTailBlue", "B_FBTailL2", "B_FBTailL3"],
+    function(block) {
+      var target = block.isBeak ? 0 : 1;
+      return [
+        { op: "rgb", target: target, r: block.red, g: block.green, b: block.blue },
+        { op: "wait", ms: block.duration * 100 },
+        { op: "rgb", target: target, r: 0, g: 0, b: 0 }
+      ];
+    });
+
+  // Wait: slider en décimas de segundo
+  register(["B_Wait"], function(block) {
+    return [{ op: "wait", ms: block.timeSelection * 100 }];
+  });
+
+  // Repeat: cuerpo en blockSlot1
+  register(["B_Repeat"], function(block, errors, warnings) {
+    var child = block.blockSlot1 != null ? block.blockSlot1.child : null;
+    var body = ProgramCompiler.compileSequence(child, errors, warnings);
+    return [{ op: "repeat", count: block.countSelection, body: body }];
+  });
+
+  // Forever: repeat con count 0
+  register(["B_Forever"], function(block, errors, warnings) {
+    var child = block.blockSlot1 != null ? block.blockSlot1.child : null;
+    var body = ProgramCompiler.compileSequence(child, errors, warnings);
+    return [{ op: "repeat", count: 0, body: body }];
+  });
+
+  // Motion: los ticks/speeds ya vienen calculados por updateValues()
+  register(["B_FBForward", "B_FBBackward", "B_FBRight", "B_FBLeft",
+    "B_FBForwardL2", "B_FBBackwardL2", "B_FBRightL2", "B_FBLeftL2",
+    "B_FBForwardL3", "B_FBBackwardL3", "B_FBRightL3", "B_FBLeftL3"],
+    function(block) {
+      return [{
+        op: "motors",
+        speedL: block.leftSpeed,
+        speedR: block.rightSpeed,
+        ticksL: block.leftTicks,
+        ticksR: block.rightTicks
+      }];
+    });
+
+  // Avanzar hasta condición: primitivas motores + waitUntil + stop
+  register(["B_FBForwardUntilDark"], function(block) {
+    return [
+      { op: "motorsFree", speedL: 50, speedR: 50 },
+      { op: "waitUntil", cond: "dark", param: ProgramCompiler.DARK_THRESHOLD },
+      { op: "motorsStop" }
+    ];
+  });
+  register(["B_FBForwardUntilObstacle"], function(block) {
+    return [
+      { op: "motorsFree", speedL: 50, speedR: 50 },
+      { op: "waitUntil", cond: "obstacle", param: ProgramCompiler.OBSTACLE_THRESHOLD_CM },
+      { op: "motorsStop" }
+    ];
+  });
+})();
+
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = ProgramCompiler;
+}
+
+
+
+/**
+ * BytecodeAssembler convierte la IR de ProgramCompiler en una imagen STX1
+ * (Uint8Array) lista para transferir a la micro:bit. El formato lo define
+ * firmware/source/vm/stx_isa.h (fuente de verdad); las constantes vienen de
+ * STXConstants.js (generado). Puro y dual-load para testear en Node.
+ *
+ * Lanza Error con .code = "E_TOO_LARGE" si la imagen supera STX.MAX_IMAGE_SIZE.
+ */
+function BytecodeAssembler() {}
+
+(function() {
+  var STXRef;
+  if (typeof STX !== "undefined") {
+    STXRef = STX;
+  } else if (typeof require !== "undefined") {
+    STXRef = require("./STXConstants.js");
+  }
+  BytecodeAssembler.STX = STXRef;
+})();
+
+BytecodeAssembler.TRIGGERS = {
+  start: function(S) { return S.EVT_ON_START; },
+  dark: function(S) { return S.EVT_ON_DARK; },
+  loud: function(S) { return S.EVT_ON_LOUD; }
+};
+
+BytecodeAssembler.CONDS = {
+  dark: function(S) { return S.COND_DARK; },
+  bright: function(S) { return S.COND_BRIGHT; },
+  loud: function(S) { return S.COND_LOUD; },
+  obstacle: function(S) { return S.COND_OBSTACLE; }
+};
+
+/**
+ * @param {object} ir - {version, handlers:[{trigger, param, body}]}
+ * @return {Uint8Array} imagen STX1 completa
+ */
+BytecodeAssembler.assemble = function(ir) {
+  var S = BytecodeAssembler.STX;
+  var events = [];
+  var code = [];
+
+  for (var i = 0; i < ir.handlers.length; i++) {
+    var handler = ir.handlers[i];
+    var triggerFn = BytecodeAssembler.TRIGGERS[handler.trigger];
+    if (triggerFn == null) {
+      throw BytecodeAssembler.error("E_BAD_TRIGGER", handler.trigger);
+    }
+    events.push({
+      type: triggerFn(S),
+      param: handler.param | 0,
+      offset: code.length
+    });
+    BytecodeAssembler.emitOps(handler.body, code, S);
+    code.push(S.OP_HALT);
+  }
+
+  var eventTableSize = events.length * S.EVENT_ENTRY_SIZE;
+  var imageSize = S.HEADER_SIZE + eventTableSize + code.length;
+  if (imageSize > S.MAX_IMAGE_SIZE) {
+    throw BytecodeAssembler.error("E_TOO_LARGE", imageSize);
+  }
+
+  var image = new Uint8Array(imageSize);
+  image[0] = S.MAGIC_0;
+  image[1] = S.MAGIC_1;
+  image[2] = S.MAGIC_2;
+  image[3] = S.MAGIC_3;
+  image[4] = S.BC_VERSION;
+  image[5] = events.length;
+  image[6] = code.length & 0xFF;
+  image[7] = (code.length >> 8) & 0xFF;
+  // crc32 va en [8..11] al final
+
+  var pos = S.HEADER_SIZE;
+  for (var i = 0; i < events.length; i++) {
+    image[pos] = events[i].type;
+    image[pos + 1] = events[i].param & 0xFF;
+    image[pos + 2] = events[i].offset & 0xFF;
+    image[pos + 3] = (events[i].offset >> 8) & 0xFF;
+    pos += S.EVENT_ENTRY_SIZE;
+  }
+  for (var i = 0; i < code.length; i++) {
+    image[pos + i] = code[i];
+  }
+
+  var crc = BytecodeAssembler.crc32(image.subarray(S.HEADER_SIZE));
+  image[8] = crc & 0xFF;
+  image[9] = (crc >>> 8) & 0xFF;
+  image[10] = (crc >>> 16) & 0xFF;
+  image[11] = (crc >>> 24) & 0xFF;
+  return image;
+};
+
+/** Emite la lista de Ops de la IR como bytes de código */
+BytecodeAssembler.emitOps = function(body, code, S) {
+  for (var i = 0; i < body.length; i++) {
+    var op = body[i];
+    switch (op.op) {
+      case "tone":
+        // TONE es no bloqueante en la VM; el bloque del editor es bloqueante
+        code.push(S.OP_TONE, op.note & 0xFF);
+        BytecodeAssembler.pushU16(code, op.ms);
+        code.push(S.OP_WAIT_MS);
+        BytecodeAssembler.pushU16(code, op.ms);
+        break;
+      case "ledMatrix": {
+        code.push(S.OP_LED_PATTERN);
+        var packed = BytecodeAssembler.packLedPattern(op.pattern);
+        code.push(packed[0], packed[1], packed[2], packed[3]);
+        break;
+      }
+      case "ledClear":
+        code.push(S.OP_LED_CLEAR);
+        break;
+      case "rgb":
+        // IR trae 0-100 (rango del editor); la VM espera 0-255
+        code.push(S.OP_RGB_SET,
+          BytecodeAssembler.scale100(op.r),
+          BytecodeAssembler.scale100(op.g),
+          BytecodeAssembler.scale100(op.b));
+        break;
+      case "wait":
+        code.push(S.OP_WAIT_MS);
+        BytecodeAssembler.pushU16(code, op.ms);
+        break;
+      case "waitUntil": {
+        var condFn = BytecodeAssembler.CONDS[op.cond];
+        if (condFn == null) {
+          throw BytecodeAssembler.error("E_BAD_COND", op.cond);
+        }
+        code.push(S.OP_WAIT_UNTIL, condFn(S), op.param & 0xFF);
+        break;
+      }
+      case "repeat":
+        if (op.count === 0) {
+          code.push(S.OP_LOOP_FOREVER);
+        } else {
+          code.push(S.OP_LOOP_N, op.count & 0xFF);
+        }
+        BytecodeAssembler.emitOps(op.body, code, S);
+        code.push(S.OP_LOOP_END);
+        break;
+      case "motors":
+        // Los bloques FinchBlox siempre generan ticksL === ticksR
+        code.push(S.OP_MOTORS_TICKS,
+          BytecodeAssembler.i8(op.speedL),
+          BytecodeAssembler.i8(op.speedR));
+        BytecodeAssembler.pushU16(code, op.ticksL);
+        break;
+      case "motorsFree":
+        code.push(S.OP_MOTORS,
+          BytecodeAssembler.i8(op.speedL),
+          BytecodeAssembler.i8(op.speedR));
+        break;
+      case "motorsStop":
+        code.push(S.OP_MOTORS_STOP);
+        break;
+      default:
+        throw BytecodeAssembler.error("E_BAD_OP", op.op);
+    }
+  }
+};
+
+BytecodeAssembler.pushU16 = function(code, value) {
+  var v = Math.max(0, Math.min(0xFFFF, Math.round(value)));
+  code.push(v & 0xFF, (v >> 8) & 0xFF);
+};
+
+BytecodeAssembler.i8 = function(value) {
+  var v = Math.max(-128, Math.min(127, Math.round(value)));
+  return v & 0xFF;
+};
+
+BytecodeAssembler.scale100 = function(value) {
+  var v = Math.max(0, Math.min(100, Math.round(value)));
+  return Math.round(v * 255 / 100);
+};
+
+/**
+ * Empaqueta un patrón de 25 chars "0"/"1" (row-major) en 4 bytes.
+ * Bit k del byte j = LED de índice j*8+k (LSB-first).
+ */
+BytecodeAssembler.packLedPattern = function(str25) {
+  var bytes = [0, 0, 0, 0];
+  for (var i = 0; i < 25 && i < str25.length; i++) {
+    if (str25.charAt(i) === "1") {
+      bytes[i >> 3] |= (1 << (i & 7));
+    }
+  }
+  return bytes;
+};
+
+/** CRC-32/IEEE (el mismo que zlib), sobre un Uint8Array */
+BytecodeAssembler.crc32 = function(bytes) {
+  var table = BytecodeAssembler.crcTable;
+  if (table == null) {
+    table = [];
+    for (var n = 0; n < 256; n++) {
+      var c = n;
+      for (var k = 0; k < 8; k++) {
+        c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+      }
+      table[n] = c;
+    }
+    BytecodeAssembler.crcTable = table;
+  }
+  var crc = 0xFFFFFFFF;
+  for (var i = 0; i < bytes.length; i++) {
+    crc = table[(crc ^ bytes[i]) & 0xFF] ^ (crc >>> 8);
+  }
+  return (crc ^ 0xFFFFFFFF) >>> 0;
+};
+
+BytecodeAssembler.error = function(code, detail) {
+  var err = new Error(code + (detail != null ? ": " + detail : ""));
+  err.code = code;
+  return err;
+};
+
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = BytecodeAssembler;
+}
+
+
+
+/**
+ * ProgramModeManager orquesta el "modo programa" de FinchBlox: en vez de
+ * ejecutar los bloques en vivo, compila el programa a bytecode STX1 y lo
+ * transfiere a la micro:bit, que lo guarda en flash y lo corre standalone.
+ *
+ * Gestos (elegidos para pre-lectores):
+ *   - Botón Enviar (TitleBar.sendBn): compila + transfiere a la placa.
+ *   - Bandera en modo programa: manda RUN (corre lo ya transferido).
+ *   - Stop: sin cambios — Device.stopAll() llega al firmware como STOP.
+ *   - Toggle live/programa (TitleBar.modeBn): opción del docente, persiste
+ *     en SettingsManager.programMode.
+ */
+function ProgramModeManager() {}
+
+ProgramModeManager.isProgramMode = function() {
+  return SettingsManager.programMode.getValue() === "true";
+};
+
+ProgramModeManager.toggle = function() {
+  var newValue = ProgramModeManager.isProgramMode() ? "false" : "true";
+  SettingsManager.programMode.writeValue(newValue);
+  if (typeof TitleBar.updateModeButtons === "function") {
+    TitleBar.updateModeButtons();
+  }
+};
+
+/**
+ * Compila los stacks del tab activo.
+ * @return {{bytes: Uint8Array|null, errors: Array, warnings: Array}}
+ */
+ProgramModeManager.compileCurrent = function() {
+  var firstBlocks = [];
+  if (TabManager.activeTab != null) {
+    var stackList = TabManager.activeTab.stackList;
+    for (var i = 0; i < stackList.length; i++) {
+      if (!stackList[i].isDisplayStack && stackList[i].firstBlock != null) {
+        firstBlocks.push(stackList[i].firstBlock);
+      }
+    }
+  }
+  var result = ProgramCompiler.compile(firstBlocks);
+  if (result.errors.length > 0) {
+    return { bytes: null, errors: result.errors, warnings: result.warnings };
+  }
+  try {
+    var bytes = BytecodeAssembler.assemble(result.ir);
+    return { bytes: bytes, errors: [], warnings: result.warnings };
+  } catch (e) {
+    return {
+      bytes: null,
+      errors: [{ code: e.code || "E_ASSEMBLE", detail: e.message }],
+      warnings: result.warnings
+    };
+  }
+};
+
+/** Botón Enviar: compila y transfiere el programa a la placa */
+ProgramModeManager.sendClicked = function() {
+  var result = ProgramModeManager.compileCurrent();
+  if (result.bytes == null) {
+    ProgramModeManager.reportErrors(result.errors);
+    return;
+  }
+  if (ProgramModeManager.debugWithoutBackend()) {
+    console.log("[ProgramMode] bytecode STX1 (" + result.bytes.length + " bytes): " +
+      ProgramModeManager.toHex(result.bytes));
+    return;
+  }
+  var device = DeviceFinch.getManager().getDevice(0);
+  if (device == null) {
+    TitleBar.flashFinchButton();
+    return;
+  }
+  var request = new HttpRequestBuilder("robot/out/program");
+  request.addParam("type", device.getDeviceTypeId());
+  request.addParam("id", device.id);
+  var base64 = ProgramModeManager.toBase64(result.bytes);
+  HtmlServer.sendRequestWithCallback(request.toString(), function() {
+    GuiElements.alert("Program transferred");
+  }, function(status, message) {
+    GuiElements.alert("Program transfer FAILED: " + status + " " + message);
+    ProgramModeManager.flashSendButton();
+  }, true, base64, true, true);
+};
+
+/** Bandera en modo programa: corre lo ya transferido */
+ProgramModeManager.flagClicked = function() {
+  if (ProgramModeManager.debugWithoutBackend()) {
+    console.log("[ProgramMode] RUN");
+    return;
+  }
+  var device = DeviceFinch.getManager().getDevice(0);
+  if (device == null) {
+    TitleBar.flashFinchButton();
+    return;
+  }
+  var request = new HttpRequestBuilder("robot/out/runProgram");
+  request.addParam("type", device.getDeviceTypeId());
+  request.addParam("id", device.id);
+  HtmlServer.sendRequestWithCallback(request.toString(), null, function() {
+    ProgramModeManager.flashSendButton();
+  }, false, null, true);
+};
+
+/** Sin backend nativo ni host PWA: modo debug, loguear en consola */
+ProgramModeManager.debugWithoutBackend = function() {
+  return HtmlServer.iosHandler == null && !window.AndroidInterface && !GuiElements.isPWA;
+};
+
+ProgramModeManager.reportErrors = function(errors) {
+  ProgramModeManager.flashSendButton();
+  var text = "";
+  for (var i = 0; i < errors.length; i++) {
+    text += errors[i].code;
+    if (errors[i].blockType != null) {
+      text += " (" + errors[i].blockType + ")";
+    }
+    text += " ";
+  }
+  console.log("[ProgramMode] errores de compilación: " + text);
+  GuiElements.alert("Program compile errors: " + text);
+};
+
+ProgramModeManager.flashSendButton = function() {
+  if (TitleBar.sendBn != null) {
+    TitleBar.sendBn.flash();
+  }
+};
+
+ProgramModeManager.toBase64 = function(bytes) {
+  var binary = "";
+  for (var i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+};
+
+ProgramModeManager.toHex = function(bytes) {
+  var hex = "";
+  for (var i = 0; i < bytes.length; i++) {
+    hex += (bytes[i] < 16 ? "0" : "") + bytes[i].toString(16);
+  }
+  return hex;
 };
 
 
@@ -26006,6 +26813,8 @@ function SettingsManager() {
   SM.zoom = new Setting("zoom", 1, true, false, GuiElements.minZoomMult, GuiElements.maxZoomMult);
   SM.enableSnapNoise = new Setting("enableSnapNoise", "true"); //"false");
   SM.sideBarVisible = new Setting("sideBarVisible", "true");
+  // FinchBlox: "true" = modo programa (compilar+transferir), "false" = modo live
+  SM.programMode = new Setting("programMode", "false");
 }
 
 /**
@@ -26016,7 +26825,9 @@ SettingsManager.loadSettings = function(callbackFn) {
   var SM = SettingsManager;
   SM.sideBarVisible.readValue(function() {
     SM.enableSnapNoise.readValue(function() {
-      SM.zoom.readValue(callbackFn);
+      SM.programMode.readValue(function() {
+        SM.zoom.readValue(callbackFn);
+      });
     });
   });
 };
