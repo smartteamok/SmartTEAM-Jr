@@ -51,7 +51,7 @@ Font.uiFont = function(fontSize) {
   //if (FinchBlox) { return new Font('FredericBlack', fontSize, "normal"); }
   //if (FinchBlox) { return new Font("NunitoSans-ExtraBold", fontSize, "normal"); }
   if (FinchBlox) {
-    return new Font("Nunito-ExtraBold", fontSize, "normal");
+    return new Font("LexendDeca-SemiBold", fontSize, "normal");
   }
   return new Font("Arial", fontSize, "normal");
 };
@@ -66,7 +66,19 @@ Font.secondaryUiFont = function(fontSize) {
   //if (FinchBlox) { return new Font('FredericRegular', fontSize, "normal"); }
   //if (FinchBlox) { return new Font("NunitoSans-Regular", fontSize, "normal"); }
   if (FinchBlox) {
-    return new Font("Nunito-Regular", fontSize, "normal");
+    return new Font("LexendDeca-Medium", fontSize, "normal");
   }
   return new Font("Arial", fontSize, "normal");
+}
+
+/**
+ * SmartTEAM: fuente display (Livvic Black) para números de nivel y letras grandes.
+ * @param {number} fontSize
+ * @return {Font}
+ */
+Font.displayFont = function(fontSize) {
+  if (FinchBlox) {
+    return new Font("Livvic-Black", fontSize, "normal");
+  }
+  return Font.uiFont(fontSize).bold();
 }

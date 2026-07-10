@@ -50,7 +50,28 @@ TabManager.createTabSpaceBg = function() {
   const TM = TabManager;
   var canvasColor = Colors.canvasGray;
   if (FinchBlox) {
-    canvasColor = Colors.white;
+    //Lienzo SmartTEAM: fondo paper con grilla de puntos (celda 34px, punto 2px)
+    if (document.getElementById("stDotGrid") == null) {
+      const cellSize = 34;
+      const pattern = document.createElementNS("http://www.w3.org/2000/svg", 'pattern');
+      pattern.setAttributeNS(null, "id", "stDotGrid");
+      pattern.setAttributeNS(null, "width", cellSize);
+      pattern.setAttributeNS(null, "height", cellSize);
+      pattern.setAttributeNS(null, "patternUnits", "userSpaceOnUse");
+      const bgTile = document.createElementNS("http://www.w3.org/2000/svg", 'rect');
+      bgTile.setAttributeNS(null, "width", cellSize);
+      bgTile.setAttributeNS(null, "height", cellSize);
+      bgTile.setAttributeNS(null, "fill", Colors.stPaper);
+      pattern.appendChild(bgTile);
+      const dot = document.createElementNS("http://www.w3.org/2000/svg", 'circle');
+      dot.setAttributeNS(null, "cx", cellSize / 2);
+      dot.setAttributeNS(null, "cy", cellSize / 2);
+      dot.setAttributeNS(null, "r", 2);
+      dot.setAttributeNS(null, "fill", Colors.stVioletTint);
+      pattern.appendChild(dot);
+      GuiElements.defs.appendChild(pattern);
+    }
+    canvasColor = "url(#stDotGrid)";
   }
   TM.bgRect = GuiElements.draw.rect(TM.tabSpaceX, TM.tabSpaceY, TM.tabSpaceWidth, TM.tabSpaceHeight, canvasColor);
   TouchReceiver.addListenersTabSpace(TM.bgRect);

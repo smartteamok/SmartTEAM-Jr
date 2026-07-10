@@ -114,3 +114,32 @@ path{
   font-family: Nunito-ExtraBold;
   src: url(Fonts/Nunito-ExtraBold.ttf);
 }
+
+/* SmartTEAM: display (Livvic) y UI (Lexend Deca, fuente variable 100-900) */
+@font-face {
+  font-family: Livvic-Bold;
+  src: url(Fonts/Livvic-Bold.ttf);
+}
+
+@font-face {
+  font-family: Livvic-Black;
+  src: url(Fonts/Livvic-Black.ttf);
+}
+
+@font-face {
+  font-family: LexendDeca;
+  src: url(Fonts/LexendDeca.ttf);
+  font-weight: 100 900;
+}
+
+@font-face {
+  font-family: LexendDeca-Medium;
+  src: url(Fonts/LexendDeca.ttf);
+  font-weight: 500;
+}
+
+@font-face {
+  font-family: LexendDeca-SemiBold;
+  src: url(Fonts/LexendDeca.ttf);
+  font-weight: 600;
+}

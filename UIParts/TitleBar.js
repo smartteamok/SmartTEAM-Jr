@@ -25,8 +25,12 @@ TitleBar.setGraphicsPart1 = function() {
     TB.buttonMargin = Button.defaultMargin / 2;
   } else {
     if (FinchBlox) {
-      TB.height = 90; //100;
-      TB.solidHeight = 5; //height that is solid blue all the way across
+      //Barra flotante SmartTEAM: separada de los bordes, esquinas redondeadas
+      TB.inset = 14; //distancia de la barra a los bordes de la pantalla
+      TB.barH = 86; //alto de la barra flotante
+      TB.barRadius = 26;
+      TB.height = TB.barH + 2 * TB.inset; //espacio total reservado arriba
+      TB.solidHeight = 0; //el lienzo pasa por detrás de la barra flotante
     } else {
       TB.height = 54;
     }
@@ -35,25 +39,22 @@ TitleBar.setGraphicsPart1 = function() {
   TB.width = GuiElements.width;
 
   if (FinchBlox) {
-    TB.buttonH = TB.height / 2;
-    TB.tallButtonH = TB.buttonH * 1.25;
-    TB.buttonW = TB.tallButtonH * (5 / 4);
-    //TB.buttonW = TB.tallButtonH * (3/4);
+    TB.tallButtonH = 62;
+    TB.buttonH = 60; //botones cuadrados (nivel, deshacer)
+    TB.buttonW = 60;
     const maxBnWidth = (TB.width - 6 * TB.buttonMargin) / 8;
     TB.buttonW = Math.min(maxBnWidth, TB.buttonW);
-    //TB.longButtonW = 2.5 * TB.buttonW;
-    //TB.finchBnW = 1.5 * TB.buttonW;
-    TB.longButtonW = TB.tallButtonH * (5 / 2);
+    TB.longButtonW = 112; //Play y Stop
     const maxLongBnW = maxBnWidth * 2;
     TB.longButtonW = Math.min(maxLongBnW, TB.longButtonW);
 
     TB.bnIconMargin = 3;
-    TB.bg = Colors.easternBlue;
-    TB.bnIconH = TB.buttonH - 2 * TB.bnIconMargin;
+    TB.bg = Colors.stViolet;
+    TB.bnIconH = 26;
     const maxIconHeight = maxBnWidth * 0.7;
     TB.bnIconH = Math.min(maxIconHeight, TB.bnIconH);
 
-    TB.defaultCornerRounding = 10;
+    TB.defaultCornerRounding = 20;
   } else {
     TB.buttonW = TB.height * 64 / 54;
     const maxBnWidth = (TB.width - 11 * TB.buttonMargin - DeviceStatusLight.radius * 2) / 7;
@@ -119,81 +120,14 @@ TitleBar.setGraphicsPart2 = function() {
 TitleBar.createBar = function() {
   const TB = TitleBar;
   if (FinchBlox) {
-    TB.bgRect = GuiElements.draw.rect(0, 0, TB.width, TB.solidHeight, TB.bg); //TB.buttonMargin, TB.bg);
+    //Barra flotante violeta con esquinas redondeadas
+    TB.bgRect = GuiElements.draw.rect(TB.inset, TB.inset, TB.width - 2 * TB.inset, TB.barH, TB.bg, TB.barRadius, TB.barRadius);
   } else {
     TB.bgRect = GuiElements.draw.rect(0, 0, TB.width, TB.height, TB.bg);
   }
 
   GuiElements.layers.titleBg.appendChild(TB.bgRect);
-  if (FinchBlox) {
-    //TB.bgShape = GuiElements.create.path(GuiElements.layers.titleBg);
-    //TB.bgShape.setAttributeNS(null, "fill", Colors.white);
-    //TB.leftShape = GuiElements.create.path(GuiElements.layers.titleBg);
-    //TB.rightShape = GuiElements.create.path(GuiElements.layers.titleBg);
-    //TB.leftShape.setAttributeNS(null, "fill", TB.bg);
-    //TB.rightShape.setAttributeNS(null, "fill", TB.bg);
-    TB.bgShape = GuiElements.create.path(GuiElements.layers.titleBg);
-    TB.bgShape.setAttributeNS(null, "fill", TB.bg);
-    TB.updateShapePath();
-  }
 };
-TitleBar.updateShapePath = function() {
-  const TB = TitleBar;
-  const r = (TB.height - TB.solidHeight) / 2; //TB.buttonMargin)/2;
-  const shapeW = TB.width / 2 - TB.longButtonW - 2 * r;
-
-  var path = " m 0,0";
-  path += " l " + TB.width + ",0 0," + TB.height + " " + (-shapeW) + ",0";
-  path += " a " + r + " " + r + " 0 0 1 " + (-r) + " " + (-r);
-  path += " a " + r + " " + r + " 0 0 0 " + (-r) + " " + (-r);
-  path += " l " + (-2 * TB.longButtonW) + ",0";
-  path += " a " + r + " " + r + " 0 0 0 " + (-r) + " " + r;
-  path += " a " + r + " " + r + " 0 0 1 " + (-r) + " " + r;
-  path += " l " + (-shapeW) + ",0";
-  path += " z ";
-
-  TB.bgShape.setAttributeNS(null, "d", path);
-
-  TB.sideWidth = shapeW + r;
-
-  /*
-  const shapeW = TB.width/2 - TB.longButtonW;
-  const shapeH = TB.height - TB.buttonMargin;
-  const r = shapeH/2;
-
-  var pathL = " m 0," + TB.buttonMargin;
-  pathL += " l " + shapeW + ",0";
-  pathL += " a " + r + " " + r + " 0 0 0 " + (-r) + " " + r;
-  pathL += " a " + r + " " + r + " 0 0 1 " + (-r) + " " + r;
-  pathL += " l " + (-shapeW-2*r) + ",0";
-  pathL += " z ";
-
-  var pathR = " m " + TB.width + "," + TB.buttonMargin;
-  pathR += " l " + (-shapeW) + ",0";
-  pathR += " a " + r + " " + r + " 0 0 1 " + r + " " + r;
-  pathR += " a " + r + " " + r + " 0 0 0 " + r + " " + r;
-  pathR += " l " + (shapeW+2*r) + ",0";
-  pathR += " z ";
-
-  TB.leftShape.setAttributeNS(null, "d", pathL);
-  TB.rightShape.setAttributeNS(null, "d", pathR);
-  */
-
-  /*
-  const shapeW = 2*TB.longButtonW;
-  const shapeH = TB.height - TB.buttonMargin;
-  const r = shapeH/2;
-  var path = " m " + (TB.width - shapeW)/2 + "," + TB.buttonMargin;
-  path += " l " + shapeW + ",0";
-  path += " a " + r + " " + r + " 0 0 1 " + r + " " + r;
-  path += " a " + r + " " + r + " 0 0 0 " + r + " " + r;
-  path += " l " + (-shapeW-4*r) + ",0";
-  path += " a " + r + " " + r + " 0 0 0 " + r + " " + (-r);
-  path += " a " + r + " " + r + " 0 0 1 " + r + " " + (-r);
-  path += " z ";
-
-  TB.bgShape.setAttributeNS(null, "d", path);*/
-}
 
 /**
  * Creates all the buttons and menus
@@ -203,101 +137,43 @@ TitleBar.makeButtons = function() {
   const TBLayer = GuiElements.layers.titlebar;
   if (FinchBlox) {
     const r = TB.defaultCornerRounding;
-    const y = (TB.height / 2) - (TB.tallButtonH / 2);
     const h = TB.tallButtonH;
-    TB.undoBnX = TB.width - TB.sideWidth / 2 + TB.buttonMargin / 2;
-    TB.levelBnX = TB.width - TB.sideWidth / 2 - TB.buttonMargin / 2 - TB.buttonW;
-    //TB.undoBnX = TB.width - TB.sideWidth/2 + TB.buttonW/2 + TB.buttonMargin;
-    //TB.levelBnX = TB.width - TB.sideWidth/2 - TB.buttonW/2;
-    //TB.trashBnX = TB.width - TB.sideWidth/2 - TB.buttonW/2 - TB.buttonMargin - TB.buttonW;
+    const y = TB.inset + (TB.barH - h) / 2;
+    const edge = TB.inset + 18; //padding interno de la barra flotante
 
-    TB.flagBn = new Button(TB.flagBnX, y, TB.longButtonW, h, TBLayer, Colors.flagGreen, r, r);
-    TB.flagBn.addIcon(VectorPaths.faFlag, TB.bnIconH);
-    TB.flagBn.setCallbackFunction(CodeManager.eventFlagClicked, false);
-
-    TB.stopBn = new Button(TB.stopBnX, y, TB.longButtonW, h, TBLayer, Colors.stopRed, r, r);
-    TB.stopBn.addIcon(VectorPaths.stop, TB.bnIconH * 0.9);
-    TB.stopBn.setCallbackFunction(CodeManager.stop, false);
-
-    // Modo programa: botón Enviar (a la izquierda de la bandera) transfiere el
-    // bytecode a la placa; el toggle live/programa (a la derecha del stop) es
-    // la opción del docente. Ver ProgramModeManager.
-    TB.sendBn = new Button(TB.flagBnX - TB.buttonW - TB.buttonMargin, y, TB.buttonW, h,
-      TBLayer, Colors.seance, r, r);
-    TB.sendBn.addIcon(VectorPaths.microbit, TB.bnIconH * 0.8);
-    TB.sendBn.setCallbackFunction(ProgramModeManager.sendClicked, true);
-
-    TB.modeBn = new Button(TB.stopBnX + TB.longButtonW + TB.buttonMargin, y, TB.buttonW, h,
-      TBLayer, Colors.fbGray, r, r);
-    TB.modeBn.addIcon(VectorPaths.faSyncAlt, TB.bnIconH * 0.7);
-    TB.modeBn.setCallbackFunction(ProgramModeManager.toggle, true);
-
-    TB.updateModeButtons = function() {
-      const programMode = ProgramModeManager.isProgramMode();
-      TB.modeBn.updateBgColor(programMode ? Colors.seance : Colors.fbGray);
-      if (programMode) {
-        TB.sendBn.show();
-      } else {
-        TB.sendBn.hide();
-      }
-    };
-    TB.updateModeButtons();
-
-    //TB.undoButton = new Button(TB.undoBnX, (TB.height/2) - (TB.buttonH/2), TB.buttonW, TB.buttonH, TBLayer, Colors.neonCarrot, r, r);
-    TB.undoButton = new Button(TB.undoBnX, y, TB.buttonW, h, TBLayer, Colors.neonCarrot, r, r);
-    TB.undoButton.addIcon(VectorPaths.faUndoAlt, TB.bnIconH * 0.8);
-    UndoManager.setUndoButton(TB.undoButton);
-
-    //TB.trashButton = new Button(TB.trashBnX, (TB.height/2) - (TB.buttonH/2), TB.buttonW, TB.buttonH, TBLayer, Colors.seance, r, r);
-    //TB.trashButton = new Button(TB.trashBnX, y, TB.buttonW, h, TBLayer, Colors.neonCarrot, r, r);
-    //TB.trashButton.addIcon(VectorPaths.faTrash, TB.bnIconH * 0.8);
-    //TB.trashButton.setCallbackFunction(function(){TabManager.activeTab.clear();}, false);
-    //TB.trashButton.setCallbackFunction(function(){ UndoManager.deleteTab(); }, false);
-
-    //TB.levelButton = new Button(TB.levelBnX, TB.levelBnY, TB.buttonW, TB.buttonH, TBLayer, Colors.levelBN, r, r);
-    TB.levelButton = new Button(TB.levelBnX, y, TB.buttonW, h, TBLayer, Colors.seance, r, r);
-    //TB.levelButton.addText("1", Font.uiFont(24).bold(), Colors.bbtDarkGray);
-    TB.levelButton.addText(LevelManager.currentLevel, LevelManager.levelButtonFont, Colors.white);
-    //TB.levelButton.setCallbackFunction(function(){
-    //  new LevelMenu(TB.levelBnX + TB.buttonW/2, TB.levelBnY + TB.buttonH);
-    //},false);
-    TB.levelButton.setCallbackFunction(function() {
-      (new LevelDialog()).show();
-    }, true);
-
+    // Izquierda: logo SmartTEAM blanco + botón "Conectar robot"
+    const logoH = 40;
+    const logoW = logoH * 611.316 / 374; //proporción del SVG del logo
+    const logoY = TB.inset + (TB.barH - logoH) / 2;
+    TB.logoImg = GuiElements.create.image();
+    TB.logoImg.setAttributeNS("http://www.w3.org/1999/xlink", "href", "Images/smartteam-logo-white.svg");
+    TB.logoImg.setAttributeNS(null, "x", edge);
+    TB.logoImg.setAttributeNS(null, "y", logoY);
+    TB.logoImg.setAttributeNS(null, "width", logoW);
+    TB.logoImg.setAttributeNS(null, "height", logoH);
+    TB.logoImg.setAttributeNS(null, "visibility", "visible");
+    TBLayer.appendChild(TB.logoImg);
 
     TB.updateStatus = function(status) {
       GuiElements.alert("TitleBar update status to " + status);
-      const finchBn = TitleBar.finchButton;
-      //let color = Colors.fbGray;
-      //let outlineColor = Colors.iron;
-      let color = Colors.stopRed;
-      let outlineColor = Colors.darkenColor(Colors.stopRed, 0.5);
-      let shortName = "";
-      if (status === DeviceManager.statuses.connected) {
-        color = Colors.finchGreen;
-        outlineColor = Colors.flagGreen;
-        let sn = DeviceFinch.getManager().connectedDevices[0].shortName;
-        if (sn != null) {
-          shortName = sn;
-        }
-        finchBn.battIcon.group.appendChild(finchBn.battIcon.pathE);
-        finchBn.xIcon.pathE.remove();
-        finchBn.icon.move(finchBn.finchConnectedX, finchBn.finchY);
+      const bn = TitleBar.finchButton;
+      if (bn == null) return;
+      const connected = (status === DeviceManager.statuses.connected);
+      const color = connected ? Colors.stGreen : Colors.stCoral;
+      const statusText = connected ? Language.getStr("Status_Connected") : Language.getStr("Status_Disconnected");
+      bn.updateBgColor(color);
+      bn.updateRobotStatus(statusText);
+      if (connected) {
         DeviceManager.checkBattery();
-      } else {
-        finchBn.xIcon.group.appendChild(finchBn.xIcon.pathE);
-        finchBn.battIcon.pathE.remove();
-        finchBn.icon.move(finchBn.finchX, finchBn.finchY);
       }
-      finchBn.updateBgColor(color);
-      GuiElements.update.stroke(finchBn.icon.pathE, outlineColor, 4);
-      GuiElements.update.text(finchBn.textE, shortName);
     }
     DeviceManager.setStatusListener(TB.updateStatus);
 
-    TB.finchButton = new Button((TB.sideWidth - TB.longButtonW) / 2, (TB.height / 2) - (TB.tallButtonH / 2), TB.longButtonW, TB.tallButtonH, TBLayer, Colors.fbGray, r, r);
-    TB.finchButton.addFinchBnIcons();
+    //Ancho acotado al espacio libre entre el logo y el botón Play
+    const connectBnX = edge + logoW + 14;
+    const connectBnW = Math.max(120, Math.min(190, TB.flagBnX - connectBnX - TB.buttonMargin));
+    TB.finchButton = new Button(connectBnX, y, connectBnW, h, TBLayer, Colors.stCoral, r, r);
+    TB.finchButton.addRobotBnContent();
     TB.finchButton.setCallbackFunction(function() {
       switch (DeviceManager.getStatus()) {
         case DeviceManager.statuses.noDevices:
@@ -310,6 +186,77 @@ TitleBar.makeButtons = function() {
           DeviceManager.removeAllDevices();
           (new DiscoverDialog(DeviceFinch)).show();
       }
+    }, true);
+
+    // Centro: Play / Stop. En modo vivo Play ejecuta; en modo programa
+    // (descarga) el mismo Play compila y transfiere a la placa, y Stop se
+    // apaga. No hay botón Enviar aparte. Ver ProgramModeManager.
+    TB.flagBn = new Button(TB.flagBnX, y, TB.longButtonW, h, TBLayer, Colors.flagGreen, r, r);
+    TB.flagBn.addIcon(VectorPaths.faPlay, TB.bnIconH);
+    TB.flagBn.setCallbackFunction(function() {
+      if (ProgramModeManager.isProgramMode()) {
+        ProgramModeManager.sendClicked();
+      } else {
+        CodeManager.eventFlagClicked();
+      }
+    }, false);
+
+    TB.stopBn = new Button(TB.stopBnX, y, TB.longButtonW, h, TBLayer, Colors.stopRed, r, r);
+    TB.stopBn.addIcon(VectorPaths.stStopSquare, TB.bnIconH * 0.9);
+    TB.stopBn.setCallbackFunction(CodeManager.stop, false);
+
+    // Derecha: toggle vivo/programa segmentado, nivel y deshacer
+    TB.undoBnX = TB.width - TB.inset - 18 - TB.buttonW;
+    TB.levelBnX = TB.undoBnX - TB.buttonMargin - TB.buttonW;
+
+    const cell = 48; //celdas del toggle segmentado
+    const cellPad = 5;
+    const toggleW = 2 * cell + 3 * cellPad;
+    const toggleH = cell + 2 * cellPad;
+    const toggleX = TB.levelBnX - TB.buttonMargin - toggleW;
+    const toggleY = TB.inset + (TB.barH - toggleH) / 2;
+    TB.modeGroup = GuiElements.create.group(toggleX, toggleY, TBLayer);
+    const modeBg = GuiElements.draw.rect(0, 0, toggleW, toggleH, Colors.stVioletDark, 16, 16);
+    TB.modeGroup.appendChild(modeBg);
+    TB.liveCellBn = new Button(cellPad, cellPad, cell, cell, TB.modeGroup, Colors.stVioletDark, 12, 12);
+    TB.liveCellBn.addColorIcon(VectorPaths.faBolt, cell * 0.55, Colors.stAmber);
+    TB.liveCellBn.setCallbackFunction(function() {
+      if (ProgramModeManager.isProgramMode()) {
+        ProgramModeManager.toggle();
+      }
+    }, true);
+    TB.progCellBn = new Button(2 * cellPad + cell, cellPad, cell, cell, TB.modeGroup, Colors.stVioletDark, 12, 12);
+    TB.progCellBn.addColorIcon(VectorPaths.stChip, cell * 0.55, Colors.white);
+    TB.progCellBn.setCallbackFunction(function() {
+      if (!ProgramModeManager.isProgramMode()) {
+        ProgramModeManager.toggle();
+      }
+    }, true);
+
+    TB.updateModeButtons = function() {
+      const programMode = ProgramModeManager.isProgramMode();
+      //Celda activa en blanco; la inactiva se funde con el fondo del toggle
+      TB.liveCellBn.updateBgColor(programMode ? Colors.stVioletDark : Colors.white);
+      TB.progCellBn.iconColor = programMode ? Colors.stViolet : Colors.white;
+      TB.progCellBn.updateBgColor(programMode ? Colors.white : Colors.stVioletDark);
+      if (programMode) {
+        TB.stopBn.disable();
+        GuiElements.update.opacity(TB.stopBn.group, 0.3);
+      } else {
+        TB.stopBn.enable();
+        GuiElements.update.opacity(TB.stopBn.group, 1);
+      }
+    };
+    TB.updateModeButtons();
+
+    TB.undoButton = new Button(TB.undoBnX, y, TB.buttonW, h, TBLayer, Colors.stAmber, r, r);
+    TB.undoButton.addIcon(VectorPaths.faUndoAlt, TB.bnIconH * 0.8);
+    UndoManager.setUndoButton(TB.undoButton);
+
+    TB.levelButton = new Button(TB.levelBnX, y, TB.buttonW, h, TBLayer, Colors.white, r, r);
+    TB.levelButton.addText(LevelManager.currentLevel, LevelManager.levelButtonFont, Colors.stViolet);
+    TB.levelButton.setCallbackFunction(function() {
+      (new LevelDialog()).show();
     }, true);
 
     TB.fileBn = new FBFileNameDisplay();
@@ -407,7 +354,16 @@ TitleBar.removeButtons = function() {
   if (FinchBlox) {
     TB.finchButton.remove();
     TB.levelButton.remove();
-    //  TB.trashButton.remove();
+    if (TB.logoImg != null) TB.logoImg.remove();
+    if (TB.modeGroup != null) TB.modeGroup.remove();
+    if (TB.recenterBn != null) {
+      TB.recenterBn.remove();
+      TB.recenterBn = null;
+    }
+    if (TB.zoomBnGroup != null) {
+      TB.zoomBnGroup.remove();
+      TB.zoomBnGroup = null;
+    }
   } else {
     TB.viewBn.remove();
     TB.hummingbirdBn.remove();
@@ -513,8 +469,7 @@ TitleBar.updateZoomPart2 = function() {
   }
   TB.setGraphicsPart2();
   if (FinchBlox) {
-    GuiElements.update.rect(TB.bgRect, 0, 0, TB.width, TB.solidHeight); //TB.buttonMargin);
-    TB.updateShapePath();
+    GuiElements.update.rect(TB.bgRect, TB.inset, TB.inset, TB.width - 2 * TB.inset, TB.barH);
   } else {
     GuiElements.update.rect(TB.bgRect, 0, 0, TB.width, TB.height);
   }

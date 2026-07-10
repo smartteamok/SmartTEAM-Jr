@@ -34,19 +34,23 @@ BlockPalette.setGraphics = function() {
 
   // Dimensions for the region with CategoryBNs
   if (FinchBlox) {
+    //Bandeja flotante SmartTEAM: separada de los bordes, tinte por categoría
+    BlockPalette.inset = 14;
+    BlockPalette.cornerRadius = 26;
     BlockPalette.width = GuiElements.width;
-    BlockPalette.height = 90; //100;
-    BlockPalette.y = GuiElements.height - BlockPalette.height;
-    BlockPalette.bg = Colors.bbtDarkGray;
+    BlockPalette.height = 150;
+    BlockPalette.y = GuiElements.height - BlockPalette.height - BlockPalette.inset;
+    BlockPalette.bg = Colors.stCyanTint;
+    BlockPalette.mainVMargin = 38; //centra verticalmente los bloques en la bandeja
     BlockPalette.catW = 300;
     BlockPalette.catX = GuiElements.width / 2 - BlockPalette.catW / 2;
-    BlockPalette.catH = 40;
+    BlockPalette.catH = 52;
     BlockPalette.catY = BlockPalette.y - BlockPalette.catH;
-    BlockPalette.blockMargin = 35; //25;   // The horizontal spacing between Blocks
-    BlockPalette.trashHeight = BlockPalette.height * 0.75;
+    BlockPalette.blockMargin = 20; // The horizontal spacing between Blocks
+    BlockPalette.trashHeight = BlockPalette.height * 0.6;
     BlockPalette.trashIconVP = VectorPaths.faTrash;
     BlockPalette.trashOpacity = 0.9;
-    BlockPalette.trashColor = Colors.easternBlue;
+    BlockPalette.trashColor = Colors.stGray400;
     BlockPalette.blockButtonOverhang = 10; //12; //How much block buttons are allowd to hang over the bottom of the block
   } else {
     BlockPalette.width = 253;
@@ -77,13 +81,11 @@ BlockPalette.setGraphics = function() {
 BlockPalette.updateZoom = function() {
   let BP = BlockPalette;
   BP.setGraphics();
-  GuiElements.update.rect(BP.palRect, 0, BP.y, BP.width, BP.height);
   if (FinchBlox) {
-    //BP.updatePath(BP.leftShape);
-    //BP.updatePath(BP.rightShape);
-    BP.updatePath();
+    GuiElements.update.rect(BP.palRect, BP.inset, BP.y, BP.width - 2 * BP.inset, BP.height);
     GuiElements.update.rect(BP.catRect, 0, BP.catY, 0, BP.catH);
   } else {
+    GuiElements.update.rect(BP.palRect, 0, BP.y, BP.width, BP.height);
     GuiElements.update.rect(BP.catRect, 0, BP.catY, BP.width, BP.catH);
   }
   //GuiElements.move.group(GuiElements.layers.categories, 0, TitleBar.height);
@@ -118,73 +120,17 @@ BlockPalette.createCatBg = function() {
  */
 BlockPalette.createPalBg = function() {
   let BP = BlockPalette;
-  BP.palRect = GuiElements.draw.rect(0, BP.y, BP.width, BP.height, BP.bg);
-  GuiElements.layers.paletteBG.appendChild(BP.palRect);
   if (FinchBlox) {
-    BP.shape = GuiElements.create.path(GuiElements.layers.paletteBG);
-    BP.shape.setAttributeNS(null, "fill", BP.bg);
-    BlockPalette.updatePath();
-    /*
-    BP.leftShape = GuiElements.create.path(GuiElements.layers.paletteBG);
-    BP.rightShape = GuiElements.create.path(GuiElements.layers.paletteBG);
-    BP.leftShape.setAttributeNS(null, "fill", BP.bg);
-    BP.rightShape.setAttributeNS(null, "fill", BP.bg);
-    BlockPalette.updatePath(BP.leftShape);
-    BlockPalette.updatePath(BP.rightShape);*/
+    //Bandeja flotante con esquinas redondeadas
+    BP.palRect = GuiElements.draw.rect(BP.inset, BP.y, BP.width - 2 * BP.inset, BP.height, BP.bg, BP.cornerRadius, BP.cornerRadius);
+  } else {
+    BP.palRect = GuiElements.draw.rect(0, BP.y, BP.width, BP.height, BP.bg);
   }
+  GuiElements.layers.paletteBG.appendChild(BP.palRect);
 };
 
-BlockPalette.updatePath = function() {
-  let BP = BlockPalette;
-  const shapeH = 20;
-  const r = shapeH / 2;
-  const shapeW = (BP.width - BP.catW) / 2 - 2 * BP.catHMargin - 2 * r;
-  const catTabW = BP.catW + 4 * BP.catHMargin;
-
-  var path = "m 0," + (BP.y - shapeH);
-  path += " l " + shapeW + ",0 ";
-  path += " a " + r + " " + r + " 0 0 1 " + r + " " + r;
-  path += " a " + r + " " + r + " 0 0 0 " + r + " " + r;
-  path += " l " + (catTabW) + ",0 ";
-  path += " a " + r + " " + r + " 0 0 0 " + r + " " + (-r);
-  path += " a " + r + " " + r + " 0 0 1 " + r + " " + (-r);
-  path += " l " + shapeW + ",0 0," + (shapeH + BP.height) + " " + (-BP.width) + ",0";
-  path += " z";
-
-  BP.shape.setAttributeNS(null, "d", path);
-}
-/*
-BlockPalette.updatePath = function(pathE) {
-  let BP = BlockPalette;
-  const shapeH = 20;
-  const r = shapeH/2;
-  const shapeW = (BP.width - BP.catW)/2 - 2*BP.catHMargin - 2*r;
-  var path = "";
-  switch(pathE){
-    case BP.leftShape:
-      path += "m 0," + (BP.y - shapeH);
-      path += " l " + shapeW + ",0 ";
-      path += " a " + r + " " + r + " 0 0 1 " + r + " " + r;
-      path += " a " + r + " " + r + " 0 0 0 " + r + " " + r;
-      path += " l " + (-shapeW-2*r) + ",0 ";
-      path += " z";
-      break;
-    case BP.rightShape:
-      path += "m " + BP.width + "," + (BP.y - shapeH);
-      path += " l " + (-shapeW) + ",0 ";
-      path += " a " + r + " " + r + " 0 0 0 " + (-r) + " " + r;
-      path += " a " + r + " " + r + " 0 0 1 " + (-r) + " " + r;
-      path += " l " + (shapeW + 2*r) + ",0 ";
-      path += " z";
-      break;
-  }
-  pathE.setAttributeNS(null, "d", path);
-}*/
 BlockPalette.updatePaletteColor = function(color) {
   GuiElements.update.color(BlockPalette.palRect, color);
-  //GuiElements.update.color(BlockPalette.leftShape, color);
-  //GuiElements.update.color(BlockPalette.rightShape, color);
-  GuiElements.update.color(BlockPalette.shape, color);
 }
 
 /**
@@ -276,7 +222,17 @@ BlockPalette.showTrash = function() {
   // If the trash is not visible
   if (!BP.trash) {
     BP.trash = GuiElements.create.group(0, 0);
-    let trashBg = GuiElements.draw.rect(0, BP.y, BP.width, BP.height, BP.bg);
+    let trashBg;
+    if (FinchBlox) {
+      //Usa el tinte de la categoría activa para fundirse con la bandeja
+      let bgColor = BP.bg;
+      if (BP.selectedCat != null && Colors.blockPalette[BP.selectedCat.id] != null) {
+        bgColor = Colors.blockPalette[BP.selectedCat.id];
+      }
+      trashBg = GuiElements.draw.rect(BP.inset, BP.y, BP.width - 2 * BP.inset, BP.height, bgColor, BP.cornerRadius, BP.cornerRadius);
+    } else {
+      trashBg = GuiElements.draw.rect(0, BP.y, BP.width, BP.height, BP.bg);
+    }
     GuiElements.update.opacity(trashBg, BP.trashOpacity);
     BP.trash.appendChild(trashBg);
 

@@ -58,8 +58,9 @@ Button.setGraphics = function() {
   // The suggested margin between adjacent margins
   if (FinchBlox) {
     Button.defaultMargin = 10;
-    Button.disabledBg = Colors.darkenColor(Colors.easternBlue, 0.85);
-    Button.disabledFore = Colors.darkenColor(Colors.blockPaletteMotion, 0.9);
+    //Gris neutro para que los botones deshabilitados se vean "apagados"
+    Button.disabledBg = Colors.iron;
+    Button.disabledFore = Colors.white;
   } else {
     Button.defaultMargin = 5;
     Button.disabledBg = Colors.darkGray;
@@ -406,6 +407,59 @@ Button.prototype.addFinchBnIcons = function() {
   TouchReceiver.addListenersBN(this.textE, this);
 
   TitleBar.updateStatus(DeviceManager.getStatus());
+}
+
+/**
+ * SmartTEAM: contenido del botón "Conectar robot" — ícono del robot a la
+ * izquierda (se reutiliza el finch hasta que llegue el arte del rover) y dos
+ * líneas de texto: etiqueta y estado de conexión con punto.
+ */
+Button.prototype.addRobotBnContent = function() {
+  const robotPathId = VectorPaths.stRover;
+  const font = Font.uiFont(13);
+  const font2 = Font.secondaryUiFont(11);
+  const padding = 9;
+
+  const robotH = this.height * 0.6;
+  const robotW = VectorIcon.computeWidth(robotPathId, robotH);
+  const iconX = padding;
+  const iconY = (this.height - robotH) / 2;
+  const textX = padding + robotW + 8;
+  const lineGap = 5;
+  const line1Y = (this.height - font.charHeight - font2.charHeight - lineGap) / 2 + font.charHeight;
+  const line2Y = line1Y + lineGap + font2.charHeight;
+  const dotR = 3;
+
+  this.removeContent();
+  this.hasIcon = true;
+  this.iconInverts = false;
+  this.hasText = true;
+
+  this.icon = new VectorIcon(iconX, iconY, robotPathId, Colors.white, robotH, this.group);
+  this.textE = GuiElements.draw.text(0, 0, "", font, Colors.white);
+  GuiElements.update.textLimitWidth(this.textE, Language.getStr("Connect_Robot"), this.width - textX - padding);
+  GuiElements.move.text(this.textE, textX, line1Y);
+  this.group.appendChild(this.textE);
+  this.statusDotE = GuiElements.draw.circle(textX + dotR, line2Y - font2.charHeight / 2 + 1, dotR, Colors.white, this.group);
+  this.statusTextE = GuiElements.draw.text(textX + 2 * dotR + 5, line2Y, "", font2, Colors.white);
+  this.group.appendChild(this.statusTextE);
+
+  TouchReceiver.addListenersBN(this.icon.pathE, this);
+  TouchReceiver.addListenersBN(this.textE, this);
+  TouchReceiver.addListenersBN(this.statusDotE, this);
+  TouchReceiver.addListenersBN(this.statusTextE, this);
+
+  TitleBar.updateStatus(DeviceManager.getStatus());
+}
+
+/**
+ * Actualiza la línea de estado del botón "Conectar robot"
+ * @param {string} statusText
+ */
+Button.prototype.updateRobotStatus = function(statusText) {
+  if (this.statusTextE != null) {
+    GuiElements.update.text(this.statusTextE, statusText);
+  }
 }
 
 /**

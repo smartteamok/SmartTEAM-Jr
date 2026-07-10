@@ -32,15 +32,15 @@ CategoryBN.setGraphics = function() {
   CBN.labelLMargin = 6; // The amount of space between the text of the button and the band of color
 
   if (FinchBlox) {
-    CBN.hMargin = BP.catHMargin;
+    CBN.hMargin = 12;
     CBN.height = BP.catH;
-    CBN.selectedH = BP.catH + 10;
-    CBN.iconScale = 0.65;
-    CBN.width = 60;
+    CBN.selectedH = BP.catH + 8; //la pestaña activa sube 8px
+    CBN.iconScale = 0.55;
+    CBN.width = 74;
     CBN.vMargin = 15;
     CBN.labelX = CBN.colorW + CBN.labelLMargin;
     CBN.labelY = (CBN.height + CBN.font.charHeight) / 2;
-    CBN.cornerRadius = 8;
+    CBN.cornerRadius = 14;
   } else {
     CBN.hMargin = BP.catHMargin;
     CBN.height = 30;

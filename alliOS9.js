@@ -2430,6 +2430,9 @@ Language.en = {
 "Send_debug_log":"Send debug log",
 "Show_debug_menu":"Show debug menu",
 "Connect_Device":"Connect Device",
+"Connect_Robot":"Connect robot",
+"Status_Connected":"connected",
+"Status_Disconnected":"no connection",
 "Connect_Multiple":"Connect Multiple",
 "Disconnect_Device":"Disconnect Device",
 "Tap":"Tap + to connect",
@@ -2667,6 +2670,9 @@ Language.es = {
 "Send_debug_log":"Enviar registro del debug",
 "Show_debug_menu":"Mostrar resultados del debug",
 "Connect_Device":"Conectar dispositivo",
+"Connect_Robot":"Conectar robot",
+"Status_Connected":"conectado",
+"Status_Disconnected":"sin conexión",
 "Connect_Multiple":"Coneccion multiple",
 "Disconnect_Device":"Desconectar dispositivo",
 "Tap":"Presionar + para conectar",
@@ -8445,30 +8451,49 @@ Colors.setCommon = function() {
   Colors.controlYellow = "#FFCC00";
   Colors.variablesDkOrange = "#FF5B00";
   Colors.inactiveGray = "#a3a3a3";
-  //BBT Style guide colors
-  Colors.easternBlue = "#089BAB"; //bbt blue
-  Colors.neonCarrot = "#FF9922";
+  //SmartTEAM Design System tokens
+  Colors.stViovar = "#796EB0";     //violet-500: marca / barra / sonido
+  Colors.stVioletDark = "#6457A0"; //violet-600
+  Colors.stVioletTint = "#ECE9F4"; //violet-100
+  Colors.stCyan = "#35BFE9";       //cyan-500: movimiento
+  Colors.stCyanDark = "#1FA9D6";   //cyan-600
+  Colors.stCyanTint = "#E1F5FC";   //cyan-100
+  Colors.stAmber = "#FFB800";      //amber-500: luces/color, undo
+  Colors.stAmberDark = "#F0A500";  //amber-600
+  Colors.stAmberTint = "#FFF3D6";  //amber-100
+  Colors.stGreen = "#59BB6A";      //green-500: play, sensores, conectado
+  Colors.stGreenDark = "#45A156";  //green-600
+  Colors.stGreenTint = "#E4F4E7";  //green-100
+  Colors.stCoral = "#EF506D";      //coral-500: stop, control, desconectado
+  Colors.stCoralDark = "#DA3656";  //coral-600
+  Colors.stCoralTint = "#FDE4E9";  //coral-100
+  Colors.stPaper = "#F3F7FD";      //fondo del lienzo
+  Colors.stInk = "#160A60";        //indigo-ink: texto
+  Colors.stGray400 = "#9A9BA0";    //papelera
+  //BBT Style guide colors (remapeados a tokens SmartTEAM donde aplica)
+  Colors.easternBlue = Colors.stCyan; //antes bbt blue #089BAB, hoy movimiento
+  Colors.neonCarrot = Colors.stAmber;
   Colors.fountainBlue = "#62BCC7"; //lighter blue
-  Colors.seance = "#881199"; //dark purple
+  Colors.seance = Colors.stViolet; //antes dark purple #881199, hoy sonido/marca
   Colors.bbtDarkGray = "#535353";
   Colors.iron = "#CACACA";
   //FinchBlox
-  Colors.blockPaletteMotion = "#B4D9DD";
-  Colors.blockPaletteColor = "#FFCE96";
-  Colors.blockPaletteSound = "#B691BB";
-  Colors.blockPaletteControl = "#F4E9A4"; //tmp
-  Colors.flagGreen = "#2FC00B";
-  Colors.fbDarkGreen = "#268D17";
-  Colors.stopRed = "#F03602";
-  Colors.finchGreen = "#B6E9A9";
-  Colors.fbYellow = "#F1CA07";
+  Colors.blockPaletteMotion = Colors.stCyanTint;
+  Colors.blockPaletteColor = Colors.stAmberTint;
+  Colors.blockPaletteSound = Colors.stVioletTint;
+  Colors.blockPaletteControl = Colors.stCoralTint;
+  Colors.flagGreen = Colors.stGreen;
+  Colors.fbDarkGreen = Colors.stGreenDark;
+  Colors.stopRed = Colors.stCoral;
+  Colors.finchGreen = Colors.stGreen;
+  Colors.fbYellow = Colors.stAmber; //estado intermedio de conexión
   Colors.fbHighlight = "#ffff00";
   Colors.fbGray = "#E8E8E8";
   Colors.levelBN = "#E8E8E8";
-  Colors.fbYellowBorder = "#BD9F0D";
-  Colors.fbBlueBorder = "#097F8A";
-  Colors.fbPurpleBorder = "#691675";
-  Colors.fbOrangeBorder = "#F78705";
+  Colors.fbYellowBorder = Colors.stCoralDark; //borde de control (bloques coral)
+  Colors.fbBlueBorder = Colors.stCyanDark;
+  Colors.fbPurpleBorder = Colors.stVioletDark;
+  Colors.fbOrangeBorder = Colors.stAmberDark;
   Colors.darkTeal = "#114F53";
   if (FinchBlox) {
     Colors.inactiveGray = Colors.fbGray;
@@ -8499,8 +8524,9 @@ Colors.setCategory = function() {
     "motion_3": Colors.easternBlue,
     "color_3": Colors.neonCarrot,
     "sound_3": Colors.seance,
-    "control_3": Colors.fbYellow,
-    "sensor_3": Colors.finchGreen
+    "control_3": Colors.stCoral,
+    "sensor_3": Colors.stGreen,
+    "start": Colors.stGreen //pseudo-categoría del bloque de inicio (verde)
   };
   //In FinchBlox, the block palette changes colors per category
   Colors.blockPalette = {
@@ -8514,7 +8540,7 @@ Colors.setCategory = function() {
     "color_3": Colors.blockPaletteColor,
     "sound_3": Colors.blockPaletteSound,
     "control_3": Colors.blockPaletteControl,
-    "sensor_3": Colors.finchGreen
+    "sensor_3": Colors.stGreenTint
   };
   //In FinchBlox, each block is outlined with a darker color
   Colors.blockOutline = {
@@ -8528,7 +8554,8 @@ Colors.setCategory = function() {
     "color_3": Colors.fbOrangeBorder,
     "sound_3": Colors.fbPurpleBorder,
     "control_3": Colors.fbYellowBorder,
-    "sensor_3": Colors.finchGreen,
+    "sensor_3": Colors.stGreenDark,
+    "start": Colors.stGreenDark,
     "inactive": Colors.iron
   }
 };
@@ -8676,7 +8703,7 @@ Font.uiFont = function(fontSize) {
   //if (FinchBlox) { return new Font('FredericBlack', fontSize, "normal"); }
   //if (FinchBlox) { return new Font("NunitoSans-ExtraBold", fontSize, "normal"); }
   if (FinchBlox) {
-    return new Font("Nunito-ExtraBold", fontSize, "normal");
+    return new Font("LexendDeca-SemiBold", fontSize, "normal");
   }
   return new Font("Arial", fontSize, "normal");
 };
@@ -8691,9 +8718,21 @@ Font.secondaryUiFont = function(fontSize) {
   //if (FinchBlox) { return new Font('FredericRegular', fontSize, "normal"); }
   //if (FinchBlox) { return new Font("NunitoSans-Regular", fontSize, "normal"); }
   if (FinchBlox) {
-    return new Font("Nunito-Regular", fontSize, "normal");
+    return new Font("LexendDeca-Medium", fontSize, "normal");
   }
   return new Font("Arial", fontSize, "normal");
+}
+
+/**
+ * SmartTEAM: fuente display (Livvic Black) para números de nivel y letras grandes.
+ * @param {number} fontSize
+ * @return {Font}
+ */
+Font.displayFont = function(fontSize) {
+  if (FinchBlox) {
+    return new Font("Livvic-Black", fontSize, "normal");
+  }
+  return Font.uiFont(fontSize).bold();
 }
 
 /**
@@ -9028,6 +9067,32 @@ function VectorPaths(){
 	VP.info.width = 20;
 	VP.info.height = 20;
 	VP.info.path = "m 10,0 c -5.52,0 -10,4.48 -10,10 0,5.52 4.48,10 10,10 5.52,0 10,-4.48 10,-10 0,-5.52 -4.48,-10 -10,-10 z m 1,15 -2,0 0,-6 2,0 0,6 z m 0,-8 -2,0 0,-2 2,0 0,2 z";
+	// SmartTEAM: triángulo de play (Font Awesome faPlay) y rayo para el modo vivo
+	// (Font Awesome faBolt), usados en la barra superior.
+	VP.faPlay = {};
+	VP.faPlay.width = 448;
+	VP.faPlay.height = 512;
+	VP.faPlay.path = "M424.4 214.7L72.4 6.6C43.8-10.3 0 6.1 0 47.9V464c0 37.5 39.7 60.1 72.4 41.3l352-208c32.4-19.2 32.5-66.5 0-82.6z";
+	VP.faBolt = {};
+	VP.faBolt.width = 320;
+	VP.faBolt.height = 512;
+	VP.faBolt.path = "M296 160H180.6l42.6-129.8C227.2 15 215.7 0 200 0H56C44 0 33.8 8.9 32.2 20.8l-32 240C-1.7 275.2 9.5 288 24 288h118.7L96.6 482.5c-3.6 15.2 8 29.5 23.3 29.5 8.4 0 16.4-4.4 20.8-12l176-304c9.3-15.9-2.2-36-20.7-36z";
+	// SmartTEAM: robot-rover lineal (antena, cabeza con ojos y sonrisa, ruedas).
+	// Placeholder hasta que llegue el arte final del rover del cliente.
+	VP.stRover = {};
+	VP.stRover.width = 40;
+	VP.stRover.height = 40;
+	VP.stRover.path = "M18 3 a2 2 0 1 0 4 0 a2 2 0 1 0 -4 0 z M19.2 4.5 h1.6 v5 h-1.6 z M11 9 h18 a6 6 0 0 1 6 6 v8 a6 6 0 0 1 -6 6 h-18 a6 6 0 0 1 -6 -6 v-8 a6 6 0 0 1 6 -6 z M11 12 h18 a3 3 0 0 1 3 3 v8 a3 3 0 0 1 -3 3 h-18 a3 3 0 0 1 -3 -3 v-8 a3 3 0 0 1 3 -3 z M12.3 17.5 a2.2 2.2 0 1 0 4.4 0 a2.2 2.2 0 1 0 -4.4 0 z M23.3 17.5 a2.2 2.2 0 1 0 4.4 0 a2.2 2.2 0 1 0 -4.4 0 z M15 21.5 Q20 25 25 21.5 Q20 28 15 21.5 z M9.2 34 a3.8 3.8 0 1 0 7.6 0 a3.8 3.8 0 1 0 -7.6 0 z M23.2 34 a3.8 3.8 0 1 0 7.6 0 a3.8 3.8 0 1 0 -7.6 0 z";
+	// SmartTEAM: chip para la celda "programa/descarga" del toggle de modo
+	VP.stChip = {};
+	VP.stChip.width = 40;
+	VP.stChip.height = 40;
+	VP.stChip.path = "M12 8 h16 a4 4 0 0 1 4 4 v16 a4 4 0 0 1 -4 4 h-16 a4 4 0 0 1 -4 -4 v-16 a4 4 0 0 1 4 -4 z M13.5 11.5 h13 a2 2 0 0 1 2 2 v13 a2 2 0 0 1 -2 2 h-13 a2 2 0 0 1 -2 -2 v-13 a2 2 0 0 1 2 -2 z M16.5 16.5 h7 v7 h-7 z M12 2.5 h2.4 v5 h-2.4 z M18.8 2.5 h2.4 v5 h-2.4 z M25.6 2.5 h2.4 v5 h-2.4 z M12 32.5 h2.4 v5 h-2.4 z M18.8 32.5 h2.4 v5 h-2.4 z M25.6 32.5 h2.4 v5 h-2.4 z M2.5 12 h5 v2.4 h-5 z M2.5 18.8 h5 v2.4 h-5 z M2.5 25.6 h5 v2.4 h-5 z M32.5 12 h5 v2.4 h-5 z M32.5 18.8 h5 v2.4 h-5 z M32.5 25.6 h5 v2.4 h-5 z";
+	// SmartTEAM: cuadrado redondeado del botón Stop
+	VP.stStopSquare = {};
+	VP.stStopSquare.width = 24;
+	VP.stStopSquare.height = 24;
+	VP.stStopSquare.path = "M7 0 h10 a7 7 0 0 1 7 7 v10 a7 7 0 0 1 -7 7 h-10 a7 7 0 0 1 -7 -7 v-10 a7 7 0 0 1 7 -7 z";
 	VP.undoDelete = {};
 	VP.undoDelete.width = 87.924;
 	VP.undoDelete.height = 113.045;
@@ -11574,8 +11639,12 @@ TitleBar.setGraphicsPart1 = function() {
     TB.buttonMargin = Button.defaultMargin / 2;
   } else {
     if (FinchBlox) {
-      TB.height = 90; //100;
-      TB.solidHeight = 5; //height that is solid blue all the way across
+      //Barra flotante SmartTEAM: separada de los bordes, esquinas redondeadas
+      TB.inset = 14; //distancia de la barra a los bordes de la pantalla
+      TB.barH = 86; //alto de la barra flotante
+      TB.barRadius = 26;
+      TB.height = TB.barH + 2 * TB.inset; //espacio total reservado arriba
+      TB.solidHeight = 0; //el lienzo pasa por detrás de la barra flotante
     } else {
       TB.height = 54;
     }
@@ -11584,25 +11653,22 @@ TitleBar.setGraphicsPart1 = function() {
   TB.width = GuiElements.width;
 
   if (FinchBlox) {
-    TB.buttonH = TB.height / 2;
-    TB.tallButtonH = TB.buttonH * 1.25;
-    TB.buttonW = TB.tallButtonH * (5 / 4);
-    //TB.buttonW = TB.tallButtonH * (3/4);
+    TB.tallButtonH = 62;
+    TB.buttonH = 60; //botones cuadrados (nivel, deshacer)
+    TB.buttonW = 60;
     var maxBnWidth = (TB.width - 6 * TB.buttonMargin) / 8;
     TB.buttonW = Math.min(maxBnWidth, TB.buttonW);
-    //TB.longButtonW = 2.5 * TB.buttonW;
-    //TB.finchBnW = 1.5 * TB.buttonW;
-    TB.longButtonW = TB.tallButtonH * (5 / 2);
+    TB.longButtonW = 112; //Play y Stop
     var maxLongBnW = maxBnWidth * 2;
     TB.longButtonW = Math.min(maxLongBnW, TB.longButtonW);
 
     TB.bnIconMargin = 3;
-    TB.bg = Colors.easternBlue;
-    TB.bnIconH = TB.buttonH - 2 * TB.bnIconMargin;
+    TB.bg = Colors.stViolet;
+    TB.bnIconH = 26;
     var maxIconHeight = maxBnWidth * 0.7;
     TB.bnIconH = Math.min(maxIconHeight, TB.bnIconH);
 
-    TB.defaultCornerRounding = 10;
+    TB.defaultCornerRounding = 20;
   } else {
     TB.buttonW = TB.height * 64 / 54;
     var maxBnWidth = (TB.width - 11 * TB.buttonMargin - DeviceStatusLight.radius * 2) / 7;
@@ -11668,81 +11734,14 @@ TitleBar.setGraphicsPart2 = function() {
 TitleBar.createBar = function() {
   var TB = TitleBar;
   if (FinchBlox) {
-    TB.bgRect = GuiElements.draw.rect(0, 0, TB.width, TB.solidHeight, TB.bg); //TB.buttonMargin, TB.bg);
+    //Barra flotante violeta con esquinas redondeadas
+    TB.bgRect = GuiElements.draw.rect(TB.inset, TB.inset, TB.width - 2 * TB.inset, TB.barH, TB.bg, TB.barRadius, TB.barRadius);
   } else {
     TB.bgRect = GuiElements.draw.rect(0, 0, TB.width, TB.height, TB.bg);
   }
 
   GuiElements.layers.titleBg.appendChild(TB.bgRect);
-  if (FinchBlox) {
-    //TB.bgShape = GuiElements.create.path(GuiElements.layers.titleBg);
-    //TB.bgShape.setAttributeNS(null, "fill", Colors.white);
-    //TB.leftShape = GuiElements.create.path(GuiElements.layers.titleBg);
-    //TB.rightShape = GuiElements.create.path(GuiElements.layers.titleBg);
-    //TB.leftShape.setAttributeNS(null, "fill", TB.bg);
-    //TB.rightShape.setAttributeNS(null, "fill", TB.bg);
-    TB.bgShape = GuiElements.create.path(GuiElements.layers.titleBg);
-    TB.bgShape.setAttributeNS(null, "fill", TB.bg);
-    TB.updateShapePath();
-  }
 };
-TitleBar.updateShapePath = function() {
-  var TB = TitleBar;
-  var r = (TB.height - TB.solidHeight) / 2; //TB.buttonMargin)/2;
-  var shapeW = TB.width / 2 - TB.longButtonW - 2 * r;
-
-  var path = " m 0,0";
-  path += " l " + TB.width + ",0 0," + TB.height + " " + (-shapeW) + ",0";
-  path += " a " + r + " " + r + " 0 0 1 " + (-r) + " " + (-r);
-  path += " a " + r + " " + r + " 0 0 0 " + (-r) + " " + (-r);
-  path += " l " + (-2 * TB.longButtonW) + ",0";
-  path += " a " + r + " " + r + " 0 0 0 " + (-r) + " " + r;
-  path += " a " + r + " " + r + " 0 0 1 " + (-r) + " " + r;
-  path += " l " + (-shapeW) + ",0";
-  path += " z ";
-
-  TB.bgShape.setAttributeNS(null, "d", path);
-
-  TB.sideWidth = shapeW + r;
-
-  /*
-  var shapeW = TB.width/2 - TB.longButtonW;
-  var shapeH = TB.height - TB.buttonMargin;
-  var r = shapeH/2;
-
-  var pathL = " m 0," + TB.buttonMargin;
-  pathL += " l " + shapeW + ",0";
-  pathL += " a " + r + " " + r + " 0 0 0 " + (-r) + " " + r;
-  pathL += " a " + r + " " + r + " 0 0 1 " + (-r) + " " + r;
-  pathL += " l " + (-shapeW-2*r) + ",0";
-  pathL += " z ";
-
-  var pathR = " m " + TB.width + "," + TB.buttonMargin;
-  pathR += " l " + (-shapeW) + ",0";
-  pathR += " a " + r + " " + r + " 0 0 1 " + r + " " + r;
-  pathR += " a " + r + " " + r + " 0 0 0 " + r + " " + r;
-  pathR += " l " + (shapeW+2*r) + ",0";
-  pathR += " z ";
-
-  TB.leftShape.setAttributeNS(null, "d", pathL);
-  TB.rightShape.setAttributeNS(null, "d", pathR);
-  */
-
-  /*
-  var shapeW = 2*TB.longButtonW;
-  var shapeH = TB.height - TB.buttonMargin;
-  var r = shapeH/2;
-  var path = " m " + (TB.width - shapeW)/2 + "," + TB.buttonMargin;
-  path += " l " + shapeW + ",0";
-  path += " a " + r + " " + r + " 0 0 1 " + r + " " + r;
-  path += " a " + r + " " + r + " 0 0 0 " + r + " " + r;
-  path += " l " + (-shapeW-4*r) + ",0";
-  path += " a " + r + " " + r + " 0 0 0 " + r + " " + (-r);
-  path += " a " + r + " " + r + " 0 0 1 " + r + " " + (-r);
-  path += " z ";
-
-  TB.bgShape.setAttributeNS(null, "d", path);*/
-}
 
 /**
  * Creates all the buttons and menus
@@ -11752,101 +11751,43 @@ TitleBar.makeButtons = function() {
   var TBLayer = GuiElements.layers.titlebar;
   if (FinchBlox) {
     var r = TB.defaultCornerRounding;
-    var y = (TB.height / 2) - (TB.tallButtonH / 2);
     var h = TB.tallButtonH;
-    TB.undoBnX = TB.width - TB.sideWidth / 2 + TB.buttonMargin / 2;
-    TB.levelBnX = TB.width - TB.sideWidth / 2 - TB.buttonMargin / 2 - TB.buttonW;
-    //TB.undoBnX = TB.width - TB.sideWidth/2 + TB.buttonW/2 + TB.buttonMargin;
-    //TB.levelBnX = TB.width - TB.sideWidth/2 - TB.buttonW/2;
-    //TB.trashBnX = TB.width - TB.sideWidth/2 - TB.buttonW/2 - TB.buttonMargin - TB.buttonW;
+    var y = TB.inset + (TB.barH - h) / 2;
+    var edge = TB.inset + 18; //padding interno de la barra flotante
 
-    TB.flagBn = new Button(TB.flagBnX, y, TB.longButtonW, h, TBLayer, Colors.flagGreen, r, r);
-    TB.flagBn.addIcon(VectorPaths.faFlag, TB.bnIconH);
-    TB.flagBn.setCallbackFunction(CodeManager.eventFlagClicked, false);
-
-    TB.stopBn = new Button(TB.stopBnX, y, TB.longButtonW, h, TBLayer, Colors.stopRed, r, r);
-    TB.stopBn.addIcon(VectorPaths.stop, TB.bnIconH * 0.9);
-    TB.stopBn.setCallbackFunction(CodeManager.stop, false);
-
-    // Modo programa: botón Enviar (a la izquierda de la bandera) transfiere el
-    // bytecode a la placa; el toggle live/programa (a la derecha del stop) es
-    // la opción del docente. Ver ProgramModeManager.
-    TB.sendBn = new Button(TB.flagBnX - TB.buttonW - TB.buttonMargin, y, TB.buttonW, h,
-      TBLayer, Colors.seance, r, r);
-    TB.sendBn.addIcon(VectorPaths.microbit, TB.bnIconH * 0.8);
-    TB.sendBn.setCallbackFunction(ProgramModeManager.sendClicked, true);
-
-    TB.modeBn = new Button(TB.stopBnX + TB.longButtonW + TB.buttonMargin, y, TB.buttonW, h,
-      TBLayer, Colors.fbGray, r, r);
-    TB.modeBn.addIcon(VectorPaths.faSyncAlt, TB.bnIconH * 0.7);
-    TB.modeBn.setCallbackFunction(ProgramModeManager.toggle, true);
-
-    TB.updateModeButtons = function() {
-      var programMode = ProgramModeManager.isProgramMode();
-      TB.modeBn.updateBgColor(programMode ? Colors.seance : Colors.fbGray);
-      if (programMode) {
-        TB.sendBn.show();
-      } else {
-        TB.sendBn.hide();
-      }
-    };
-    TB.updateModeButtons();
-
-    //TB.undoButton = new Button(TB.undoBnX, (TB.height/2) - (TB.buttonH/2), TB.buttonW, TB.buttonH, TBLayer, Colors.neonCarrot, r, r);
-    TB.undoButton = new Button(TB.undoBnX, y, TB.buttonW, h, TBLayer, Colors.neonCarrot, r, r);
-    TB.undoButton.addIcon(VectorPaths.faUndoAlt, TB.bnIconH * 0.8);
-    UndoManager.setUndoButton(TB.undoButton);
-
-    //TB.trashButton = new Button(TB.trashBnX, (TB.height/2) - (TB.buttonH/2), TB.buttonW, TB.buttonH, TBLayer, Colors.seance, r, r);
-    //TB.trashButton = new Button(TB.trashBnX, y, TB.buttonW, h, TBLayer, Colors.neonCarrot, r, r);
-    //TB.trashButton.addIcon(VectorPaths.faTrash, TB.bnIconH * 0.8);
-    //TB.trashButton.setCallbackFunction(function(){TabManager.activeTab.clear();}, false);
-    //TB.trashButton.setCallbackFunction(function(){ UndoManager.deleteTab(); }, false);
-
-    //TB.levelButton = new Button(TB.levelBnX, TB.levelBnY, TB.buttonW, TB.buttonH, TBLayer, Colors.levelBN, r, r);
-    TB.levelButton = new Button(TB.levelBnX, y, TB.buttonW, h, TBLayer, Colors.seance, r, r);
-    //TB.levelButton.addText("1", Font.uiFont(24).bold(), Colors.bbtDarkGray);
-    TB.levelButton.addText(LevelManager.currentLevel, LevelManager.levelButtonFont, Colors.white);
-    //TB.levelButton.setCallbackFunction(function(){
-    //  new LevelMenu(TB.levelBnX + TB.buttonW/2, TB.levelBnY + TB.buttonH);
-    //},false);
-    TB.levelButton.setCallbackFunction(function() {
-      (new LevelDialog()).show();
-    }, true);
-
+    // Izquierda: logo SmartTEAM blanco + botón "Conectar robot"
+    var logoH = 40;
+    var logoW = logoH * 611.316 / 374; //proporción del SVG del logo
+    var logoY = TB.inset + (TB.barH - logoH) / 2;
+    TB.logoImg = GuiElements.create.image();
+    TB.logoImg.setAttributeNS("http://www.w3.org/1999/xlink", "href", "Images/smartteam-logo-white.svg");
+    TB.logoImg.setAttributeNS(null, "x", edge);
+    TB.logoImg.setAttributeNS(null, "y", logoY);
+    TB.logoImg.setAttributeNS(null, "width", logoW);
+    TB.logoImg.setAttributeNS(null, "height", logoH);
+    TB.logoImg.setAttributeNS(null, "visibility", "visible");
+    TBLayer.appendChild(TB.logoImg);
 
     TB.updateStatus = function(status) {
       GuiElements.alert("TitleBar update status to " + status);
-      var finchBn = TitleBar.finchButton;
-      //var color = Colors.fbGray;
-      //var outlineColor = Colors.iron;
-      var color = Colors.stopRed;
-      var outlineColor = Colors.darkenColor(Colors.stopRed, 0.5);
-      var shortName = "";
-      if (status === DeviceManager.statuses.connected) {
-        color = Colors.finchGreen;
-        outlineColor = Colors.flagGreen;
-        var sn = DeviceFinch.getManager().connectedDevices[0].shortName;
-        if (sn != null) {
-          shortName = sn;
-        }
-        finchBn.battIcon.group.appendChild(finchBn.battIcon.pathE);
-        finchBn.xIcon.pathE.remove();
-        finchBn.icon.move(finchBn.finchConnectedX, finchBn.finchY);
+      var bn = TitleBar.finchButton;
+      if (bn == null) return;
+      var connected = (status === DeviceManager.statuses.connected);
+      var color = connected ? Colors.stGreen : Colors.stCoral;
+      var statusText = connected ? Language.getStr("Status_Connected") : Language.getStr("Status_Disconnected");
+      bn.updateBgColor(color);
+      bn.updateRobotStatus(statusText);
+      if (connected) {
         DeviceManager.checkBattery();
-      } else {
-        finchBn.xIcon.group.appendChild(finchBn.xIcon.pathE);
-        finchBn.battIcon.pathE.remove();
-        finchBn.icon.move(finchBn.finchX, finchBn.finchY);
       }
-      finchBn.updateBgColor(color);
-      GuiElements.update.stroke(finchBn.icon.pathE, outlineColor, 4);
-      GuiElements.update.text(finchBn.textE, shortName);
     }
     DeviceManager.setStatusListener(TB.updateStatus);
 
-    TB.finchButton = new Button((TB.sideWidth - TB.longButtonW) / 2, (TB.height / 2) - (TB.tallButtonH / 2), TB.longButtonW, TB.tallButtonH, TBLayer, Colors.fbGray, r, r);
-    TB.finchButton.addFinchBnIcons();
+    //Ancho acotado al espacio libre entre el logo y el botón Play
+    var connectBnX = edge + logoW + 14;
+    var connectBnW = Math.max(120, Math.min(190, TB.flagBnX - connectBnX - TB.buttonMargin));
+    TB.finchButton = new Button(connectBnX, y, connectBnW, h, TBLayer, Colors.stCoral, r, r);
+    TB.finchButton.addRobotBnContent();
     TB.finchButton.setCallbackFunction(function() {
       switch (DeviceManager.getStatus()) {
         case DeviceManager.statuses.noDevices:
@@ -11859,6 +11800,77 @@ TitleBar.makeButtons = function() {
           DeviceManager.removeAllDevices();
           (new DiscoverDialog(DeviceFinch)).show();
       }
+    }, true);
+
+    // Centro: Play / Stop. En modo vivo Play ejecuta; en modo programa
+    // (descarga) el mismo Play compila y transfiere a la placa, y Stop se
+    // apaga. No hay botón Enviar aparte. Ver ProgramModeManager.
+    TB.flagBn = new Button(TB.flagBnX, y, TB.longButtonW, h, TBLayer, Colors.flagGreen, r, r);
+    TB.flagBn.addIcon(VectorPaths.faPlay, TB.bnIconH);
+    TB.flagBn.setCallbackFunction(function() {
+      if (ProgramModeManager.isProgramMode()) {
+        ProgramModeManager.sendClicked();
+      } else {
+        CodeManager.eventFlagClicked();
+      }
+    }, false);
+
+    TB.stopBn = new Button(TB.stopBnX, y, TB.longButtonW, h, TBLayer, Colors.stopRed, r, r);
+    TB.stopBn.addIcon(VectorPaths.stStopSquare, TB.bnIconH * 0.9);
+    TB.stopBn.setCallbackFunction(CodeManager.stop, false);
+
+    // Derecha: toggle vivo/programa segmentado, nivel y deshacer
+    TB.undoBnX = TB.width - TB.inset - 18 - TB.buttonW;
+    TB.levelBnX = TB.undoBnX - TB.buttonMargin - TB.buttonW;
+
+    var cell = 48; //celdas del toggle segmentado
+    var cellPad = 5;
+    var toggleW = 2 * cell + 3 * cellPad;
+    var toggleH = cell + 2 * cellPad;
+    var toggleX = TB.levelBnX - TB.buttonMargin - toggleW;
+    var toggleY = TB.inset + (TB.barH - toggleH) / 2;
+    TB.modeGroup = GuiElements.create.group(toggleX, toggleY, TBLayer);
+    var modeBg = GuiElements.draw.rect(0, 0, toggleW, toggleH, Colors.stVioletDark, 16, 16);
+    TB.modeGroup.appendChild(modeBg);
+    TB.liveCellBn = new Button(cellPad, cellPad, cell, cell, TB.modeGroup, Colors.stVioletDark, 12, 12);
+    TB.liveCellBn.addColorIcon(VectorPaths.faBolt, cell * 0.55, Colors.stAmber);
+    TB.liveCellBn.setCallbackFunction(function() {
+      if (ProgramModeManager.isProgramMode()) {
+        ProgramModeManager.toggle();
+      }
+    }, true);
+    TB.progCellBn = new Button(2 * cellPad + cell, cellPad, cell, cell, TB.modeGroup, Colors.stVioletDark, 12, 12);
+    TB.progCellBn.addColorIcon(VectorPaths.stChip, cell * 0.55, Colors.white);
+    TB.progCellBn.setCallbackFunction(function() {
+      if (!ProgramModeManager.isProgramMode()) {
+        ProgramModeManager.toggle();
+      }
+    }, true);
+
+    TB.updateModeButtons = function() {
+      var programMode = ProgramModeManager.isProgramMode();
+      //Celda activa en blanco; la inactiva se funde con el fondo del toggle
+      TB.liveCellBn.updateBgColor(programMode ? Colors.stVioletDark : Colors.white);
+      TB.progCellBn.iconColor = programMode ? Colors.stViovar : Colors.white;
+      TB.progCellBn.updateBgColor(programMode ? Colors.white : Colors.stVioletDark);
+      if (programMode) {
+        TB.stopBn.disable();
+        GuiElements.update.opacity(TB.stopBn.group, 0.3);
+      } else {
+        TB.stopBn.enable();
+        GuiElements.update.opacity(TB.stopBn.group, 1);
+      }
+    };
+    TB.updateModeButtons();
+
+    TB.undoButton = new Button(TB.undoBnX, y, TB.buttonW, h, TBLayer, Colors.stAmber, r, r);
+    TB.undoButton.addIcon(VectorPaths.faUndoAlt, TB.bnIconH * 0.8);
+    UndoManager.setUndoButton(TB.undoButton);
+
+    TB.levelButton = new Button(TB.levelBnX, y, TB.buttonW, h, TBLayer, Colors.white, r, r);
+    TB.levelButton.addText(LevelManager.currentLevel, LevelManager.levelButtonFont, Colors.stViolet);
+    TB.levelButton.setCallbackFunction(function() {
+      (new LevelDialog()).show();
     }, true);
 
     TB.fileBn = new FBFileNameDisplay();
@@ -11956,7 +11968,16 @@ TitleBar.removeButtons = function() {
   if (FinchBlox) {
     TB.finchButton.remove();
     TB.levelButton.remove();
-    //  TB.trashButton.remove();
+    if (TB.logoImg != null) TB.logoImg.remove();
+    if (TB.modeGroup != null) TB.modeGroup.remove();
+    if (TB.recenterBn != null) {
+      TB.recenterBn.remove();
+      TB.recenterBn = null;
+    }
+    if (TB.zoomBnGroup != null) {
+      TB.zoomBnGroup.remove();
+      TB.zoomBnGroup = null;
+    }
   } else {
     TB.viewBn.remove();
     TB.hummingbirdBn.remove();
@@ -12062,8 +12083,7 @@ TitleBar.updateZoomPart2 = function() {
   }
   TB.setGraphicsPart2();
   if (FinchBlox) {
-    GuiElements.update.rect(TB.bgRect, 0, 0, TB.width, TB.solidHeight); //TB.buttonMargin);
-    TB.updateShapePath();
+    GuiElements.update.rect(TB.bgRect, TB.inset, TB.inset, TB.width - 2 * TB.inset, TB.barH);
   } else {
     GuiElements.update.rect(TB.bgRect, 0, 0, TB.width, TB.height);
   }
@@ -12137,19 +12157,23 @@ BlockPalette.setGraphics = function() {
 
   // Dimensions for the region with CategoryBNs
   if (FinchBlox) {
+    //Bandeja flotante SmartTEAM: separada de los bordes, tinte por categoría
+    BlockPalette.inset = 14;
+    BlockPalette.cornerRadius = 26;
     BlockPalette.width = GuiElements.width;
-    BlockPalette.height = 90; //100;
-    BlockPalette.y = GuiElements.height - BlockPalette.height;
-    BlockPalette.bg = Colors.bbtDarkGray;
+    BlockPalette.height = 150;
+    BlockPalette.y = GuiElements.height - BlockPalette.height - BlockPalette.inset;
+    BlockPalette.bg = Colors.stCyanTint;
+    BlockPalette.mainVMargin = 38; //centra verticalmente los bloques en la bandeja
     BlockPalette.catW = 300;
     BlockPalette.catX = GuiElements.width / 2 - BlockPalette.catW / 2;
-    BlockPalette.catH = 40;
+    BlockPalette.catH = 52;
     BlockPalette.catY = BlockPalette.y - BlockPalette.catH;
-    BlockPalette.blockMargin = 35; //25;   // The horizontal spacing between Blocks
-    BlockPalette.trashHeight = BlockPalette.height * 0.75;
+    BlockPalette.blockMargin = 20; // The horizontal spacing between Blocks
+    BlockPalette.trashHeight = BlockPalette.height * 0.6;
     BlockPalette.trashIconVP = VectorPaths.faTrash;
     BlockPalette.trashOpacity = 0.9;
-    BlockPalette.trashColor = Colors.easternBlue;
+    BlockPalette.trashColor = Colors.stGray400;
     BlockPalette.blockButtonOverhang = 10; //12; //How much block buttons are allowd to hang over the bottom of the block
   } else {
     BlockPalette.width = 253;
@@ -12180,13 +12204,11 @@ BlockPalette.setGraphics = function() {
 BlockPalette.updateZoom = function() {
   var BP = BlockPalette;
   BP.setGraphics();
-  GuiElements.update.rect(BP.palRect, 0, BP.y, BP.width, BP.height);
   if (FinchBlox) {
-    //BP.updatePath(BP.leftShape);
-    //BP.updatePath(BP.rightShape);
-    BP.updatePath();
+    GuiElements.update.rect(BP.palRect, BP.inset, BP.y, BP.width - 2 * BP.inset, BP.height);
     GuiElements.update.rect(BP.catRect, 0, BP.catY, 0, BP.catH);
   } else {
+    GuiElements.update.rect(BP.palRect, 0, BP.y, BP.width, BP.height);
     GuiElements.update.rect(BP.catRect, 0, BP.catY, BP.width, BP.catH);
   }
   //GuiElements.move.group(GuiElements.layers.categories, 0, TitleBar.height);
@@ -12221,73 +12243,17 @@ BlockPalette.createCatBg = function() {
  */
 BlockPalette.createPalBg = function() {
   var BP = BlockPalette;
-  BP.palRect = GuiElements.draw.rect(0, BP.y, BP.width, BP.height, BP.bg);
-  GuiElements.layers.paletteBG.appendChild(BP.palRect);
   if (FinchBlox) {
-    BP.shape = GuiElements.create.path(GuiElements.layers.paletteBG);
-    BP.shape.setAttributeNS(null, "fill", BP.bg);
-    BlockPalette.updatePath();
-    /*
-    BP.leftShape = GuiElements.create.path(GuiElements.layers.paletteBG);
-    BP.rightShape = GuiElements.create.path(GuiElements.layers.paletteBG);
-    BP.leftShape.setAttributeNS(null, "fill", BP.bg);
-    BP.rightShape.setAttributeNS(null, "fill", BP.bg);
-    BlockPalette.updatePath(BP.leftShape);
-    BlockPalette.updatePath(BP.rightShape);*/
+    //Bandeja flotante con esquinas redondeadas
+    BP.palRect = GuiElements.draw.rect(BP.inset, BP.y, BP.width - 2 * BP.inset, BP.height, BP.bg, BP.cornerRadius, BP.cornerRadius);
+  } else {
+    BP.palRect = GuiElements.draw.rect(0, BP.y, BP.width, BP.height, BP.bg);
   }
+  GuiElements.layers.paletteBG.appendChild(BP.palRect);
 };
 
-BlockPalette.updatePath = function() {
-  var BP = BlockPalette;
-  var shapeH = 20;
-  var r = shapeH / 2;
-  var shapeW = (BP.width - BP.catW) / 2 - 2 * BP.catHMargin - 2 * r;
-  var catTabW = BP.catW + 4 * BP.catHMargin;
-
-  var path = "m 0," + (BP.y - shapeH);
-  path += " l " + shapeW + ",0 ";
-  path += " a " + r + " " + r + " 0 0 1 " + r + " " + r;
-  path += " a " + r + " " + r + " 0 0 0 " + r + " " + r;
-  path += " l " + (catTabW) + ",0 ";
-  path += " a " + r + " " + r + " 0 0 0 " + r + " " + (-r);
-  path += " a " + r + " " + r + " 0 0 1 " + r + " " + (-r);
-  path += " l " + shapeW + ",0 0," + (shapeH + BP.height) + " " + (-BP.width) + ",0";
-  path += " z";
-
-  BP.shape.setAttributeNS(null, "d", path);
-}
-/*
-BlockPalette.updatePath = function(pathE) {
-  var BP = BlockPalette;
-  var shapeH = 20;
-  var r = shapeH/2;
-  var shapeW = (BP.width - BP.catW)/2 - 2*BP.catHMargin - 2*r;
-  var path = "";
-  switch(pathE){
-    case BP.leftShape:
-      path += "m 0," + (BP.y - shapeH);
-      path += " l " + shapeW + ",0 ";
-      path += " a " + r + " " + r + " 0 0 1 " + r + " " + r;
-      path += " a " + r + " " + r + " 0 0 0 " + r + " " + r;
-      path += " l " + (-shapeW-2*r) + ",0 ";
-      path += " z";
-      break;
-    case BP.rightShape:
-      path += "m " + BP.width + "," + (BP.y - shapeH);
-      path += " l " + (-shapeW) + ",0 ";
-      path += " a " + r + " " + r + " 0 0 0 " + (-r) + " " + r;
-      path += " a " + r + " " + r + " 0 0 1 " + (-r) + " " + r;
-      path += " l " + (shapeW + 2*r) + ",0 ";
-      path += " z";
-      break;
-  }
-  pathE.setAttributeNS(null, "d", path);
-}*/
 BlockPalette.updatePaletteColor = function(color) {
   GuiElements.update.color(BlockPalette.palRect, color);
-  //GuiElements.update.color(BlockPalette.leftShape, color);
-  //GuiElements.update.color(BlockPalette.rightShape, color);
-  GuiElements.update.color(BlockPalette.shape, color);
 }
 
 /**
@@ -12379,7 +12345,17 @@ BlockPalette.showTrash = function() {
   // If the trash is not visible
   if (!BP.trash) {
     BP.trash = GuiElements.create.group(0, 0);
-    var trashBg = GuiElements.draw.rect(0, BP.y, BP.width, BP.height, BP.bg);
+    var trashBg;
+    if (FinchBlox) {
+      //Usa el tinte de la categoría activa para fundirse con la bandeja
+      var bgColor = BP.bg;
+      if (BP.selectedCat != null && Colors.blockPalette[BP.selectedCat.id] != null) {
+        bgColor = Colors.blockPalette[BP.selectedCat.id];
+      }
+      trashBg = GuiElements.draw.rect(BP.inset, BP.y, BP.width - 2 * BP.inset, BP.height, bgColor, BP.cornerRadius, BP.cornerRadius);
+    } else {
+      trashBg = GuiElements.draw.rect(0, BP.y, BP.width, BP.height, BP.bg);
+    }
     GuiElements.update.opacity(trashBg, BP.trashOpacity);
     BP.trash.appendChild(trashBg);
 
@@ -12767,15 +12743,15 @@ CategoryBN.setGraphics = function() {
   CBN.labelLMargin = 6; // The amount of space between the text of the button and the band of color
 
   if (FinchBlox) {
-    CBN.hMargin = BP.catHMargin;
+    CBN.hMargin = 12;
     CBN.height = BP.catH;
-    CBN.selectedH = BP.catH + 10;
-    CBN.iconScale = 0.65;
-    CBN.width = 60;
+    CBN.selectedH = BP.catH + 8; //la pestaña activa sube 8px
+    CBN.iconScale = 0.55;
+    CBN.width = 74;
     CBN.vMargin = 15;
     CBN.labelX = CBN.colorW + CBN.labelLMargin;
     CBN.labelY = (CBN.height + CBN.font.charHeight) / 2;
-    CBN.cornerRadius = 8;
+    CBN.cornerRadius = 14;
   } else {
     CBN.hMargin = BP.catHMargin;
     CBN.height = 30;
@@ -13891,8 +13867,9 @@ Button.setGraphics = function() {
   // The suggested margin between adjacent margins
   if (FinchBlox) {
     Button.defaultMargin = 10;
-    Button.disabledBg = Colors.darkenColor(Colors.easternBlue, 0.85);
-    Button.disabledFore = Colors.darkenColor(Colors.blockPaletteMotion, 0.9);
+    //Gris neutro para que los botones deshabilitados se vean "apagados"
+    Button.disabledBg = Colors.iron;
+    Button.disabledFore = Colors.white;
   } else {
     Button.defaultMargin = 5;
     Button.disabledBg = Colors.darkGray;
@@ -14239,6 +14216,59 @@ Button.prototype.addFinchBnIcons = function() {
   TouchReceiver.addListenersBN(this.textE, this);
 
   TitleBar.updateStatus(DeviceManager.getStatus());
+}
+
+/**
+ * SmartTEAM: contenido del botón "Conectar robot" — ícono del robot a la
+ * izquierda (se reutiliza el finch hasta que llegue el arte del rover) y dos
+ * líneas de texto: etiqueta y estado de conexión con punto.
+ */
+Button.prototype.addRobotBnContent = function() {
+  var robotPathId = VectorPaths.stRover;
+  var font = Font.uiFont(13);
+  var font2 = Font.secondaryUiFont(11);
+  var padding = 9;
+
+  var robotH = this.height * 0.6;
+  var robotW = VectorIcon.computeWidth(robotPathId, robotH);
+  var iconX = padding;
+  var iconY = (this.height - robotH) / 2;
+  var textX = padding + robotW + 8;
+  var lineGap = 5;
+  var line1Y = (this.height - font.charHeight - font2.charHeight - lineGap) / 2 + font.charHeight;
+  var line2Y = line1Y + lineGap + font2.charHeight;
+  var dotR = 3;
+
+  this.removeContent();
+  this.hasIcon = true;
+  this.iconInverts = false;
+  this.hasText = true;
+
+  this.icon = new VectorIcon(iconX, iconY, robotPathId, Colors.white, robotH, this.group);
+  this.textE = GuiElements.draw.text(0, 0, "", font, Colors.white);
+  GuiElements.update.textLimitWidth(this.textE, Language.getStr("Connect_Robot"), this.width - textX - padding);
+  GuiElements.move.text(this.textE, textX, line1Y);
+  this.group.appendChild(this.textE);
+  this.statusDotE = GuiElements.draw.circle(textX + dotR, line2Y - font2.charHeight / 2 + 1, dotR, Colors.white, this.group);
+  this.statusTextE = GuiElements.draw.text(textX + 2 * dotR + 5, line2Y, "", font2, Colors.white);
+  this.group.appendChild(this.statusTextE);
+
+  TouchReceiver.addListenersBN(this.icon.pathE, this);
+  TouchReceiver.addListenersBN(this.textE, this);
+  TouchReceiver.addListenersBN(this.statusDotE, this);
+  TouchReceiver.addListenersBN(this.statusTextE, this);
+
+  TitleBar.updateStatus(DeviceManager.getStatus());
+}
+
+/**
+ * Actualiza la línea de estado del botón "Conectar robot"
+ * @param {string} statusText
+ */
+Button.prototype.updateRobotStatus = function(statusText) {
+  if (this.statusTextE != null) {
+    GuiElements.update.text(this.statusTextE, statusText);
+  }
 }
 
 /**
@@ -15056,7 +15086,7 @@ function FBFileNameDisplay() {
   this.r = TB.defaultCornerRounding;
   this.font = Font.secondaryUiFont(16); //Button.defaultFont;
   this.textW = 0;
-  this.bgColor = Colors.fbGray;
+  this.bgColor = Colors.white;
 
   this.group = GuiElements.create.group(this.X, this.Y, TBLayer);
   var fileDisplayBG = GuiElements.draw.rect(0, 0, this.W, this.H, this.bgColor, this.r, this.r);
@@ -15128,8 +15158,8 @@ FBFileNameDisplay.prototype.addButton = function(isSaveBn) {
     this.button.remove();
   }
 
-  this.button = new Button(bnX, this.margin, this.bnW, bnH, this.group, Colors.easternBlue, bnR, bnR);
-  this.button.addIcon(icon, TB.bnIconH * 0.5);
+  this.button = new Button(bnX, this.margin, this.bnW, bnH, this.group, Colors.white, bnR, bnR);
+  this.button.addColorIcon(icon, TB.bnIconH * 0.7, Colors.stViolet);
   //TB.fileBn.setCallbackFunction(function() {(new FBFileSelect(TB.fileBn, TB.fileDisplay)).show();}, true);
   if (isSaveBn) {
     this.button.setCallbackFunction(function() {
@@ -21430,11 +21460,12 @@ if (typeof module !== "undefined" && module.exports) {
  * transfiere a la micro:bit, que lo guarda en flash y lo corre standalone.
  *
  * Gestos (elegidos para pre-lectores):
- *   - Botón Enviar (TitleBar.sendBn): compila + transfiere a la placa.
- *   - Bandera en modo programa: manda RUN (corre lo ya transferido).
- *   - Stop: sin cambios — Device.stopAll() llega al firmware como STOP.
- *   - Toggle live/programa (TitleBar.modeBn): opción del docente, persiste
- *     en SettingsManager.programMode.
+ *   - Play (TitleBar.flagBn) en modo programa: compila + transfiere a la
+ *     placa (no hay botón Enviar aparte).
+ *   - Stop: deshabilitado en modo programa; en vivo, sin cambios —
+ *     Device.stopAll() llega al firmware como STOP.
+ *   - Toggle vivo/programa (TitleBar.liveCellBn/progCellBn): opción del
+ *     docente, persiste en SettingsManager.programMode.
  */
 function ProgramModeManager() {}
 
@@ -21548,8 +21579,9 @@ ProgramModeManager.reportErrors = function(errors) {
 };
 
 ProgramModeManager.flashSendButton = function() {
-  if (TitleBar.sendBn != null) {
-    TitleBar.sendBn.flash();
+  //El Play unificado es quien envía el programa en modo descarga
+  if (TitleBar.flagBn != null) {
+    TitleBar.flagBn.flash();
   }
 };
 
@@ -21777,7 +21809,28 @@ TabManager.createTabSpaceBg = function() {
   var TM = TabManager;
   var canvasColor = Colors.canvasGray;
   if (FinchBlox) {
-    canvasColor = Colors.white;
+    //Lienzo SmartTEAM: fondo paper con grilla de puntos (celda 34px, punto 2px)
+    if (document.getElementById("stDotGrid") == null) {
+      var cellSize = 34;
+      var pattern = document.createElementNS("http://www.w3.org/2000/svg", 'pattern');
+      pattern.setAttributeNS(null, "id", "stDotGrid");
+      pattern.setAttributeNS(null, "width", cellSize);
+      pattern.setAttributeNS(null, "height", cellSize);
+      pattern.setAttributeNS(null, "patternUnits", "userSpaceOnUse");
+      var bgTile = document.createElementNS("http://www.w3.org/2000/svg", 'rect');
+      bgTile.setAttributeNS(null, "width", cellSize);
+      bgTile.setAttributeNS(null, "height", cellSize);
+      bgTile.setAttributeNS(null, "fill", Colors.stPaper);
+      pattern.appendChild(bgTile);
+      var dot = document.createElementNS("http://www.w3.org/2000/svg", 'circle');
+      dot.setAttributeNS(null, "cx", cellSize / 2);
+      dot.setAttributeNS(null, "cy", cellSize / 2);
+      dot.setAttributeNS(null, "r", 2);
+      dot.setAttributeNS(null, "fill", Colors.stVioletTint);
+      pattern.appendChild(dot);
+      GuiElements.defs.appendChild(pattern);
+    }
+    canvasColor = "url(#stDotGrid)";
   }
   TM.bgRect = GuiElements.draw.rect(TM.tabSpaceX, TM.tabSpaceY, TM.tabSpaceWidth, TM.tabSpaceHeight, canvasColor);
   TouchReceiver.addListenersTabSpace(TM.bgRect);
@@ -28677,7 +28730,7 @@ function LevelManager() {
 LevelManager.setConstants = function() {
   var LM = LevelManager;
   LM.totalLevels = 3;
-  LM.levelButtonFont = Font.uiFont(35);
+  LM.levelButtonFont = Font.displayFont(30);
 
   LM.savePointFileNames = {
     1: "FinchBloxSavePoint_Level1",
@@ -28702,7 +28755,7 @@ LevelManager.setLevel = function(level) {
     //SaveManager.userClose(); //necessary? maybe add callback?
     BlockPalette.setLevel();
     //TabManager.activeTab.clear();
-    TitleBar.levelButton.addText(level, LM.levelButtonFont, Colors.white);
+    TitleBar.levelButton.addText(level, LM.levelButtonFont, Colors.stViolet);
     //LM.loadLevelSavePoint();
   }
 }
@@ -37191,8 +37244,9 @@ B_FBSoundL3.prototype.constructor = B_FBSoundL3;
 function B_WhenFlagTapped(x, y) {
 
   if (FinchBlox) {
-    HatBlock.call(this, x, y, "control_3");
-    this.addPart(new BlockIcon(this, VectorPaths.faFlag, Colors.flagGreen, "flag", 35));
+    //Pseudo-categoría "start": bloque inicio verde (SmartTEAM), ícono blanco
+    HatBlock.call(this, x, y, "start");
+    this.addPart(new BlockIcon(this, VectorPaths.faFlag, Colors.white, "flag", 35));
     this.isStartBlock = true;
   } else {
     HatBlock.call(this, x, y, "control");

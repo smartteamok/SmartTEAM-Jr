@@ -4,8 +4,9 @@
 function B_WhenFlagTapped(x, y) {
 
   if (FinchBlox) {
-    HatBlock.call(this, x, y, "control_3");
-    this.addPart(new BlockIcon(this, VectorPaths.faFlag, Colors.flagGreen, "flag", 35));
+    //Pseudo-categoría "start": bloque inicio verde (SmartTEAM), ícono blanco
+    HatBlock.call(this, x, y, "start");
+    this.addPart(new BlockIcon(this, VectorPaths.faFlag, Colors.white, "flag", 35));
     this.isStartBlock = true;
   } else {
     HatBlock.call(this, x, y, "control");

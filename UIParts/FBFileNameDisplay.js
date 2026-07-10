@@ -17,7 +17,7 @@ function FBFileNameDisplay() {
   this.r = TB.defaultCornerRounding;
   this.font = Font.secondaryUiFont(16); //Button.defaultFont;
   this.textW = 0;
-  this.bgColor = Colors.fbGray;
+  this.bgColor = Colors.white;
 
   this.group = GuiElements.create.group(this.X, this.Y, TBLayer);
   const fileDisplayBG = GuiElements.draw.rect(0, 0, this.W, this.H, this.bgColor, this.r, this.r);
@@ -89,8 +89,8 @@ FBFileNameDisplay.prototype.addButton = function(isSaveBn) {
     this.button.remove();
   }
 
-  this.button = new Button(bnX, this.margin, this.bnW, bnH, this.group, Colors.easternBlue, bnR, bnR);
-  this.button.addIcon(icon, TB.bnIconH * 0.5);
+  this.button = new Button(bnX, this.margin, this.bnW, bnH, this.group, Colors.white, bnR, bnR);
+  this.button.addColorIcon(icon, TB.bnIconH * 0.7, Colors.stViolet);
   //TB.fileBn.setCallbackFunction(function() {(new FBFileSelect(TB.fileBn, TB.fileDisplay)).show();}, true);
   if (isSaveBn) {
     this.button.setCallbackFunction(function() {

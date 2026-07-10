@@ -6,11 +6,12 @@
  * transfiere a la micro:bit, que lo guarda en flash y lo corre standalone.
  *
  * Gestos (elegidos para pre-lectores):
- *   - Botón Enviar (TitleBar.sendBn): compila + transfiere a la placa.
- *   - Bandera en modo programa: manda RUN (corre lo ya transferido).
- *   - Stop: sin cambios — Device.stopAll() llega al firmware como STOP.
- *   - Toggle live/programa (TitleBar.modeBn): opción del docente, persiste
- *     en SettingsManager.programMode.
+ *   - Play (TitleBar.flagBn) en modo programa: compila + transfiere a la
+ *     placa (no hay botón Enviar aparte).
+ *   - Stop: deshabilitado en modo programa; en vivo, sin cambios —
+ *     Device.stopAll() llega al firmware como STOP.
+ *   - Toggle vivo/programa (TitleBar.liveCellBn/progCellBn): opción del
+ *     docente, persiste en SettingsManager.programMode.
  */
 function ProgramModeManager() {}
 
@@ -124,8 +125,9 @@ ProgramModeManager.reportErrors = function(errors) {
 };
 
 ProgramModeManager.flashSendButton = function() {
-  if (TitleBar.sendBn != null) {
-    TitleBar.sendBn.flash();
+  //El Play unificado es quien envía el programa en modo descarga
+  if (TitleBar.flagBn != null) {
+    TitleBar.flagBn.flash();
   }
 };
 
