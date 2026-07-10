@@ -35,17 +35,21 @@ BlockPalette.setGraphics = function() {
   // Dimensions for the region with CategoryBNs
   if (FinchBlox) {
     //Bandeja flotante SmartTEAM: separada de los bordes, tinte por categoría
+    //y muesca central ("panza" hacia adentro) donde anidan las pestañas,
+    //como el FinchBlox original
     BlockPalette.inset = 14;
     BlockPalette.cornerRadius = 26;
+    BlockPalette.notchRadius = 10; //la muesca baja 2*notchRadius
     BlockPalette.width = GuiElements.width;
-    BlockPalette.height = 150;
+    BlockPalette.height = 120;
     BlockPalette.y = GuiElements.height - BlockPalette.height - BlockPalette.inset;
     BlockPalette.bg = Colors.stCyanTint;
-    BlockPalette.mainVMargin = 38; //centra verticalmente los bloques en la bandeja
+    BlockPalette.mainVMargin = 34; //centra verticalmente los bloques bajo la muesca
     BlockPalette.catW = 300;
     BlockPalette.catX = GuiElements.width / 2 - BlockPalette.catW / 2;
     BlockPalette.catH = 52;
-    BlockPalette.catY = BlockPalette.y - BlockPalette.catH;
+    //Las pestañas apoyan sobre el piso de la muesca
+    BlockPalette.catY = BlockPalette.y + 2 * BlockPalette.notchRadius - BlockPalette.catH;
     BlockPalette.blockMargin = 20; // The horizontal spacing between Blocks
     BlockPalette.trashHeight = BlockPalette.height * 0.6;
     BlockPalette.trashIconVP = VectorPaths.faTrash;
@@ -82,7 +86,7 @@ BlockPalette.updateZoom = function() {
   let BP = BlockPalette;
   BP.setGraphics();
   if (FinchBlox) {
-    GuiElements.update.rect(BP.palRect, BP.inset, BP.y, BP.width - 2 * BP.inset, BP.height);
+    BP.palRect.setAttributeNS(null, "d", BP.trayPathD());
     GuiElements.update.rect(BP.catRect, 0, BP.catY, 0, BP.catH);
   } else {
     GuiElements.update.rect(BP.palRect, 0, BP.y, BP.width, BP.height);
@@ -121,12 +125,59 @@ BlockPalette.createCatBg = function() {
 BlockPalette.createPalBg = function() {
   let BP = BlockPalette;
   if (FinchBlox) {
-    //Bandeja flotante con esquinas redondeadas
-    BP.palRect = GuiElements.draw.rect(BP.inset, BP.y, BP.width - 2 * BP.inset, BP.height, BP.bg, BP.cornerRadius, BP.cornerRadius);
+    //Bandeja flotante con esquinas redondeadas y muesca para las pestañas
+    BP.palRect = GuiElements.create.path(GuiElements.layers.paletteBG);
+    BP.palRect.setAttributeNS(null, "fill", BP.bg);
+    BP.palRect.setAttributeNS(null, "d", BP.trayPathD());
   } else {
     BP.palRect = GuiElements.draw.rect(0, BP.y, BP.width, BP.height, BP.bg);
+    GuiElements.layers.paletteBG.appendChild(BP.palRect);
   }
-  GuiElements.layers.paletteBG.appendChild(BP.palRect);
+};
+
+/**
+ * Contorno de la bandeja FinchBlox: rectángulo redondeado cuyo borde superior
+ * baja en el centro (S-curvas) formando el hueco donde anidan las pestañas
+ * de categoría.
+ * @return {string} - atributo "d" del path
+ */
+BlockPalette.trayPathD = function() {
+  const BP = BlockPalette;
+  const x0 = BP.inset;
+  const W = BP.width - 2 * BP.inset;
+  const H = BP.height;
+  const r0 = BP.cornerRadius;
+  const rN = BP.notchRadius;
+  const cx = BP.width / 2;
+  //La muesca se ajusta a la cantidad de pestañas del nivel actual
+  let tabCount = 3;
+  if (BP.categories != null && BP.categories.length > 0 && typeof LevelManager !== "undefined") {
+    let visible = 0;
+    BP.categories.forEach(function(cat) {
+      if (cat.level == LevelManager.currentLevel) visible++;
+    });
+    if (visible > 0) tabCount = visible;
+  }
+  const gapHalf = (tabCount * CategoryBN.width + (tabCount - 1) * CategoryBN.hMargin) / 2 + 16;
+  const notchLeft = cx - gapHalf - 2 * rN;
+
+  var d = "m " + (x0 + r0) + "," + BP.y;
+  d += " l " + (notchLeft - (x0 + r0)) + ",0";
+  d += " a " + rN + " " + rN + " 0 0 1 " + rN + " " + rN;
+  d += " a " + rN + " " + rN + " 0 0 0 " + rN + " " + rN;
+  d += " l " + (2 * gapHalf) + ",0";
+  d += " a " + rN + " " + rN + " 0 0 0 " + rN + " " + (-rN);
+  d += " a " + rN + " " + rN + " 0 0 1 " + rN + " " + (-rN);
+  d += " l " + ((x0 + W - r0) - (cx + gapHalf + 2 * rN)) + ",0";
+  d += " a " + r0 + " " + r0 + " 0 0 1 " + r0 + " " + r0;
+  d += " l 0," + (H - 2 * r0);
+  d += " a " + r0 + " " + r0 + " 0 0 1 " + (-r0) + " " + r0;
+  d += " l " + (-(W - 2 * r0)) + ",0";
+  d += " a " + r0 + " " + r0 + " 0 0 1 " + (-r0) + " " + (-r0);
+  d += " l 0," + (-(H - 2 * r0));
+  d += " a " + r0 + " " + r0 + " 0 0 1 " + r0 + " " + (-r0);
+  d += " z";
+  return d;
 };
 
 BlockPalette.updatePaletteColor = function(color) {
@@ -229,7 +280,9 @@ BlockPalette.showTrash = function() {
       if (BP.selectedCat != null && Colors.blockPalette[BP.selectedCat.id] != null) {
         bgColor = Colors.blockPalette[BP.selectedCat.id];
       }
-      trashBg = GuiElements.draw.rect(BP.inset, BP.y, BP.width - 2 * BP.inset, BP.height, bgColor, BP.cornerRadius, BP.cornerRadius);
+      trashBg = GuiElements.create.path(BP.trash);
+      trashBg.setAttributeNS(null, "d", BP.trayPathD());
+      trashBg.setAttributeNS(null, "fill", bgColor);
     } else {
       trashBg = GuiElements.draw.rect(0, BP.y, BP.width, BP.height, BP.bg);
     }
@@ -309,6 +362,8 @@ BlockPalette.setLevel = function() {
   BlockPalette.categories.forEach(function(category) {
     category.button.setHidden();
   })
+  //La muesca de la bandeja se adapta a la cantidad de pestañas del nivel
+  BlockPalette.palRect.setAttributeNS(null, "d", BlockPalette.trayPathD());
   //  switch (LevelMenu.currentLevel){
   switch (LevelManager.currentLevel) {
     case 1:

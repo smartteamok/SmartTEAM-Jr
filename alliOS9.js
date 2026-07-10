@@ -11640,8 +11640,11 @@ TitleBar.setGraphicsPart1 = function() {
   } else {
     if (FinchBlox) {
       //Barra flotante SmartTEAM: separada de los bordes, esquinas redondeadas
+      //y muesca central ("panza") donde cuelgan Play/Stop, como el FinchBlox
+      //original. El logo va arriba, centrado sobre la muesca.
       TB.inset = 14; //distancia de la barra a los bordes de la pantalla
-      TB.barH = 86; //alto de la barra flotante
+      TB.barH = 86; //alto de la barra flotante en los laterales
+      TB.centerH = 54; //alto de la franja central (arriba de la muesca)
       TB.barRadius = 26;
       TB.height = TB.barH + 2 * TB.inset; //espacio total reservado arriba
       TB.solidHeight = 0; //el lienzo pasa por detrás de la barra flotante
@@ -11658,7 +11661,7 @@ TitleBar.setGraphicsPart1 = function() {
     TB.buttonW = 60;
     var maxBnWidth = (TB.width - 6 * TB.buttonMargin) / 8;
     TB.buttonW = Math.min(maxBnWidth, TB.buttonW);
-    TB.longButtonW = 112; //Play y Stop
+    TB.longButtonW = 104; //Play y Stop
     var maxLongBnW = maxBnWidth * 2;
     TB.longButtonW = Math.min(maxLongBnW, TB.longButtonW);
 
@@ -11734,13 +11737,51 @@ TitleBar.setGraphicsPart2 = function() {
 TitleBar.createBar = function() {
   var TB = TitleBar;
   if (FinchBlox) {
-    //Barra flotante violeta con esquinas redondeadas
-    TB.bgRect = GuiElements.draw.rect(TB.inset, TB.inset, TB.width - 2 * TB.inset, TB.barH, TB.bg, TB.barRadius, TB.barRadius);
+    //Barra flotante violeta con esquinas redondeadas y muesca central
+    TB.bgRect = GuiElements.create.path(GuiElements.layers.titleBg);
+    TB.bgRect.setAttributeNS(null, "fill", TB.bg);
+    TB.bgRect.setAttributeNS(null, "d", TB.barPathD());
   } else {
     TB.bgRect = GuiElements.draw.rect(0, 0, TB.width, TB.height, TB.bg);
+    GuiElements.layers.titleBg.appendChild(TB.bgRect);
   }
+};
 
-  GuiElements.layers.titleBg.appendChild(TB.bgRect);
+/**
+ * Contorno de la barra flotante FinchBlox: rectángulo redondeado cuyo borde
+ * inferior sube en el centro (S-curvas) dejando una franja fina de alto
+ * centerH bajo la cual cuelgan Play y Stop. Deja los límites de la muesca en
+ * TB.notchLeftX / TB.notchRightX para ubicar los botones.
+ * @return {string} - atributo "d" del path
+ */
+TitleBar.barPathD = function() {
+  var TB = TitleBar;
+  var x0 = TB.inset;
+  var W = TB.width - 2 * TB.inset;
+  var r0 = TB.barRadius;
+  var r = (TB.barH - TB.centerH) / 2;
+  var cx = TB.width / 2;
+  var gapHalf = TB.longButtonW + TB.buttonMargin / 2 + 6;
+  TB.notchLeftX = cx - gapHalf - 2 * r;
+  TB.notchRightX = cx + gapHalf + 2 * r;
+
+  var d = "m " + (x0 + r0) + "," + TB.inset;
+  d += " l " + (W - 2 * r0) + ",0";
+  d += " a " + r0 + " " + r0 + " 0 0 1 " + r0 + " " + r0;
+  d += " l 0," + (TB.barH - 2 * r0);
+  d += " a " + r0 + " " + r0 + " 0 0 1 " + (-r0) + " " + r0;
+  d += " l " + (TB.notchRightX - (x0 + W - r0)) + ",0";
+  d += " a " + r + " " + r + " 0 0 1 " + (-r) + " " + (-r);
+  d += " a " + r + " " + r + " 0 0 0 " + (-r) + " " + (-r);
+  d += " l " + (-2 * gapHalf) + ",0";
+  d += " a " + r + " " + r + " 0 0 0 " + (-r) + " " + r;
+  d += " a " + r + " " + r + " 0 0 1 " + (-r) + " " + r;
+  d += " l " + ((x0 + r0) - TB.notchLeftX) + ",0";
+  d += " a " + r0 + " " + r0 + " 0 0 1 " + (-r0) + " " + (-r0);
+  d += " l 0," + (-(TB.barH - 2 * r0));
+  d += " a " + r0 + " " + r0 + " 0 0 1 " + r0 + " " + (-r0);
+  d += " z";
+  return d;
 };
 
 /**
@@ -11755,13 +11796,14 @@ TitleBar.makeButtons = function() {
     var y = TB.inset + (TB.barH - h) / 2;
     var edge = TB.inset + 18; //padding interno de la barra flotante
 
-    // Izquierda: logo SmartTEAM blanco + botón "Conectar robot"
-    var logoH = 40;
+    // Logo SmartTEAM blanco, centrado en la franja superior de la muesca
+    var logoH = 34;
     var logoW = logoH * 611.316 / 374; //proporción del SVG del logo
-    var logoY = TB.inset + (TB.barH - logoH) / 2;
+    var logoX = (TB.width - logoW) / 2;
+    var logoY = TB.inset + (TB.centerH - logoH) / 2;
     TB.logoImg = GuiElements.create.image();
     TB.logoImg.setAttributeNS("http://www.w3.org/1999/xlink", "href", "Images/smartteam-logo-white.svg");
-    TB.logoImg.setAttributeNS(null, "x", edge);
+    TB.logoImg.setAttributeNS(null, "x", logoX);
     TB.logoImg.setAttributeNS(null, "y", logoY);
     TB.logoImg.setAttributeNS(null, "width", logoW);
     TB.logoImg.setAttributeNS(null, "height", logoH);
@@ -11783,9 +11825,10 @@ TitleBar.makeButtons = function() {
     }
     DeviceManager.setStatusListener(TB.updateStatus);
 
-    //Ancho acotado al espacio libre entre el logo y el botón Play
-    var connectBnX = edge + logoW + 14;
-    var connectBnW = Math.max(120, Math.min(190, TB.flagBnX - connectBnX - TB.buttonMargin));
+    //Conectar robot a la izquierda; acotado a la zona alta de la barra
+    //(antes de que el borde inferior suba hacia la muesca)
+    var connectBnX = edge;
+    var connectBnW = Math.max(120, Math.min(190, TB.notchLeftX - connectBnX - 8));
     TB.finchButton = new Button(connectBnX, y, connectBnW, h, TBLayer, Colors.stCoral, r, r);
     TB.finchButton.addRobotBnContent();
     TB.finchButton.setCallbackFunction(function() {
@@ -11802,10 +11845,12 @@ TitleBar.makeButtons = function() {
       }
     }, true);
 
-    // Centro: Play / Stop. En modo vivo Play ejecuta; en modo programa
-    // (descarga) el mismo Play compila y transfiere a la placa, y Stop se
-    // apaga. No hay botón Enviar aparte. Ver ProgramModeManager.
-    TB.flagBn = new Button(TB.flagBnX, y, TB.longButtonW, h, TBLayer, Colors.flagGreen, r, r);
+    // Centro: Play / Stop colgando en la muesca de la barra. En modo vivo
+    // Play ejecuta; en modo programa (descarga) el mismo Play compila y
+    // transfiere a la placa, y Stop se apaga. No hay botón Enviar aparte.
+    // Ver ProgramModeManager.
+    var playStopY = TB.inset + TB.centerH - 12;
+    TB.flagBn = new Button(TB.flagBnX, playStopY, TB.longButtonW, h, TBLayer, Colors.flagGreen, r, r);
     TB.flagBn.addIcon(VectorPaths.faPlay, TB.bnIconH);
     TB.flagBn.setCallbackFunction(function() {
       if (ProgramModeManager.isProgramMode()) {
@@ -11815,7 +11860,7 @@ TitleBar.makeButtons = function() {
       }
     }, false);
 
-    TB.stopBn = new Button(TB.stopBnX, y, TB.longButtonW, h, TBLayer, Colors.stopRed, r, r);
+    TB.stopBn = new Button(TB.stopBnX, playStopY, TB.longButtonW, h, TBLayer, Colors.stopRed, r, r);
     TB.stopBn.addIcon(VectorPaths.stStopSquare, TB.bnIconH * 0.9);
     TB.stopBn.setCallbackFunction(CodeManager.stop, false);
 
@@ -11823,7 +11868,7 @@ TitleBar.makeButtons = function() {
     TB.undoBnX = TB.width - TB.inset - 18 - TB.buttonW;
     TB.levelBnX = TB.undoBnX - TB.buttonMargin - TB.buttonW;
 
-    var cell = 48; //celdas del toggle segmentado
+    var cell = 46; //celdas del toggle segmentado
     var cellPad = 5;
     var toggleW = 2 * cell + 3 * cellPad;
     var toggleH = cell + 2 * cellPad;
@@ -12083,7 +12128,7 @@ TitleBar.updateZoomPart2 = function() {
   }
   TB.setGraphicsPart2();
   if (FinchBlox) {
-    GuiElements.update.rect(TB.bgRect, TB.inset, TB.inset, TB.width - 2 * TB.inset, TB.barH);
+    TB.bgRect.setAttributeNS(null, "d", TB.barPathD());
   } else {
     GuiElements.update.rect(TB.bgRect, 0, 0, TB.width, TB.height);
   }
@@ -12158,17 +12203,21 @@ BlockPalette.setGraphics = function() {
   // Dimensions for the region with CategoryBNs
   if (FinchBlox) {
     //Bandeja flotante SmartTEAM: separada de los bordes, tinte por categoría
+    //y muesca central ("panza" hacia adentro) donde anidan las pestañas,
+    //como el FinchBlox original
     BlockPalette.inset = 14;
     BlockPalette.cornerRadius = 26;
+    BlockPalette.notchRadius = 10; //la muesca baja 2*notchRadius
     BlockPalette.width = GuiElements.width;
-    BlockPalette.height = 150;
+    BlockPalette.height = 120;
     BlockPalette.y = GuiElements.height - BlockPalette.height - BlockPalette.inset;
     BlockPalette.bg = Colors.stCyanTint;
-    BlockPalette.mainVMargin = 38; //centra verticalmente los bloques en la bandeja
+    BlockPalette.mainVMargin = 34; //centra verticalmente los bloques bajo la muesca
     BlockPalette.catW = 300;
     BlockPalette.catX = GuiElements.width / 2 - BlockPalette.catW / 2;
     BlockPalette.catH = 52;
-    BlockPalette.catY = BlockPalette.y - BlockPalette.catH;
+    //Las pestañas apoyan sobre el piso de la muesca
+    BlockPalette.catY = BlockPalette.y + 2 * BlockPalette.notchRadius - BlockPalette.catH;
     BlockPalette.blockMargin = 20; // The horizontal spacing between Blocks
     BlockPalette.trashHeight = BlockPalette.height * 0.6;
     BlockPalette.trashIconVP = VectorPaths.faTrash;
@@ -12205,7 +12254,7 @@ BlockPalette.updateZoom = function() {
   var BP = BlockPalette;
   BP.setGraphics();
   if (FinchBlox) {
-    GuiElements.update.rect(BP.palRect, BP.inset, BP.y, BP.width - 2 * BP.inset, BP.height);
+    BP.palRect.setAttributeNS(null, "d", BP.trayPathD());
     GuiElements.update.rect(BP.catRect, 0, BP.catY, 0, BP.catH);
   } else {
     GuiElements.update.rect(BP.palRect, 0, BP.y, BP.width, BP.height);
@@ -12244,12 +12293,59 @@ BlockPalette.createCatBg = function() {
 BlockPalette.createPalBg = function() {
   var BP = BlockPalette;
   if (FinchBlox) {
-    //Bandeja flotante con esquinas redondeadas
-    BP.palRect = GuiElements.draw.rect(BP.inset, BP.y, BP.width - 2 * BP.inset, BP.height, BP.bg, BP.cornerRadius, BP.cornerRadius);
+    //Bandeja flotante con esquinas redondeadas y muesca para las pestañas
+    BP.palRect = GuiElements.create.path(GuiElements.layers.paletteBG);
+    BP.palRect.setAttributeNS(null, "fill", BP.bg);
+    BP.palRect.setAttributeNS(null, "d", BP.trayPathD());
   } else {
     BP.palRect = GuiElements.draw.rect(0, BP.y, BP.width, BP.height, BP.bg);
+    GuiElements.layers.paletteBG.appendChild(BP.palRect);
   }
-  GuiElements.layers.paletteBG.appendChild(BP.palRect);
+};
+
+/**
+ * Contorno de la bandeja FinchBlox: rectángulo redondeado cuyo borde superior
+ * baja en el centro (S-curvas) formando el hueco donde anidan las pestañas
+ * de categoría.
+ * @return {string} - atributo "d" del path
+ */
+BlockPalette.trayPathD = function() {
+  var BP = BlockPalette;
+  var x0 = BP.inset;
+  var W = BP.width - 2 * BP.inset;
+  var H = BP.height;
+  var r0 = BP.cornerRadius;
+  var rN = BP.notchRadius;
+  var cx = BP.width / 2;
+  //La muesca se ajusta a la cantidad de pestañas del nivel actual
+  var tabCount = 3;
+  if (BP.categories != null && BP.categories.length > 0 && typeof LevelManager !== "undefined") {
+    var visible = 0;
+    BP.categories.forEach(function(cat) {
+      if (cat.level == LevelManager.currentLevel) visible++;
+    });
+    if (visible > 0) tabCount = visible;
+  }
+  var gapHalf = (tabCount * CategoryBN.width + (tabCount - 1) * CategoryBN.hMargin) / 2 + 16;
+  var notchLeft = cx - gapHalf - 2 * rN;
+
+  var d = "m " + (x0 + r0) + "," + BP.y;
+  d += " l " + (notchLeft - (x0 + r0)) + ",0";
+  d += " a " + rN + " " + rN + " 0 0 1 " + rN + " " + rN;
+  d += " a " + rN + " " + rN + " 0 0 0 " + rN + " " + rN;
+  d += " l " + (2 * gapHalf) + ",0";
+  d += " a " + rN + " " + rN + " 0 0 0 " + rN + " " + (-rN);
+  d += " a " + rN + " " + rN + " 0 0 1 " + rN + " " + (-rN);
+  d += " l " + ((x0 + W - r0) - (cx + gapHalf + 2 * rN)) + ",0";
+  d += " a " + r0 + " " + r0 + " 0 0 1 " + r0 + " " + r0;
+  d += " l 0," + (H - 2 * r0);
+  d += " a " + r0 + " " + r0 + " 0 0 1 " + (-r0) + " " + r0;
+  d += " l " + (-(W - 2 * r0)) + ",0";
+  d += " a " + r0 + " " + r0 + " 0 0 1 " + (-r0) + " " + (-r0);
+  d += " l 0," + (-(H - 2 * r0));
+  d += " a " + r0 + " " + r0 + " 0 0 1 " + r0 + " " + (-r0);
+  d += " z";
+  return d;
 };
 
 BlockPalette.updatePaletteColor = function(color) {
@@ -12352,7 +12448,9 @@ BlockPalette.showTrash = function() {
       if (BP.selectedCat != null && Colors.blockPalette[BP.selectedCat.id] != null) {
         bgColor = Colors.blockPalette[BP.selectedCat.id];
       }
-      trashBg = GuiElements.draw.rect(BP.inset, BP.y, BP.width - 2 * BP.inset, BP.height, bgColor, BP.cornerRadius, BP.cornerRadius);
+      trashBg = GuiElements.create.path(BP.trash);
+      trashBg.setAttributeNS(null, "d", BP.trayPathD());
+      trashBg.setAttributeNS(null, "fill", bgColor);
     } else {
       trashBg = GuiElements.draw.rect(0, BP.y, BP.width, BP.height, BP.bg);
     }
@@ -12432,6 +12530,8 @@ BlockPalette.setLevel = function() {
   BlockPalette.categories.forEach(function(category) {
     category.button.setHidden();
   })
+  //La muesca de la bandeja se adapta a la cantidad de pestañas del nivel
+  BlockPalette.palRect.setAttributeNS(null, "d", BlockPalette.trayPathD());
   //  switch (LevelMenu.currentLevel){
   switch (LevelManager.currentLevel) {
     case 1:
@@ -22352,7 +22452,8 @@ Tab.prototype.fitBox = function(box) {
  * Adds a new start block to the tab. Used in FinchBlox.
  */
 Tab.prototype.addStartBlock = function() {
-  var blockY = GuiElements.height / 2 - BlockPalette.height;
+  //Centrado verticalmente en la zona de programación (entre barra y bandeja)
+  var blockY = TitleBar.height + (BlockPalette.y - TitleBar.height) / 2 - 30;
   var stack = new BlockStack(new B_WhenFlagTapped(50, blockY), this);
 }
 
