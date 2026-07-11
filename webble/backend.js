@@ -120,20 +120,29 @@ WebBLE.connect = async function(id, robotId) {
     console.warn("[webble] id no coincide (round-trip de URL); conecto al elegido: " +
       robotId + " vs " + device.id);
   }
+  let step = "gatt.connect";
   try {
+    console.log("[webble] conectando a " + (device.name || device.id) + "...");
     const server = await device.gatt.connect();
+    console.log("[webble] GATT conectado; buscando servicio UART...");
+    step = "getPrimaryService(UART) — ¿el firmware expone Nordic UART?";
     const service = await server.getPrimaryService(WebBLE.UART_SERVICE);
+    step = "getCharacteristic(RX)";
     WebBLE.rxChar = await service.getCharacteristic(WebBLE.UART_RX);
+    step = "getCharacteristic(TX)";
     WebBLE.txChar = await service.getCharacteristic(WebBLE.UART_TX);
     WebBLE.rxBuf = []; // descartar restos de una conexión anterior
+    step = "startNotifications";
     await WebBLE.txChar.startNotifications();
     WebBLE.txChar.addEventListener("characteristicvaluechanged", WebBLE.onNotify);
     device.addEventListener("gattserverdisconnected", function() {
+      console.log("[webble] GATT desconectado");
       WebBLE.rxChar = null;
       WebBLE.txChar = null;
       pushCallback(function(cb) { cb.robot.updateStatus(device.id, false); });
     });
     WebBLE.device = device;
+    console.log("[webble] conexión lista");
     respond(id, 200, "");
     pushCallback(function(cb) {
       cb.robot.updateStatus(device.id, true);
@@ -141,7 +150,7 @@ WebBLE.connect = async function(id, robotId) {
     });
     WebBLE.queryFirmware(device.id);
   } catch (e) {
-    console.warn("[webble] connect: " + e.message);
+    console.error("[webble] connect FALLÓ en paso [" + step + "]: " + e.message);
     respond(id, 500, e.message);
     pushCallback(function(cb) { cb.robot.connectionFailure(robotId); });
   }
