@@ -471,6 +471,36 @@ static void test_exec_one_rejects_mark(void) {
     CHECK(stx_vm_exec_one(&vm, mark, 2) == STX_ERR_BAD_OPCODE);
 }
 
+static void test_motors_ticks_blocks_by_time(void) {
+    /* MOTORS_TICKS 50,50, 200 ticks -> mueve, espera 200ms, sigue */
+    const uint8_t code[] = {
+        STX_OP_MOTORS_TICKS, 50, 50, 200, 0,
+        STX_OP_TONE, 60, 10, 0,
+        STX_OP_HALT
+    };
+    uint8_t buf[64];
+    uint16_t len = build_start_image(buf, code, sizeof(code));
+    fake_reset();
+    stx_vm_t vm;
+    stx_vm_init(&vm, &fake_hal);
+    stx_vm_load(&vm, buf, len);
+    stx_vm_start(&vm);
+
+    stx_vm_tick(&vm);
+    /* arrancó el motor y quedó esperando: el tono aún no sonó */
+    CHECK(fake_trace_len == 1);
+    CHECK(fake_trace[0].type == T_MOTORS_TICKS);
+    CHECK(vm.ctx[0].state == STX_CTX_WAIT_MS);
+
+    stx_vm_tick(&vm); /* sigue esperando */
+    CHECK(fake_trace_len == 1);
+
+    fake_advance(200);
+    stx_vm_tick(&vm); /* vence la espera: suena el tono y termina */
+    CHECK(fake_trace_len == 2);
+    CHECK(fake_trace[1].type == T_TONE);
+}
+
 int main(void) {
     test_image_validation();
     test_simple_sequence();
@@ -488,6 +518,7 @@ int main(void) {
     test_no_done_while_event_armed();
     test_fault_fires_hook();
     test_exec_one_rejects_mark();
+    test_motors_ticks_blocks_by_time();
 
     printf("%d checks, %d failures\n", checks, failures);
     return failures == 0 ? 0 : 1;

@@ -15,7 +15,24 @@
 #include "proto/stx_proto_engine.h"
 #include "storage/stx_store.h"
 #include "hal/stx_hal_codal.h"
+#include "hal/stx_hal_tinybit.h"
 #include "ble/stx_ble.h"
+
+/* Perfil de placa. Por defecto Tiny:bit (el kit SmartTEAM); poner en 0 para un
+ * firmware de micro:bit sola (sin motores/faros/ultrasónico). */
+#ifndef STX_PROFILE_TINYBIT
+#define STX_PROFILE_TINYBIT 1
+#endif
+
+#if STX_PROFILE_TINYBIT
+#define STX_HAL stx_hal_tinybit
+#define STX_HAL_UPDATE stx_hal_tinybit_update
+#define STX_HAL_BOARD_ID STX_BOARD_TINYBIT
+#else
+#define STX_HAL stx_hal_codal
+#define STX_HAL_UPDATE stx_hal_codal_update
+#define STX_HAL_BOARD_ID STX_BOARD_BASIC
+#endif
 
 MicroBit uBit;
 
@@ -46,10 +63,10 @@ int main() {
     uBit.init();
     stx_store_codal_init();
 
-    stx_vm_init(&vm, &stx_hal_codal);
+    stx_vm_init(&vm, &STX_HAL);
     stx_proto_init(&engine, &vm, &stx_flash_codal, 0, now_ms);
     engine.read_sensors = read_sensors;
-    engine.board_id = STX_BOARD_BASIC; /* el perfil Tiny:bit lo cambia (Fase 4) */
+    engine.board_id = STX_HAL_BOARD_ID;
     vm.notify = vm_notify;
     stx_ble_init(&engine);
 
@@ -70,7 +87,7 @@ int main() {
         stx_ble_pump();
         stx_proto_tick(&engine);
         stx_vm_tick(&vm);
-        stx_hal_codal_update();
+        STX_HAL_UPDATE();
         uBit.sleep(5);
     }
 }

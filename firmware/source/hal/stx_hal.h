@@ -41,7 +41,11 @@ typedef struct stx_hal {
 
     /* Kit v2 — NULL en firmware on-board v1 */
     void (*motors)(int8_t speed_l, int8_t speed_r);
-    void (*motors_ticks)(int8_t speed_l, int8_t speed_r, uint16_t ticks);
+    /* Mueve una distancia (ticks) y programa el auto-stop. Sin encoders se
+     * aproxima por tiempo: DEVUELVE los ms estimados de movimiento para que la
+     * VM espere ese lapso (WAIT_MS) y la secuencia siga bloqueante como en el
+     * editor. 0 = no esperar. board_update() para los motores al vencer. */
+    uint16_t (*motors_ticks)(int8_t speed_l, int8_t speed_r, uint16_t ticks);
     void (*motors_stop)(void);
 } stx_hal_t;
 

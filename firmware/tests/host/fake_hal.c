@@ -39,8 +39,10 @@ static bool h_read_cond(uint8_t cond, uint8_t param) {
     return fake_conds[cond];
 }
 static void h_motors(int8_t l, int8_t r) { record(T_MOTORS, (uint32_t)l, (uint32_t)r, 0); }
-static void h_motors_ticks(int8_t l, int8_t r, uint16_t t) {
+/* devuelve los ms de espera: 1 ms por tick, como el HAL Tiny:bit */
+static uint16_t h_motors_ticks(int8_t l, int8_t r, uint16_t t) {
     record(T_MOTORS_TICKS, (uint32_t)l, (uint32_t)r, t);
+    return t;
 }
 static void h_motors_stop(void) { record(T_MOTORS_STOP, 0, 0, 0); }
 

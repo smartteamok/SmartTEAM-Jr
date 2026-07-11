@@ -206,10 +206,18 @@ static bool step(stx_vm_t *vm, stx_context_t *c) {
             if (hal->motors == 0) { vm_fault(vm, STX_ERR_BAD_OPCODE); return false; }
             hal->motors((int8_t)p[1], (int8_t)p[2]);
             break;
-        case STX_OP_MOTORS_TICKS:
+        case STX_OP_MOTORS_TICKS: {
             if (hal->motors_ticks == 0) { vm_fault(vm, STX_ERR_BAD_OPCODE); return false; }
-            hal->motors_ticks((int8_t)p[1], (int8_t)p[2], rd_u16(p + 3));
+            uint16_t wait_ms = hal->motors_ticks((int8_t)p[1], (int8_t)p[2], rd_u16(p + 3));
+            if (wait_ms > 0) {
+                /* bloquea la secuencia mientras el auto-stop del HAL corre */
+                c->deadline = hal->now_ms() + wait_ms;
+                c->state = STX_CTX_WAIT_MS;
+                c->pc += len;
+                return false;
+            }
             break;
+        }
         case STX_OP_MOTORS_STOP:
             if (hal->motors_stop == 0) { vm_fault(vm, STX_ERR_BAD_OPCODE); return false; }
             hal->motors_stop();
