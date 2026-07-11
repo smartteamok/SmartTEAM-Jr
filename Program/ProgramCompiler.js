@@ -20,6 +20,11 @@
  *   {op:"motorsStop"}                               — kit v2
  *   {op:"waitUntil", cond, param}        — cond: "dark"|"loud"|"obstacle"
  *   {op:"repeat", count, body:[Op]}      — count 0 = forever
+ *   {op:"mark", index}                   — bloque en ejecución (options.emitMarkers)
+ *
+ * Con options.emitMarkers el resultado incluye markerMap: array índice→Block
+ * (las referencias a Block viven solo en la app; NO forman parte del IR, que
+ * sigue siendo puro/serializable).
  */
 function ProgramCompiler() {}
 
@@ -32,11 +37,18 @@ ProgramCompiler.OBSTACLE_THRESHOLD_CM = 20;
 ProgramCompiler.MAX_HANDLERS = 8;
 ProgramCompiler.MAX_START_HANDLERS = 4;
 
+/** Máximo de marcadores por programa (OP_MARK lleva índice u8) */
+ProgramCompiler.MAX_MARKERS = 256;
+
+/* Estado de marcadores de la compilación en curso (el compilador es síncrono);
+ * null = sin marcadores */
+ProgramCompiler._markerMap = null;
+
 /**
  * Punto de entrada.
  * @param {Array} firstBlocks - primer Block de cada stack top-level, en orden
- * @param {object} [options] - {allowMotors: boolean} (default false: slice on-board)
- * @return {{ir: object|null, errors: Array, warnings: Array}}
+ * @param {object} [options] - {allowMotors: boolean, emitMarkers: boolean}
+ * @return {{ir: object|null, markerMap: Array|null, errors: Array, warnings: Array}}
  */
 ProgramCompiler.compile = function(firstBlocks, options) {
   if (options == null) {
@@ -45,6 +57,7 @@ ProgramCompiler.compile = function(firstBlocks, options) {
   const errors = [];
   const warnings = [];
   const handlers = [];
+  ProgramCompiler._markerMap = options.emitMarkers ? [] : null;
 
   for (let i = 0; i < firstBlocks.length; i++) {
     const firstBlock = firstBlocks[i];
@@ -59,11 +72,18 @@ ProgramCompiler.compile = function(firstBlocks, options) {
 
   ProgramCompiler.validate(handlers, options, errors, warnings);
 
+  const markerMap = ProgramCompiler._markerMap;
+  ProgramCompiler._markerMap = null;
+  if (markerMap != null && markerMap.length > ProgramCompiler.MAX_MARKERS) {
+    errors.push({ code: "E_TOO_MANY_BLOCKS", count: markerMap.length });
+  }
+
   if (errors.length > 0) {
-    return { ir: null, errors: errors, warnings: warnings };
+    return { ir: null, markerMap: null, errors: errors, warnings: warnings };
   }
   return {
     ir: { version: 1, handlers: handlers },
+    markerMap: markerMap,
     errors: errors,
     warnings: warnings
   };
@@ -105,6 +125,10 @@ ProgramCompiler.compileSequence = function(block, errors, warnings) {
     if (encoder == null) {
       errors.push(ProgramCompiler.unsupportedError(block.blockTypeName));
       return ops;
+    }
+    if (ProgramCompiler._markerMap != null) {
+      ops.push({ op: "mark", index: ProgramCompiler._markerMap.length });
+      ProgramCompiler._markerMap.push(block);
     }
     const blockOps = encoder(block, errors, warnings);
     for (let i = 0; i < blockOps.length; i++) {

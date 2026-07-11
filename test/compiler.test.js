@@ -167,3 +167,50 @@ test("más de 4 stacks start -> E_TOO_MANY_STACKS", function() {
   const result = ProgramCompiler.compile(stacks);
   assert.strictEqual(result.errors[0].code, "E_TOO_MANY_STACKS");
 });
+
+/* ---- Marcadores de bloque (options.emitMarkers) ---- */
+
+test("emitMarkers: secuencia plana intercala marks y devuelve el mapa", function() {
+  const s1 = F.sound(60, 1);
+  const s2 = F.sound(62, 1);
+  s1.nextBlock = s2;
+  const result = compileOk([s1], { emitMarkers: true });
+  assert.deepStrictEqual(result.ir.handlers[0].body, [
+    { op: "mark", index: 0 },
+    { op: "tone", note: 60, ms: 100 },
+    { op: "mark", index: 1 },
+    { op: "tone", note: 62, ms: 100 }
+  ]);
+  assert.strictEqual(result.markerMap.length, 2);
+  assert.strictEqual(result.markerMap[0], s1);
+  assert.strictEqual(result.markerMap[1], s2);
+});
+
+test("emitMarkers: bloques dentro de repeat quedan marcados", function() {
+  const inner = F.sound(60, 1);
+  const rep = F.repeat(3, inner);
+  const result = compileOk([rep], { emitMarkers: true });
+  const body = result.ir.handlers[0].body;
+  // mark(repeat), repeat{ mark(inner), tone }
+  assert.deepStrictEqual(body[0], { op: "mark", index: 0 });
+  assert.strictEqual(body[1].op, "repeat");
+  assert.deepStrictEqual(body[1].body[0], { op: "mark", index: 1 });
+  assert.strictEqual(result.markerMap[0], rep);
+  assert.strictEqual(result.markerMap[1], inner);
+});
+
+test("sin emitMarkers no hay marks ni mapa", function() {
+  const result = compileOk([F.sound(60, 1)]);
+  assert.strictEqual(result.markerMap, null);
+  assert.strictEqual(result.ir.handlers[0].body[0].op, "tone");
+});
+
+test("emitMarkers: el mapa cubre múltiples stacks en orden", function() {
+  const a = F.wait(1);
+  const b = F.sound(60, 1);
+  const result = compileOk([a, b], { emitMarkers: true });
+  assert.strictEqual(result.markerMap.length, 2);
+  assert.strictEqual(result.markerMap[0], a);
+  assert.strictEqual(result.markerMap[1], b);
+  assert.deepStrictEqual(result.ir.handlers[1].body[0], { op: "mark", index: 1 });
+});

@@ -265,6 +265,10 @@ CodeManager.stop = function() {
   DisplayBoxManager.hide(); // Hide any messages being displayed.
   Sound.stopAllSounds() // Stops all sounds and tones
   BlockPalette.passRecursively("passRecursively", "stop"); //Stop any block running in the block palette
+  if (FinchBlox && typeof ProgramModeManager !== "undefined") {
+    // El stopAll llegó a la placa como CMD_STOP: limpiar la ejecución remota
+    ProgramModeManager.onRemoteStopped();
+  }
   // Note: Tones are not allowed to be async, so they
   // must be stopped manually
 

@@ -11861,20 +11861,14 @@ TitleBar.makeButtons = function() {
     }, true);
 
     // Centro: Play / Stop (PRINCIPALES) colgando encastrados en la muesca.
-    // En modo vivo Play ejecuta; en modo programa (descarga) el mismo Play
-    // compila y transfiere a la placa, y Stop se apaga. No hay botón Enviar
-    // aparte. Ver ProgramModeManager.
+    // Play unificado: compila, transfiere por BLE y la placa ejecuta
+    // (volátil en vivo, persistente en modo descarga). Ver
+    // ProgramModeManager.playClicked.
     var primaryR = 22;
     var playStopY = TB.inset + TB.barH - TB.notchDepth + 4;
     TB.flagBn = new Button(TB.flagBnX, playStopY, TB.longButtonW, primaryH, TBLayer, Colors.flagGreen, primaryR, primaryR);
     TB.flagBn.addIcon(VectorPaths.faPlay, TB.bnIconH);
-    TB.flagBn.setCallbackFunction(function() {
-      if (ProgramModeManager.isProgramMode()) {
-        ProgramModeManager.sendClicked();
-      } else {
-        CodeManager.eventFlagClicked();
-      }
-    }, false);
+    TB.flagBn.setCallbackFunction(ProgramModeManager.playClicked, false);
 
     TB.stopBn = new Button(TB.stopBnX, playStopY, TB.longButtonW, primaryH, TBLayer, Colors.stopRed, primaryR, primaryR);
     TB.stopBn.addIcon(VectorPaths.stStopSquare, TB.bnIconH * 0.9);
@@ -11911,17 +11905,11 @@ TitleBar.makeButtons = function() {
 
     TB.updateModeButtons = function() {
       var programMode = ProgramModeManager.isProgramMode();
-      //Celda activa en blanco; la inactiva se funde con el fondo del toggle
+      //Celda activa en blanco; la inactiva se funde con el fondo del toggle.
+      //Stop queda activo en ambos modos: siempre puede frenar a la placa.
       TB.liveCellBn.updateBgColor(programMode ? Colors.stVioletDark : Colors.white);
       TB.progCellBn.iconColor = programMode ? Colors.stViovar : Colors.white;
       TB.progCellBn.updateBgColor(programMode ? Colors.white : Colors.stVioletDark);
-      if (programMode) {
-        TB.stopBn.disable();
-        GuiElements.update.opacity(TB.stopBn.group, 0.3);
-      } else {
-        TB.stopBn.enable();
-        GuiElements.update.opacity(TB.stopBn.group, 1);
-      }
     };
     TB.updateModeButtons();
 
@@ -20414,6 +20402,10 @@ CodeManager.stop = function() {
   DisplayBoxManager.hide(); // Hide any messages being displayed.
   Sound.stopAllSounds() // Stops all sounds and tones
   BlockPalette.passRecursively("passRecursively", "stop"); //Stop any block running in the block palette
+  if (FinchBlox && typeof ProgramModeManager !== "undefined") {
+    // El stopAll llegó a la placa como CMD_STOP: limpiar la ejecución remota
+    ProgramModeManager.onRemoteStopped();
+  }
   // Note: Tones are not allowed to be async, so they
   // must be stopped manually
 
@@ -20974,7 +20966,7 @@ STX.MAGIC_0 = 0x53;  // 'S'
 STX.MAGIC_1 = 0x54;  // 'T'
 STX.MAGIC_2 = 0x58;  // 'X'
 STX.MAGIC_3 = 0x31;  // '1'
-STX.BC_VERSION = 0x01;  // versión del bytecode
+STX.BC_VERSION = 0x02;  // versión del bytecode (v2: OP_MARK)
 STX.HEADER_SIZE = 0x0C;  // bytes de header antes de la tabla de eventos
 STX.EVENT_ENTRY_SIZE = 0x04;  // bytes por entrada de la tabla de eventos
 STX.MAX_IMAGE_SIZE = 0x800;  // tamaño máximo de la imagen completa (header incluido)
@@ -20994,6 +20986,7 @@ STX.OP_LOOP_END = 0x04;  // sin operandos — cierra loop
 STX.OP_LOOP_FOREVER = 0x05;  // sin operandos — abre loop infinito
 STX.OP_JMP = 0x06;  // i16 rel — RESERVADO v1 (la VM lo rechaza)
 STX.OP_WAIT_UNTIL = 0x07;  // u8 cond, u8 param — espera condición
+STX.OP_MARK = 0x08;  // u8 index — bloque en ejecución (notificación al editor)
 STX.OP_LED_PATTERN = 0x10;  // 4 bytes: 25 bits row-major LSB-first, bit0 = LED(0,0)
 STX.OP_LED_CLEAR = 0x11;  // sin operandos
 STX.OP_LED_BRIGHT = 0x12;  // u8 brillo 0-255
@@ -21022,10 +21015,12 @@ STX.ERR_LOOP_UNDERFLOW = 0x04;  // LOOP_END sin loop abierto
 STX.ERR_BAD_IMAGE = 0x05;  // imagen inválida (magic/CRC/longitud)
 
 /* ---- stx_proto.h ---- */
-STX.PROTO_VERSION = 0x01;
+STX.PROTO_VERSION = 0x02;
 STX.FW_MAJOR = 0x00;
-STX.FW_MINOR = 0x01;
-STX.CMD_XFER_BEGIN = 0x01;  // [len u16][crc32 u32]
+STX.FW_MINOR = 0x02;
+STX.BOARD_BASIC = 0x00;  // micro:bit sola
+STX.BOARD_TINYBIT = 0x01;  // Yahboom Tiny:bit (motores I2C)
+STX.CMD_XFER_BEGIN = 0x01;  // [len u16][crc32 u32][flags u8]
 STX.CMD_XFER_CHUNK = 0x02;  // [seq u8][data ≤16B]
 STX.CMD_XFER_END = 0x03;  // sin payload
 STX.CMD_RUN = 0x10;  // sin payload
@@ -21035,6 +21030,11 @@ STX.CMD_ERASE = 0x13;  // sin payload
 STX.CMD_GET_SENSORS = 0x14;  // sin payload
 STX.CMD_LIVE_EXEC = 0x20;  // [instrucción STX cruda]
 STX.RESP_FLAG = 0x80;  // respuesta = comando | STX_RESP_FLAG
+STX.XFER_FLAG_VOLATILE = 0x01;  // no persistir: la imagen vive en RAM (modo vivo)
+STX.NOTIF_MARK = 0xF0;  // [index u8] bloque en ejecución
+STX.NOTIF_DONE = 0xF1;  // [reason u8] programa terminó (0 = fin natural)
+STX.NOTIF_FAULT = 0xF2;  // [err u8] la VM se detuvo por error (STX_ERR_*)
+STX.NOTIF_MIN_INTERVAL_MS = 0x3C;  // intervalo mínimo entre NOTIF_MARK enviados
 STX.STATUS_OK = 0x00;
 STX.STATUS_TOO_LARGE = 0x01;  // imageLen > STX_MAX_IMAGE_SIZE
 STX.STATUS_BUSY = 0x02;  // transferencia u operación en curso
@@ -21045,6 +21045,7 @@ STX.STATUS_BAD_SEQ = 0x06;  // chunk fuera de orden — reenviar
 STX.STATUS_NO_PROGRAM = 0x07;  // RUN sin imagen válida cargada
 STX.STATUS_REJECTED = 0x08;  // comando/instrucción no permitida (ej. WAIT en live)
 STX.STATUS_NO_SESSION = 0x09;  // chunk/end sin XFER_BEGIN previo
+STX.STATUS_BAD_IMAGE = 0x0A;  // la imagen no pasa la validación de la VM (versión/formato)
 STX.CHUNK_DATA_SIZE = 0x10;  // bytes de datos por XFER_CHUNK
 STX.XFER_TIMEOUT_MS = 0x1388;  // el firmware aborta la sesión sin datos
 STX.PKT_MAX = 0x14;  // tamaño máximo de paquete de aplicación
@@ -21075,6 +21076,11 @@ if (typeof module !== "undefined" && module.exports) {
  *   {op:"motorsStop"}                               — kit v2
  *   {op:"waitUntil", cond, param}        — cond: "dark"|"loud"|"obstacle"
  *   {op:"repeat", count, body:[Op]}      — count 0 = forever
+ *   {op:"mark", index}                   — bloque en ejecución (options.emitMarkers)
+ *
+ * Con options.emitMarkers el resultado incluye markerMap: array índice→Block
+ * (las referencias a Block viven solo en la app; NO forman parte del IR, que
+ * sigue siendo puro/serializable).
  */
 function ProgramCompiler() {}
 
@@ -21087,11 +21093,18 @@ ProgramCompiler.OBSTACLE_THRESHOLD_CM = 20;
 ProgramCompiler.MAX_HANDLERS = 8;
 ProgramCompiler.MAX_START_HANDLERS = 4;
 
+/** Máximo de marcadores por programa (OP_MARK lleva índice u8) */
+ProgramCompiler.MAX_MARKERS = 256;
+
+/* Estado de marcadores de la compilación en curso (el compilador es síncrono);
+ * null = sin marcadores */
+ProgramCompiler._markerMap = null;
+
 /**
  * Punto de entrada.
  * @param {Array} firstBlocks - primer Block de cada stack top-level, en orden
- * @param {object} [options] - {allowMotors: boolean} (default false: slice on-board)
- * @return {{ir: object|null, errors: Array, warnings: Array}}
+ * @param {object} [options] - {allowMotors: boolean, emitMarkers: boolean}
+ * @return {{ir: object|null, markerMap: Array|null, errors: Array, warnings: Array}}
  */
 ProgramCompiler.compile = function(firstBlocks, options) {
   if (options == null) {
@@ -21100,6 +21113,7 @@ ProgramCompiler.compile = function(firstBlocks, options) {
   var errors = [];
   var warnings = [];
   var handlers = [];
+  ProgramCompiler._markerMap = options.emitMarkers ? [] : null;
 
   for (var i = 0; i < firstBlocks.length; i++) {
     var firstBlock = firstBlocks[i];
@@ -21114,11 +21128,18 @@ ProgramCompiler.compile = function(firstBlocks, options) {
 
   ProgramCompiler.validate(handlers, options, errors, warnings);
 
+  var markerMap = ProgramCompiler._markerMap;
+  ProgramCompiler._markerMap = null;
+  if (markerMap != null && markerMap.length > ProgramCompiler.MAX_MARKERS) {
+    errors.push({ code: "E_TOO_MANY_BLOCKS", count: markerMap.length });
+  }
+
   if (errors.length > 0) {
-    return { ir: null, errors: errors, warnings: warnings };
+    return { ir: null, markerMap: null, errors: errors, warnings: warnings };
   }
   return {
     ir: { version: 1, handlers: handlers },
+    markerMap: markerMap,
     errors: errors,
     warnings: warnings
   };
@@ -21160,6 +21181,10 @@ ProgramCompiler.compileSequence = function(block, errors, warnings) {
     if (encoder == null) {
       errors.push(ProgramCompiler.unsupportedError(block.blockTypeName));
       return ops;
+    }
+    if (ProgramCompiler._markerMap != null) {
+      ops.push({ op: "mark", index: ProgramCompiler._markerMap.length });
+      ProgramCompiler._markerMap.push(block);
     }
     var blockOps = encoder(block, errors, warnings);
     for (var i = 0; i < blockOps.length; i++) {
@@ -21475,6 +21500,12 @@ BytecodeAssembler.emitOps = function(body, code, S) {
         code.push(S.OP_WAIT_MS);
         BytecodeAssembler.pushU16(code, op.ms);
         break;
+      case "mark":
+        if (op.index < 0 || op.index > 0xFF) {
+          throw BytecodeAssembler.error("E_BAD_MARK", String(op.index));
+        }
+        code.push(S.OP_MARK, op.index & 0xFF);
+        break;
       case "waitUntil": {
         var condFn = BytecodeAssembler.CONDS[op.cond];
         if (condFn == null) {
@@ -21576,19 +21607,33 @@ if (typeof module !== "undefined" && module.exports) {
 
 
 /**
- * ProgramModeManager orquesta el "modo programa" de FinchBlox: en vez de
- * ejecutar los bloques en vivo, compila el programa a bytecode STX1 y lo
- * transfiere a la micro:bit, que lo guarda en flash y lo corre standalone.
+ * ProgramModeManager orquesta la ejecución remota de FinchBlox/SmartTEAM:
+ * compila el programa a bytecode STX1, lo transfiere a la micro:bit por BLE
+ * y la placa lo ejecuta con su VM. La app recibe notificaciones push
+ * (bloque en ejecución / fin / error) vía CallbackManager.robot.program*.
  *
- * Gestos (elegidos para pre-lectores):
- *   - Play (TitleBar.flagBn) en modo programa: compila + transfiere a la
- *     placa (no hay botón Enviar aparte).
- *   - Stop: deshabilitado en modo programa; en vivo, sin cambios —
- *     Device.stopAll() llega al firmware como STOP.
- *   - Toggle vivo/programa (TitleBar.liveCellBn/progCellBn): opción del
- *     docente, persiste en SettingsManager.programMode.
+ * Dos modos, mismo flujo (Play unificado en TitleBar.flagBn):
+ *   - Vivo (default): transferencia VOLÁTIL (RAM, cero desgaste de flash)
+ *     + RUN. Para probar mientras se arma el programa.
+ *   - Programa/descarga: transferencia PERSISTENTE (flash con wear-leveling)
+ *     + RUN. La placa lo sigue corriendo standalone tras reset.
+ *   - Stop: CodeManager.stop → Device.stopAll → CMD_STOP en la placa.
+ *   - Play con un programa ya corriendo = reiniciar (la transferencia nueva
+ *     detiene la anterior en el firmware).
+ *
+ * El toggle vivo/programa (TitleBar.liveCellBn/progCellBn) persiste en
+ * SettingsManager.programMode.
  */
 function ProgramModeManager() {}
+
+/** Placa conectada (STX.BOARD_*); lo informa el backend al conectar */
+ProgramModeManager.boardId = 0;
+/** true mientras la placa ejecuta un programa que mandamos nosotros */
+ProgramModeManager.remoteRunning = false;
+/** índice de OP_MARK → Block del canvas (de la última compilación enviada) */
+ProgramModeManager.markerMap = null;
+/* bloques actualmente resaltados, uno por stack: [{stack, block}] */
+ProgramModeManager._active = [];
 
 ProgramModeManager.isProgramMode = function() {
   return SettingsManager.programMode.getValue() === "true";
@@ -21602,9 +21647,18 @@ ProgramModeManager.toggle = function() {
   }
 };
 
+ProgramModeManager.setBoardId = function(boardId) {
+  ProgramModeManager.boardId = boardId;
+};
+
+/** Los bloques de movimiento solo corren en placas con motores (Tiny:bit) */
+ProgramModeManager.allowMotors = function() {
+  return ProgramModeManager.boardId === STX.BOARD_TINYBIT;
+};
+
 /**
- * Compila los stacks del tab activo.
- * @return {{bytes: Uint8Array|null, errors: Array, warnings: Array}}
+ * Compila los stacks del tab activo (con marcadores de bloque).
+ * @return {{bytes: Uint8Array|null, markerMap: Array|null, errors: Array, warnings: Array}}
  */
 ProgramModeManager.compileCurrent = function() {
   var firstBlocks = [];
@@ -21616,24 +21670,31 @@ ProgramModeManager.compileCurrent = function() {
       }
     }
   }
-  var result = ProgramCompiler.compile(firstBlocks);
+  var result = ProgramCompiler.compile(firstBlocks, {
+    emitMarkers: true,
+    allowMotors: ProgramModeManager.allowMotors()
+  });
   if (result.errors.length > 0) {
-    return { bytes: null, errors: result.errors, warnings: result.warnings };
+    return { bytes: null, markerMap: null, errors: result.errors, warnings: result.warnings };
   }
   try {
     var bytes = BytecodeAssembler.assemble(result.ir);
-    return { bytes: bytes, errors: [], warnings: result.warnings };
+    return { bytes: bytes, markerMap: result.markerMap, errors: [], warnings: result.warnings };
   } catch (e) {
     return {
       bytes: null,
+      markerMap: null,
       errors: [{ code: e.code || "E_ASSEMBLE", detail: e.message }],
       warnings: result.warnings
     };
   }
 };
 
-/** Botón Enviar: compila y transfiere el programa a la placa */
-ProgramModeManager.sendClicked = function() {
+/**
+ * Play unificado: compila, transfiere (volátil en vivo, persistente en
+ * descarga) y manda RUN. Si ya hay un programa corriendo, lo reemplaza.
+ */
+ProgramModeManager.playClicked = function() {
   var result = ProgramModeManager.compileCurrent();
   if (result.bytes == null) {
     ProgramModeManager.reportErrors(result.errors);
@@ -21649,40 +21710,116 @@ ProgramModeManager.sendClicked = function() {
     TitleBar.flashFinchButton();
     return;
   }
+  ProgramModeManager.clearHighlights();
+  ProgramModeManager.markerMap = result.markerMap;
+
+  var mode = ProgramModeManager.isProgramMode() ? "download" : "live";
   var request = new HttpRequestBuilder("robot/out/program");
   request.addParam("type", device.getDeviceTypeId());
   request.addParam("id", device.id);
+  request.addParam("mode", mode);
   var base64 = ProgramModeManager.toBase64(result.bytes);
   HtmlServer.sendRequestWithCallback(request.toString(), function() {
-    GuiElements.alert("Program transferred");
+    GuiElements.alert("Programa transferido (" + mode + ")");
+    ProgramModeManager.sendRun(device);
   }, function(status, message) {
-    GuiElements.alert("Program transfer FAILED: " + status + " " + message);
+    GuiElements.alert("Fallo de transferencia: " + status + " " + message);
     ProgramModeManager.flashSendButton();
   }, true, base64, true, true);
 };
 
-/** Bandera en modo programa: corre lo ya transferido */
-ProgramModeManager.flagClicked = function() {
-  if (ProgramModeManager.debugWithoutBackend()) {
-    console.log("[ProgramMode] RUN");
-    return;
-  }
-  var device = DeviceFinch.getManager().getDevice(0);
-  if (device == null) {
-    TitleBar.flashFinchButton();
-    return;
-  }
+/** Manda RUN tras una transferencia exitosa */
+ProgramModeManager.sendRun = function(device) {
   var request = new HttpRequestBuilder("robot/out/runProgram");
   request.addParam("type", device.getDeviceTypeId());
   request.addParam("id", device.id);
-  HtmlServer.sendRequestWithCallback(request.toString(), null, function() {
+  HtmlServer.sendRequestWithCallback(request.toString(), function() {
+    ProgramModeManager.remoteRunning = true;
+  }, function() {
     ProgramModeManager.flashSendButton();
   }, false, null, true);
 };
 
+/* ---------------- Notificaciones push desde la placa (CallbackManager) --- */
+
+/** La placa está ejecutando el bloque markerMap[index]: resaltarlo */
+ProgramModeManager.onMarker = function(index) {
+  var map = ProgramModeManager.markerMap;
+  if (!ProgramModeManager.remoteRunning || map == null) {
+    return;
+  }
+  var block = map[index];
+  if (block == null || typeof block.setRemoteHighlight !== "function") {
+    return;
+  }
+  // un resaltado por stack: apagar el anterior del mismo stack
+  var active = ProgramModeManager._active;
+  for (var i = 0; i < active.length; i++) {
+    if (active[i].stack === block.stack) {
+      active[i].block.setRemoteHighlight(false);
+      active[i].block = block;
+      block.setRemoteHighlight(true);
+      return;
+    }
+  }
+  active.push({ stack: block.stack, block: block });
+  block.setRemoteHighlight(true);
+};
+
+/** El programa terminó solo en la placa */
+ProgramModeManager.onProgramDone = function(reason) {
+  ProgramModeManager.clearHighlights();
+  ProgramModeManager.remoteRunning = false;
+};
+
+/** La VM de la placa se detuvo por un error */
+ProgramModeManager.onProgramFault = function(errCode) {
+  ProgramModeManager.clearHighlights();
+  ProgramModeManager.remoteRunning = false;
+  DialogManager.showAlertDialog("SmartTEAM",
+    "El programa se detuvo por un error (código " + errCode + ")", "OK");
+};
+
+/** Stop (local o del botón): limpiar el estado de ejecución remota */
+ProgramModeManager.onRemoteStopped = function() {
+  ProgramModeManager.clearHighlights();
+  ProgramModeManager.remoteRunning = false;
+};
+
+/** El usuario editó el canvas: el mapa de marcadores quedó viejo */
+ProgramModeManager.invalidateMarkers = function() {
+  ProgramModeManager.clearHighlights();
+  ProgramModeManager.markerMap = null;
+};
+
+ProgramModeManager.clearHighlights = function() {
+  var active = ProgramModeManager._active;
+  for (var i = 0; i < active.length; i++) {
+    if (typeof active[i].block.setRemoteHighlight === "function") {
+      active[i].block.setRemoteHighlight(false);
+    }
+  }
+  ProgramModeManager._active = [];
+};
+
+/* ------------------------------------------------------------- helpers --- */
+
 /** Sin backend nativo ni host PWA: modo debug, loguear en consola */
 ProgramModeManager.debugWithoutBackend = function() {
   return HtmlServer.iosHandler == null && !window.AndroidInterface && !GuiElements.isPWA;
+};
+
+/** Textos de error de compilación para el docente/niño */
+ProgramModeManager.errorText = function(code) {
+  var table = {
+    E_EMPTY: "No hay bloques para enviar",
+    E_UNSUPPORTED_BLOCK: "Hay un bloque que la placa no entiende",
+    E_UNSUPPORTED_ON_BOARD: "Los bloques de movimiento necesitan el robot conectado",
+    E_TOO_MANY_STACKS: "Hay demasiados programas a la vez",
+    E_TOO_LARGE: "El programa es demasiado grande",
+    E_TOO_MANY_BLOCKS: "El programa tiene demasiados bloques"
+  };
+  return table[code] || ("No se pudo preparar el programa (" + code + ")");
 };
 
 ProgramModeManager.reportErrors = function(errors) {
@@ -21696,11 +21833,14 @@ ProgramModeManager.reportErrors = function(errors) {
     text += " ";
   }
   console.log("[ProgramMode] errores de compilación: " + text);
-  GuiElements.alert("Program compile errors: " + text);
+  if (errors.length > 0 && !ProgramModeManager.debugWithoutBackend()) {
+    DialogManager.showAlertDialog("SmartTEAM",
+      ProgramModeManager.errorText(errors[0].code), "OK");
+  }
 };
 
 ProgramModeManager.flashSendButton = function() {
-  //El Play unificado es quien envía el programa en modo descarga
+  //El Play unificado es quien envía el programa
   if (TitleBar.flagBn != null) {
     TitleBar.flagBn.flash();
   }
@@ -27756,6 +27896,32 @@ CallbackManager.robot.updateHasV2Microbit = function(robotId, hasV2String) {
   DeviceManager.setHasV2Microbit(robotId, hasV2)
   CodeManager.updateAvailableSensors(); //activates or deactivates micro:bit V2 only blocks
 }
+
+/* ---- Ejecución remota SmartTEAM (programa corriendo en la placa) ---- */
+
+/** La placa informa qué bloque está ejecutando (índice de OP_MARK) */
+CallbackManager.robot.programMarker = function(markIndex) {
+  ProgramModeManager.onMarker(Number(markIndex));
+  return true;
+};
+
+/** La placa informa que el programa terminó solo */
+CallbackManager.robot.programDone = function(reason) {
+  ProgramModeManager.onProgramDone(Number(reason));
+  return true;
+};
+
+/** La placa informa que el programa se detuvo por un error de la VM */
+CallbackManager.robot.programFault = function(errCode) {
+  ProgramModeManager.onProgramFault(Number(errCode));
+  return true;
+};
+
+/** Tipo de placa conectada (STX.BOARD_*): habilita bloques de motores */
+CallbackManager.robot.updateBoardType = function(robotId, boardId) {
+  ProgramModeManager.setBoardId(Number(boardId));
+  return true;
+};
 /**
  * Tells the frontend that a device has just been discovered
  * @param {string} robotTypeId - The percent encoded type of robot being scanned for
@@ -28659,6 +28825,10 @@ SaveManager.saveAsNew = function() {
  */
 SaveManager.markEdited = function() {
   CodeManager.updateModified();
+  if (FinchBlox && typeof ProgramModeManager !== "undefined") {
+    // El canvas cambió: el mapa de marcadores de la placa quedó viejo
+    ProgramModeManager.invalidateMarkers();
+  }
   if (SaveManager.fileName != null) {
     SaveManager.autoSave();
   }
@@ -29332,6 +29502,26 @@ Block.prototype.updateRunColor = function() {
     return;
   }
   if (this.running === 1 || this.running === 2) {
+    GuiElements.update.color(this.path, Colors.flagGreen);
+    if (this.topPath != null) {
+      GuiElements.update.color(this.topPath, Colors.fbDarkGreen);
+    }
+  } else {
+    GuiElements.update.color(this.path, Colors.categoryColors[this.category]);
+    if (this.topPath != null) {
+      GuiElements.update.color(this.topPath, this.topPathColor);
+    }
+  }
+}
+
+/**
+ * Resaltado de ejecución REMOTA (el programa corre en la placa, que notifica
+ * el bloque actual vía OP_MARK). Mismos colores que updateRunColor, pero sin
+ * tocar this.running, que es estado del intérprete local.
+ * @param {boolean} on
+ */
+Block.prototype.setRemoteHighlight = function(on) {
+  if (on) {
     GuiElements.update.color(this.path, Colors.flagGreen);
     if (this.topPath != null) {
       GuiElements.update.color(this.topPath, Colors.fbDarkGreen);

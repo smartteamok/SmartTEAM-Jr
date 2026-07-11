@@ -126,6 +126,12 @@ BytecodeAssembler.emitOps = function(body, code, S) {
         code.push(S.OP_WAIT_MS);
         BytecodeAssembler.pushU16(code, op.ms);
         break;
+      case "mark":
+        if (op.index < 0 || op.index > 0xFF) {
+          throw BytecodeAssembler.error("E_BAD_MARK", String(op.index));
+        }
+        code.push(S.OP_MARK, op.index & 0xFF);
+        break;
       case "waitUntil": {
         const condFn = BytecodeAssembler.CONDS[op.cond];
         if (condFn == null) {

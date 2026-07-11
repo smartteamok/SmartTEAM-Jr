@@ -113,6 +113,7 @@ WebBLE.connect = async function(id, robotId) {
     const service = await server.getPrimaryService(WebBLE.UART_SERVICE);
     WebBLE.rxChar = await service.getCharacteristic(WebBLE.UART_RX);
     WebBLE.txChar = await service.getCharacteristic(WebBLE.UART_TX);
+    WebBLE.rxBuf = []; // descartar restos de una conexión anterior
     await WebBLE.txChar.startNotifications();
     WebBLE.txChar.addEventListener("characteristicvaluechanged", WebBLE.onNotify);
     device.addEventListener("gattserverdisconnected", function() {
@@ -124,14 +125,36 @@ WebBLE.connect = async function(id, robotId) {
     respond(id, 200, "");
     pushCallback(function(cb) {
       cb.robot.updateStatus(device.id, true);
-      cb.robot.updateFirmwareStatus(device.id, "upToDate");
       cb.robot.updateHasV2Microbit(device.id, "true");
     });
+    WebBLE.queryFirmware(device.id);
   } catch (e) {
     console.warn("[webble] connect: " + e.message);
     respond(id, 500, e.message);
     pushCallback(function(cb) { cb.robot.connectionFailure(robotId); });
   }
+};
+
+/** GET_STATUS post-conexión: versión de protocolo real + tipo de placa */
+WebBLE.queryFirmware = async function(robotId) {
+  let fwStatus = "old";
+  let boardId = STX.BOARD_BASIC;
+  try {
+    const resp = await WebBLE.commandWithRetry(new Uint8Array([STX.CMD_GET_STATUS]));
+    if (resp.length >= 14 && resp[12] >= STX.PROTO_VERSION) {
+      fwStatus = "upToDate";
+      boardId = resp[13];
+    }
+  } catch (e) {
+    console.warn("[webble] GET_STATUS falló: " + e.message);
+  }
+  WebBLE.boardId = boardId;
+  pushCallback(function(cb) {
+    cb.robot.updateFirmwareStatus(robotId, fwStatus);
+    if (cb.robot.updateBoardType != null) {
+      cb.robot.updateBoardType(robotId, boardId);
+    }
+  });
 };
 
 WebBLE.disconnect = function(id) {
@@ -143,15 +166,74 @@ WebBLE.disconnect = function(id) {
 
 /* ------------------------------------------- BLE: protocolo stx_proto.h */
 
+/* Longitud de cada paquete firmware→editor según su primer byte (espejo del
+ * framing del firmware: MicroBitUARTService puede concatenar o partir los
+ * notify TX, así que el RX también es un stream). */
+WebBLE.RESP_LEN = {
+  0x81: 2,  // XFER_BEGIN
+  0x82: 3,  // XFER_CHUNK [seq][status]
+  0x83: 2,  // XFER_END
+  0x90: 2,  // RUN
+  0x91: 2,  // STOP
+  0x92: 14, // GET_STATUS
+  0x93: 2,  // ERASE
+  0x94: 5,  // GET_SENSORS
+  0xA0: 2,  // LIVE_EXEC
+  0xF0: 2,  // NOTIF_MARK
+  0xF1: 2,  // NOTIF_DONE
+  0xF2: 2   // NOTIF_FAULT
+};
+
+WebBLE.rxBuf = [];
+
 WebBLE.onNotify = function(event) {
   const data = new Uint8Array(event.target.value.buffer);
+  for (let i = 0; i < data.length; i++) {
+    WebBLE.rxBuf.push(data[i]);
+  }
+  // reensamblar paquetes completos y despachar
+  while (WebBLE.rxBuf.length > 0) {
+    const need = WebBLE.RESP_LEN[WebBLE.rxBuf[0]];
+    if (need == null) {
+      WebBLE.rxBuf.shift(); // byte inválido: re-sincronizar
+      continue;
+    }
+    if (WebBLE.rxBuf.length < need) {
+      break; // faltan bytes
+    }
+    const packet = new Uint8Array(WebBLE.rxBuf.splice(0, need));
+    WebBLE.dispatchPacket(packet);
+  }
+};
+
+WebBLE.dispatchPacket = function(packet) {
+  if (packet[0] >= 0xF0) {
+    WebBLE.onPush(packet);
+    return;
+  }
   const pending = WebBLE.pendingResponse;
-  if (pending != null && data.length >= 1 && data[0] === (pending.cmd | STX.RESP_FLAG)) {
+  if (pending != null && packet[0] === (pending.cmd | STX.RESP_FLAG)) {
     clearTimeout(pending.timer);
     WebBLE.pendingResponse = null;
-    pending.resolve(data);
+    pending.resolve(packet);
   } else {
-    console.log("[webble] notificación no esperada:", data);
+    console.log("[webble] respuesta no esperada:", packet);
+  }
+};
+
+/** Notificaciones push del firmware (ejecución remota del programa) */
+WebBLE.onPush = function(packet) {
+  const arg = packet[1];
+  switch (packet[0]) {
+    case STX.NOTIF_MARK:
+      pushCallback(function(cb) { cb.robot.programMarker(arg); });
+      break;
+    case STX.NOTIF_DONE:
+      pushCallback(function(cb) { cb.robot.programDone(arg); });
+      break;
+    case STX.NOTIF_FAULT:
+      pushCallback(function(cb) { cb.robot.programFault(arg); });
+      break;
   }
 };
 
@@ -191,10 +273,11 @@ WebBLE.commandWithRetry = async function(packet) {
   throw lastError;
 };
 
-/** Transfiere una imagen STX1 completa: BEGIN + chunks + END */
-WebBLE.sendProgram = async function(bytes) {
+/** Transfiere una imagen STX1 completa: BEGIN + chunks + END.
+ * options.volatile: no persistir en flash (modo vivo, cero desgaste). */
+WebBLE.sendProgram = async function(bytes, options) {
   const crc = BytecodeAssembler.crc32(bytes);
-  const begin = new Uint8Array(7);
+  const begin = new Uint8Array(8);
   begin[0] = STX.CMD_XFER_BEGIN;
   begin[1] = bytes.length & 0xFF;
   begin[2] = (bytes.length >> 8) & 0xFF;
@@ -202,6 +285,7 @@ WebBLE.sendProgram = async function(bytes) {
   begin[4] = (crc >>> 8) & 0xFF;
   begin[5] = (crc >>> 16) & 0xFF;
   begin[6] = (crc >>> 24) & 0xFF;
+  begin[7] = (options && options.volatile) ? STX.XFER_FLAG_VOLATILE : 0;
   let resp = await WebBLE.commandWithRetry(begin);
   if (resp[1] !== STX.STATUS_OK) {
     throw new Error("XFER_BEGIN status " + resp[1]);
@@ -408,8 +492,12 @@ routes["robot/stopAll"] = function(id) {
 
 routes["robot/out/program"] = function(id, params, body) {
   const bytes = base64ToBytes(body);
-  WebBLE.sendProgram(bytes).then(function() {
-    console.log("[webble] programa transferido: " + bytes.length + " bytes");
+  // mode=live → transferencia volátil (RAM, sin desgaste de flash);
+  // mode=download (o ausente) → persiste y corre standalone tras reset
+  const isVolatile = params.mode === "live";
+  WebBLE.sendProgram(bytes, { volatile: isVolatile }).then(function() {
+    console.log("[webble] programa transferido (" + (isVolatile ? "vivo" : "descarga") +
+      "): " + bytes.length + " bytes");
     respond(id, 200, "");
   }).catch(function(e) {
     console.warn("[webble] transferencia falló: " + e.message);
@@ -462,6 +550,32 @@ function rgbLiveRoute(id, params) {
 }
 routes["robot/out/beak"] = rgbLiveRoute;
 routes["robot/out/tail"] = rgbLiveRoute;
+
+routes["robot/out/motors"] = function(id, params) {
+  // Solo útil con placa con motores (Tiny:bit); en la básica el firmware
+  // responde REJECTED y devolvemos 200 igual (tolerante, como stopAll)
+  const clampI8 = function(v) {
+    return Math.max(-100, Math.min(100, Math.round(Number(v) || 0))) & 0xFF;
+  };
+  const speedL = clampI8(params.speedL);
+  const speedR = clampI8(params.speedR);
+  const ticks = Math.max(0, Math.min(0xFFFF,
+    Math.max(Number(params.ticksL) || 0, Number(params.ticksR) || 0)));
+  let instr;
+  if (speedL === 0 && speedR === 0) {
+    instr = new Uint8Array([STX.OP_MOTORS_STOP]);
+  } else if (ticks > 0) {
+    instr = new Uint8Array([STX.OP_MOTORS_TICKS, speedL, speedR,
+      ticks & 0xFF, (ticks >> 8) & 0xFF]);
+  } else {
+    instr = new Uint8Array([STX.OP_MOTORS, speedL, speedR]);
+  }
+  WebBLE.liveExec(instr).then(function() {
+    respond(id, 200, "");
+  }).catch(function() {
+    respond(id, 200, "");
+  });
+};
 
 routes["robot/in"] = function(id) {
   respond(id, 200, "0"); // sensores live: slice 2 (GET_SENSORS)

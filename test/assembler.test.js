@@ -161,3 +161,18 @@ test("pipeline completo: compilar fixtures y ensamblar", function() {
   assert.strictEqual(image[image.length - 2], STX.OP_LOOP_END);
   assert.strictEqual(image[image.length - 1], STX.OP_HALT);
 });
+
+test("mark emite OP_MARK con el índice", function() {
+  const image = BytecodeAssembler.assemble(ir([startHandler([
+    { op: "mark", index: 3 },
+    { op: "ledClear" }
+  ])]));
+  const code = Array.from(image.subarray(STX.HEADER_SIZE + STX.EVENT_ENTRY_SIZE));
+  assert.deepStrictEqual(code, [STX.OP_MARK, 3, STX.OP_LED_CLEAR, STX.OP_HALT]);
+});
+
+test("mark con índice fuera de rango -> E_BAD_MARK", function() {
+  assert.throws(function() {
+    BytecodeAssembler.assemble(ir([startHandler([{ op: "mark", index: 256 }])]));
+  }, function(e) { return e.code === "E_BAD_MARK"; });
+});

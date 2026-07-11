@@ -243,20 +243,14 @@ TitleBar.makeButtons = function() {
     }, true);
 
     // Centro: Play / Stop (PRINCIPALES) colgando encastrados en la muesca.
-    // En modo vivo Play ejecuta; en modo programa (descarga) el mismo Play
-    // compila y transfiere a la placa, y Stop se apaga. No hay botón Enviar
-    // aparte. Ver ProgramModeManager.
+    // Play unificado: compila, transfiere por BLE y la placa ejecuta
+    // (volátil en vivo, persistente en modo descarga). Ver
+    // ProgramModeManager.playClicked.
     const primaryR = 22;
     const playStopY = TB.inset + TB.barH - TB.notchDepth + 4;
     TB.flagBn = new Button(TB.flagBnX, playStopY, TB.longButtonW, primaryH, TBLayer, Colors.flagGreen, primaryR, primaryR);
     TB.flagBn.addIcon(VectorPaths.faPlay, TB.bnIconH);
-    TB.flagBn.setCallbackFunction(function() {
-      if (ProgramModeManager.isProgramMode()) {
-        ProgramModeManager.sendClicked();
-      } else {
-        CodeManager.eventFlagClicked();
-      }
-    }, false);
+    TB.flagBn.setCallbackFunction(ProgramModeManager.playClicked, false);
 
     TB.stopBn = new Button(TB.stopBnX, playStopY, TB.longButtonW, primaryH, TBLayer, Colors.stopRed, primaryR, primaryR);
     TB.stopBn.addIcon(VectorPaths.stStopSquare, TB.bnIconH * 0.9);
@@ -293,17 +287,11 @@ TitleBar.makeButtons = function() {
 
     TB.updateModeButtons = function() {
       const programMode = ProgramModeManager.isProgramMode();
-      //Celda activa en blanco; la inactiva se funde con el fondo del toggle
+      //Celda activa en blanco; la inactiva se funde con el fondo del toggle.
+      //Stop queda activo en ambos modos: siempre puede frenar a la placa.
       TB.liveCellBn.updateBgColor(programMode ? Colors.stVioletDark : Colors.white);
       TB.progCellBn.iconColor = programMode ? Colors.stViolet : Colors.white;
       TB.progCellBn.updateBgColor(programMode ? Colors.white : Colors.stVioletDark);
-      if (programMode) {
-        TB.stopBn.disable();
-        GuiElements.update.opacity(TB.stopBn.group, 0.3);
-      } else {
-        TB.stopBn.enable();
-        GuiElements.update.opacity(TB.stopBn.group, 1);
-      }
     };
     TB.updateModeButtons();
 
