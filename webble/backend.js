@@ -87,11 +87,14 @@ WebBLE.discover = async function(id) {
     WebBLE.discovered = device;
     respond(id, 200, "");
     pushCallback(function(cb) {
+      // device DEBE ser "Finch": Device.fromJson solo construye clases
+      // conocidas y el DiscoverDialog de FinchBlox filtra por la clase de su
+      // manager (DeviceFinch). La placa SmartTEAM ocupa ese rol en este fork.
       cb.robot.discovered(JSON.stringify([{
         name: device.name || "micro:bit",
         id: device.id,
         RSSI: -50,
-        device: "microbit"
+        device: "Finch"
       }]));
     });
   } catch (e) {
