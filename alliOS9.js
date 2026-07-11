@@ -11640,13 +11640,14 @@ TitleBar.setGraphicsPart1 = function() {
   } else {
     if (FinchBlox) {
       //Barra flotante SmartTEAM: separada de los bordes, esquinas redondeadas
-      //y muesca central ("panza") donde cuelgan Play/Stop, como el FinchBlox
-      //original. El logo va arriba, centrado sobre la muesca.
-      TB.inset = 14; //distancia de la barra a los bordes de la pantalla
-      TB.barH = 86; //alto de la barra flotante en los laterales
-      TB.centerH = 54; //alto de la franja central (arriba de la muesca)
-      TB.barRadius = 26;
-      TB.height = TB.barH + 2 * TB.inset; //espacio total reservado arriba
+      //y muesca central cóncava donde cuelgan Play/Stop. El logo va arriba,
+      //centrado sobre la muesca.
+      TB.inset = 14; //separación de la barra a los bordes
+      TB.barH = 84; //alto de la barra flotante
+      TB.barRadius = 26; //redondeo de esquinas exteriores
+      TB.notchDepth = 30; //cuánto sube el borde inferior en el centro (muesca)
+      TB.notchShoulder = 16; //radio de los hombros de la muesca (curva suave)
+      TB.height = TB.barH + 2 * TB.inset;
       TB.solidHeight = 0; //el lienzo pasa por detrás de la barra flotante
     } else {
       TB.height = 54;
@@ -11657,11 +11658,11 @@ TitleBar.setGraphicsPart1 = function() {
 
   if (FinchBlox) {
     TB.tallButtonH = 62;
-    TB.buttonH = 60; //botones cuadrados (nivel, deshacer)
-    TB.buttonW = 60;
+    TB.buttonH = 54; //botones cuadrados secundarios (nivel)
+    TB.buttonW = 54;
     var maxBnWidth = (TB.width - 6 * TB.buttonMargin) / 8;
     TB.buttonW = Math.min(maxBnWidth, TB.buttonW);
-    TB.longButtonW = 104; //Play y Stop
+    TB.longButtonW = 112; //ancho de Play y Stop (botones PRINCIPALES)
     var maxLongBnW = maxBnWidth * 2;
     TB.longButtonW = Math.min(maxLongBnW, TB.longButtonW);
 
@@ -11748,39 +11749,44 @@ TitleBar.createBar = function() {
 };
 
 /**
- * Contorno de la barra flotante FinchBlox: rectángulo redondeado cuyo borde
- * inferior sube en el centro (S-curvas) dejando una franja fina de alto
- * centerH bajo la cual cuelgan Play y Stop. Deja los límites de la muesca en
- * TB.notchLeftX / TB.notchRightX para ubicar los botones.
+ * Contorno de la barra flotante FinchBlox: rectángulo redondeado con una
+ * muesca cóncava en el borde inferior que abraza a Play/Stop. Comandos
+ * absolutos, simétrico. Deja los límites de la muesca en TB.notchLeftX /
+ * TB.notchRightX para ubicar los botones.
  * @return {string} - atributo "d" del path
  */
 TitleBar.barPathD = function() {
   var TB = TitleBar;
-  var x0 = TB.inset;
+  var x = TB.inset, y = TB.inset;
   var W = TB.width - 2 * TB.inset;
-  var r0 = TB.barRadius;
-  var r = (TB.barH - TB.centerH) / 2;
+  var H = TB.barH;
+  var r = TB.barRadius;
+  var dep = TB.notchDepth;
+  var sh = TB.notchShoulder;
   var cx = TB.width / 2;
-  var gapHalf = TB.longButtonW + TB.buttonMargin / 2 + 6;
-  TB.notchLeftX = cx - gapHalf - 2 * r;
-  TB.notchRightX = cx + gapHalf + 2 * r;
+  var half = TB.longButtonW + TB.buttonMargin / 2 + 12; //medio ancho del par Play+Stop
+  var nL = cx - half, nR = cx + half;
+  TB.notchLeftX = nL;
+  TB.notchRightX = nR;
 
-  var d = "m " + (x0 + r0) + "," + TB.inset;
-  d += " l " + (W - 2 * r0) + ",0";
-  d += " a " + r0 + " " + r0 + " 0 0 1 " + r0 + " " + r0;
-  d += " l 0," + (TB.barH - 2 * r0);
-  d += " a " + r0 + " " + r0 + " 0 0 1 " + (-r0) + " " + r0;
-  d += " l " + (TB.notchRightX - (x0 + W - r0)) + ",0";
-  d += " a " + r + " " + r + " 0 0 1 " + (-r) + " " + (-r);
-  d += " a " + r + " " + r + " 0 0 0 " + (-r) + " " + (-r);
-  d += " l " + (-2 * gapHalf) + ",0";
-  d += " a " + r + " " + r + " 0 0 0 " + (-r) + " " + r;
-  d += " a " + r + " " + r + " 0 0 1 " + (-r) + " " + r;
-  d += " l " + ((x0 + r0) - TB.notchLeftX) + ",0";
-  d += " a " + r0 + " " + r0 + " 0 0 1 " + (-r0) + " " + (-r0);
-  d += " l 0," + (-(TB.barH - 2 * r0));
-  d += " a " + r0 + " " + r0 + " 0 0 1 " + r0 + " " + (-r0);
-  d += " z";
+  var d = "M " + (x + r) + " " + y;
+  d += " H " + (x + W - r);
+  d += " A " + r + " " + r + " 0 0 1 " + (x + W) + " " + (y + r); //esq. sup-der
+  d += " V " + (y + H - r);
+  d += " A " + r + " " + r + " 0 0 1 " + (x + W - r) + " " + (y + H); //esq. inf-der
+  d += " H " + (nR + sh);
+  d += " A " + sh + " " + sh + " 0 0 1 " + nR + " " + (y + H - sh); //hombro der (sube)
+  d += " V " + (y + H - dep + sh);
+  d += " A " + sh + " " + sh + " 0 0 0 " + (nR - sh) + " " + (y + H - dep); //al techo
+  d += " H " + (nL + sh); //techo de la muesca
+  d += " A " + sh + " " + sh + " 0 0 0 " + nL + " " + (y + H - dep + sh); //baja izq
+  d += " V " + (y + H - sh);
+  d += " A " + sh + " " + sh + " 0 0 1 " + (nL - sh) + " " + (y + H); //hombro izq (baja)
+  d += " H " + (x + r);
+  d += " A " + r + " " + r + " 0 0 1 " + x + " " + (y + H - r); //esq. inf-izq
+  d += " V " + (y + r);
+  d += " A " + r + " " + r + " 0 0 1 " + (x + r) + " " + y; //esq. sup-izq
+  d += " Z";
   return d;
 };
 
@@ -11792,15 +11798,20 @@ TitleBar.makeButtons = function() {
   var TBLayer = GuiElements.layers.titlebar;
   if (FinchBlox) {
     var r = TB.defaultCornerRounding;
-    var h = TB.tallButtonH;
-    var y = TB.inset + (TB.barH - h) / 2;
     var edge = TB.inset + 18; //padding interno de la barra flotante
+    //Jerarquía de tamaños: Play/Stop principales, Conectar/Nivel secundarios,
+    //Deshacer/toggle terciarios. Cada grupo centrado en la barra por su alto.
+    var primaryH = 66; //Play / Stop
+    var secondaryH = 54; //Conectar, Nivel
+    var tertiaryH = 46; //Deshacer
+    var secondaryY = TB.inset + (TB.barH - secondaryH) / 2;
+    var tertiaryY = TB.inset + (TB.barH - tertiaryH) / 2;
 
     // Logo SmartTEAM blanco, centrado en la franja superior de la muesca
     var logoH = 34;
     var logoW = logoH * 611.316 / 374; //proporción del SVG del logo
     var logoX = (TB.width - logoW) / 2;
-    var logoY = TB.inset + (TB.centerH - logoH) / 2;
+    var logoY = TB.inset + (TB.barH - TB.notchDepth - logoH) / 2;
     TB.logoImg = GuiElements.create.image();
     TB.logoImg.setAttributeNS("http://www.w3.org/1999/xlink", "href", "Images/smartteam-logo-white.svg");
     TB.logoImg.setAttributeNS(null, "x", logoX);
@@ -11825,11 +11836,11 @@ TitleBar.makeButtons = function() {
     }
     DeviceManager.setStatusListener(TB.updateStatus);
 
-    //Conectar robot a la izquierda; acotado a la zona alta de la barra
-    //(antes de que el borde inferior suba hacia la muesca)
+    //Conectar robot a la izquierda (secundario); acotado antes de que el
+    //borde inferior suba hacia la muesca
     var connectBnX = edge;
-    var connectBnW = Math.max(120, Math.min(190, TB.notchLeftX - connectBnX - 8));
-    TB.finchButton = new Button(connectBnX, y, connectBnW, h, TBLayer, Colors.stCoral, r, r);
+    var connectBnW = Math.max(120, Math.min(180, TB.notchLeftX - connectBnX - 8));
+    TB.finchButton = new Button(connectBnX, secondaryY, connectBnW, secondaryH, TBLayer, Colors.stCoral, r, r);
     TB.finchButton.addRobotBnContent();
     TB.finchButton.setCallbackFunction(function() {
       switch (DeviceManager.getStatus()) {
@@ -11845,12 +11856,13 @@ TitleBar.makeButtons = function() {
       }
     }, true);
 
-    // Centro: Play / Stop colgando en la muesca de la barra. En modo vivo
-    // Play ejecuta; en modo programa (descarga) el mismo Play compila y
-    // transfiere a la placa, y Stop se apaga. No hay botón Enviar aparte.
-    // Ver ProgramModeManager.
-    var playStopY = TB.inset + TB.centerH - 12;
-    TB.flagBn = new Button(TB.flagBnX, playStopY, TB.longButtonW, h, TBLayer, Colors.flagGreen, r, r);
+    // Centro: Play / Stop (PRINCIPALES) colgando encastrados en la muesca.
+    // En modo vivo Play ejecuta; en modo programa (descarga) el mismo Play
+    // compila y transfiere a la placa, y Stop se apaga. No hay botón Enviar
+    // aparte. Ver ProgramModeManager.
+    var primaryR = 22;
+    var playStopY = TB.inset + TB.barH - TB.notchDepth + 4;
+    TB.flagBn = new Button(TB.flagBnX, playStopY, TB.longButtonW, primaryH, TBLayer, Colors.flagGreen, primaryR, primaryR);
     TB.flagBn.addIcon(VectorPaths.faPlay, TB.bnIconH);
     TB.flagBn.setCallbackFunction(function() {
       if (ProgramModeManager.isProgramMode()) {
@@ -11860,16 +11872,17 @@ TitleBar.makeButtons = function() {
       }
     }, false);
 
-    TB.stopBn = new Button(TB.stopBnX, playStopY, TB.longButtonW, h, TBLayer, Colors.stopRed, r, r);
+    TB.stopBn = new Button(TB.stopBnX, playStopY, TB.longButtonW, primaryH, TBLayer, Colors.stopRed, primaryR, primaryR);
     TB.stopBn.addIcon(VectorPaths.stStopSquare, TB.bnIconH * 0.9);
     TB.stopBn.setCallbackFunction(CodeManager.stop, false);
 
-    // Derecha: toggle vivo/programa segmentado, nivel y deshacer
-    TB.undoBnX = TB.width - TB.inset - 18 - TB.buttonW;
-    TB.levelBnX = TB.undoBnX - TB.buttonMargin - TB.buttonW;
+    // Derecha: grupo Modo+Nivel (secundarios) junto, aire, y Deshacer
+    // (terciario) separado para que se lean como bloques funcionales
+    TB.undoBnX = TB.width - TB.inset - 18 - tertiaryH;
+    TB.levelBnX = TB.undoBnX - 24 - TB.buttonW; //aire entre grupos
 
-    var cell = 46; //celdas del toggle segmentado
-    var cellPad = 5;
+    var cell = 40; //celdas del toggle segmentado
+    var cellPad = 4;
     var toggleW = 2 * cell + 3 * cellPad;
     var toggleH = cell + 2 * cellPad;
     var toggleX = TB.levelBnX - TB.buttonMargin - toggleW;
@@ -11908,11 +11921,11 @@ TitleBar.makeButtons = function() {
     };
     TB.updateModeButtons();
 
-    TB.undoButton = new Button(TB.undoBnX, y, TB.buttonW, h, TBLayer, Colors.stAmber, r, r);
-    TB.undoButton.addIcon(VectorPaths.faUndoAlt, TB.bnIconH * 0.8);
+    TB.undoButton = new Button(TB.undoBnX, tertiaryY, tertiaryH, tertiaryH, TBLayer, Colors.stAmber, 16, 16);
+    TB.undoButton.addIcon(VectorPaths.faUndoAlt, TB.bnIconH * 0.75);
     UndoManager.setUndoButton(TB.undoButton);
 
-    TB.levelButton = new Button(TB.levelBnX, y, TB.buttonW, h, TBLayer, Colors.white, r, r);
+    TB.levelButton = new Button(TB.levelBnX, secondaryY, TB.buttonW, secondaryH, TBLayer, Colors.white, r, r);
     TB.levelButton.addText(LevelManager.currentLevel, LevelManager.levelButtonFont, Colors.stViolet);
     TB.levelButton.setCallbackFunction(function() {
       (new LevelDialog()).show();
@@ -12203,21 +12216,21 @@ BlockPalette.setGraphics = function() {
   // Dimensions for the region with CategoryBNs
   if (FinchBlox) {
     //Bandeja flotante SmartTEAM: separada de los bordes, tinte por categoría
-    //y muesca central ("panza" hacia adentro) donde anidan las pestañas,
-    //como el FinchBlox original
+    //y muesca cóncava en el borde superior donde encastran las pestañas
     BlockPalette.inset = 14;
     BlockPalette.cornerRadius = 26;
-    BlockPalette.notchRadius = 10; //la muesca baja 2*notchRadius
+    BlockPalette.notchDepth = 34; //cuánto BAJA el borde superior en el centro
+    BlockPalette.notchShoulder = 16; //radio de los hombros
     BlockPalette.width = GuiElements.width;
-    BlockPalette.height = 120;
+    BlockPalette.height = 128;
     BlockPalette.y = GuiElements.height - BlockPalette.height - BlockPalette.inset;
     BlockPalette.bg = Colors.stCyanTint;
-    BlockPalette.mainVMargin = 34; //centra verticalmente los bloques bajo la muesca
+    BlockPalette.mainVMargin = 46; //baja los bloques para centrarlos DEBAJO de la muesca
     BlockPalette.catW = 300;
     BlockPalette.catX = GuiElements.width / 2 - BlockPalette.catW / 2;
-    BlockPalette.catH = 52;
-    //Las pestañas apoyan sobre el piso de la muesca
-    BlockPalette.catY = BlockPalette.y + 2 * BlockPalette.notchRadius - BlockPalette.catH;
+    BlockPalette.catH = 56; //alto de las pestañas
+    //El borde inferior de la pestaña apoya en el piso de la muesca
+    BlockPalette.catY = BlockPalette.y + BlockPalette.notchDepth - BlockPalette.catH;
     BlockPalette.blockMargin = 20; // The horizontal spacing between Blocks
     BlockPalette.trashHeight = BlockPalette.height * 0.6;
     BlockPalette.trashIconVP = VectorPaths.faTrash;
@@ -12304,20 +12317,22 @@ BlockPalette.createPalBg = function() {
 };
 
 /**
- * Contorno de la bandeja FinchBlox: rectángulo redondeado cuyo borde superior
- * baja en el centro (S-curvas) formando el hueco donde anidan las pestañas
- * de categoría.
+ * Contorno de la bandeja FinchBlox: rectángulo redondeado con muesca cóncava
+ * en el borde superior donde encastran las pestañas de categoría. Comandos
+ * absolutos, simétrico.
  * @return {string} - atributo "d" del path
  */
 BlockPalette.trayPathD = function() {
   var BP = BlockPalette;
-  var x0 = BP.inset;
+  var x = BP.inset, y = BP.y;
   var W = BP.width - 2 * BP.inset;
   var H = BP.height;
-  var r0 = BP.cornerRadius;
-  var rN = BP.notchRadius;
+  var r = BP.cornerRadius;
+  var dep = BP.notchDepth;
+  var sh = BP.notchShoulder;
   var cx = BP.width / 2;
-  //La muesca se ajusta a la cantidad de pestañas del nivel actual
+
+  //La muesca se adapta a la cantidad de pestañas visibles del nivel actual
   var tabCount = 3;
   if (BP.categories != null && BP.categories.length > 0 && typeof LevelManager !== "undefined") {
     var visible = 0;
@@ -12326,25 +12341,27 @@ BlockPalette.trayPathD = function() {
     });
     if (visible > 0) tabCount = visible;
   }
-  var gapHalf = (tabCount * CategoryBN.width + (tabCount - 1) * CategoryBN.hMargin) / 2 + 16;
-  var notchLeft = cx - gapHalf - 2 * rN;
+  var half = (tabCount * CategoryBN.width + (tabCount - 1) * CategoryBN.hMargin) / 2 + 16;
+  var nL = cx - half, nR = cx + half;
 
-  var d = "m " + (x0 + r0) + "," + BP.y;
-  d += " l " + (notchLeft - (x0 + r0)) + ",0";
-  d += " a " + rN + " " + rN + " 0 0 1 " + rN + " " + rN;
-  d += " a " + rN + " " + rN + " 0 0 0 " + rN + " " + rN;
-  d += " l " + (2 * gapHalf) + ",0";
-  d += " a " + rN + " " + rN + " 0 0 0 " + rN + " " + (-rN);
-  d += " a " + rN + " " + rN + " 0 0 1 " + rN + " " + (-rN);
-  d += " l " + ((x0 + W - r0) - (cx + gapHalf + 2 * rN)) + ",0";
-  d += " a " + r0 + " " + r0 + " 0 0 1 " + r0 + " " + r0;
-  d += " l 0," + (H - 2 * r0);
-  d += " a " + r0 + " " + r0 + " 0 0 1 " + (-r0) + " " + r0;
-  d += " l " + (-(W - 2 * r0)) + ",0";
-  d += " a " + r0 + " " + r0 + " 0 0 1 " + (-r0) + " " + (-r0);
-  d += " l 0," + (-(H - 2 * r0));
-  d += " a " + r0 + " " + r0 + " 0 0 1 " + r0 + " " + (-r0);
-  d += " z";
+  var d = "M " + (x + r) + " " + y;
+  d += " H " + (nL - sh);
+  d += " A " + sh + " " + sh + " 0 0 1 " + nL + " " + (y + sh); //hombro izq (baja)
+  d += " V " + (y + dep - sh);
+  d += " A " + sh + " " + sh + " 0 0 0 " + (nL + sh) + " " + (y + dep); //al piso
+  d += " H " + (nR - sh); //piso de la muesca
+  d += " A " + sh + " " + sh + " 0 0 0 " + nR + " " + (y + dep - sh); //sube der
+  d += " V " + (y + sh);
+  d += " A " + sh + " " + sh + " 0 0 1 " + (nR + sh) + " " + y; //hombro der (sube)
+  d += " H " + (x + W - r);
+  d += " A " + r + " " + r + " 0 0 1 " + (x + W) + " " + (y + r);
+  d += " V " + (y + H - r);
+  d += " A " + r + " " + r + " 0 0 1 " + (x + W - r) + " " + (y + H);
+  d += " H " + (x + r);
+  d += " A " + r + " " + r + " 0 0 1 " + x + " " + (y + H - r);
+  d += " V " + (y + r);
+  d += " A " + r + " " + r + " 0 0 1 " + (x + r) + " " + y;
+  d += " Z";
   return d;
 };
 

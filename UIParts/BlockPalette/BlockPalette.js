@@ -35,21 +35,21 @@ BlockPalette.setGraphics = function() {
   // Dimensions for the region with CategoryBNs
   if (FinchBlox) {
     //Bandeja flotante SmartTEAM: separada de los bordes, tinte por categoría
-    //y muesca central ("panza" hacia adentro) donde anidan las pestañas,
-    //como el FinchBlox original
+    //y muesca cóncava en el borde superior donde encastran las pestañas
     BlockPalette.inset = 14;
     BlockPalette.cornerRadius = 26;
-    BlockPalette.notchRadius = 10; //la muesca baja 2*notchRadius
+    BlockPalette.notchDepth = 34; //cuánto BAJA el borde superior en el centro
+    BlockPalette.notchShoulder = 16; //radio de los hombros
     BlockPalette.width = GuiElements.width;
-    BlockPalette.height = 120;
+    BlockPalette.height = 128;
     BlockPalette.y = GuiElements.height - BlockPalette.height - BlockPalette.inset;
     BlockPalette.bg = Colors.stCyanTint;
-    BlockPalette.mainVMargin = 34; //centra verticalmente los bloques bajo la muesca
+    BlockPalette.mainVMargin = 46; //baja los bloques para centrarlos DEBAJO de la muesca
     BlockPalette.catW = 300;
     BlockPalette.catX = GuiElements.width / 2 - BlockPalette.catW / 2;
-    BlockPalette.catH = 52;
-    //Las pestañas apoyan sobre el piso de la muesca
-    BlockPalette.catY = BlockPalette.y + 2 * BlockPalette.notchRadius - BlockPalette.catH;
+    BlockPalette.catH = 56; //alto de las pestañas
+    //El borde inferior de la pestaña apoya en el piso de la muesca
+    BlockPalette.catY = BlockPalette.y + BlockPalette.notchDepth - BlockPalette.catH;
     BlockPalette.blockMargin = 20; // The horizontal spacing between Blocks
     BlockPalette.trashHeight = BlockPalette.height * 0.6;
     BlockPalette.trashIconVP = VectorPaths.faTrash;
@@ -136,20 +136,22 @@ BlockPalette.createPalBg = function() {
 };
 
 /**
- * Contorno de la bandeja FinchBlox: rectángulo redondeado cuyo borde superior
- * baja en el centro (S-curvas) formando el hueco donde anidan las pestañas
- * de categoría.
+ * Contorno de la bandeja FinchBlox: rectángulo redondeado con muesca cóncava
+ * en el borde superior donde encastran las pestañas de categoría. Comandos
+ * absolutos, simétrico.
  * @return {string} - atributo "d" del path
  */
 BlockPalette.trayPathD = function() {
   const BP = BlockPalette;
-  const x0 = BP.inset;
+  const x = BP.inset, y = BP.y;
   const W = BP.width - 2 * BP.inset;
   const H = BP.height;
-  const r0 = BP.cornerRadius;
-  const rN = BP.notchRadius;
+  const r = BP.cornerRadius;
+  const dep = BP.notchDepth;
+  const sh = BP.notchShoulder;
   const cx = BP.width / 2;
-  //La muesca se ajusta a la cantidad de pestañas del nivel actual
+
+  //La muesca se adapta a la cantidad de pestañas visibles del nivel actual
   let tabCount = 3;
   if (BP.categories != null && BP.categories.length > 0 && typeof LevelManager !== "undefined") {
     let visible = 0;
@@ -158,25 +160,27 @@ BlockPalette.trayPathD = function() {
     });
     if (visible > 0) tabCount = visible;
   }
-  const gapHalf = (tabCount * CategoryBN.width + (tabCount - 1) * CategoryBN.hMargin) / 2 + 16;
-  const notchLeft = cx - gapHalf - 2 * rN;
+  const half = (tabCount * CategoryBN.width + (tabCount - 1) * CategoryBN.hMargin) / 2 + 16;
+  const nL = cx - half, nR = cx + half;
 
-  var d = "m " + (x0 + r0) + "," + BP.y;
-  d += " l " + (notchLeft - (x0 + r0)) + ",0";
-  d += " a " + rN + " " + rN + " 0 0 1 " + rN + " " + rN;
-  d += " a " + rN + " " + rN + " 0 0 0 " + rN + " " + rN;
-  d += " l " + (2 * gapHalf) + ",0";
-  d += " a " + rN + " " + rN + " 0 0 0 " + rN + " " + (-rN);
-  d += " a " + rN + " " + rN + " 0 0 1 " + rN + " " + (-rN);
-  d += " l " + ((x0 + W - r0) - (cx + gapHalf + 2 * rN)) + ",0";
-  d += " a " + r0 + " " + r0 + " 0 0 1 " + r0 + " " + r0;
-  d += " l 0," + (H - 2 * r0);
-  d += " a " + r0 + " " + r0 + " 0 0 1 " + (-r0) + " " + r0;
-  d += " l " + (-(W - 2 * r0)) + ",0";
-  d += " a " + r0 + " " + r0 + " 0 0 1 " + (-r0) + " " + (-r0);
-  d += " l 0," + (-(H - 2 * r0));
-  d += " a " + r0 + " " + r0 + " 0 0 1 " + r0 + " " + (-r0);
-  d += " z";
+  let d = "M " + (x + r) + " " + y;
+  d += " H " + (nL - sh);
+  d += " A " + sh + " " + sh + " 0 0 1 " + nL + " " + (y + sh); //hombro izq (baja)
+  d += " V " + (y + dep - sh);
+  d += " A " + sh + " " + sh + " 0 0 0 " + (nL + sh) + " " + (y + dep); //al piso
+  d += " H " + (nR - sh); //piso de la muesca
+  d += " A " + sh + " " + sh + " 0 0 0 " + nR + " " + (y + dep - sh); //sube der
+  d += " V " + (y + sh);
+  d += " A " + sh + " " + sh + " 0 0 1 " + (nR + sh) + " " + y; //hombro der (sube)
+  d += " H " + (x + W - r);
+  d += " A " + r + " " + r + " 0 0 1 " + (x + W) + " " + (y + r);
+  d += " V " + (y + H - r);
+  d += " A " + r + " " + r + " 0 0 1 " + (x + W - r) + " " + (y + H);
+  d += " H " + (x + r);
+  d += " A " + r + " " + r + " 0 0 1 " + x + " " + (y + H - r);
+  d += " V " + (y + r);
+  d += " A " + r + " " + r + " 0 0 1 " + (x + r) + " " + y;
+  d += " Z";
   return d;
 };
 

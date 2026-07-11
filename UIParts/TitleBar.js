@@ -26,13 +26,14 @@ TitleBar.setGraphicsPart1 = function() {
   } else {
     if (FinchBlox) {
       //Barra flotante SmartTEAM: separada de los bordes, esquinas redondeadas
-      //y muesca central ("panza") donde cuelgan Play/Stop, como el FinchBlox
-      //original. El logo va arriba, centrado sobre la muesca.
-      TB.inset = 14; //distancia de la barra a los bordes de la pantalla
-      TB.barH = 86; //alto de la barra flotante en los laterales
-      TB.centerH = 54; //alto de la franja central (arriba de la muesca)
-      TB.barRadius = 26;
-      TB.height = TB.barH + 2 * TB.inset; //espacio total reservado arriba
+      //y muesca central cóncava donde cuelgan Play/Stop. El logo va arriba,
+      //centrado sobre la muesca.
+      TB.inset = 14; //separación de la barra a los bordes
+      TB.barH = 84; //alto de la barra flotante
+      TB.barRadius = 26; //redondeo de esquinas exteriores
+      TB.notchDepth = 30; //cuánto sube el borde inferior en el centro (muesca)
+      TB.notchShoulder = 16; //radio de los hombros de la muesca (curva suave)
+      TB.height = TB.barH + 2 * TB.inset;
       TB.solidHeight = 0; //el lienzo pasa por detrás de la barra flotante
     } else {
       TB.height = 54;
@@ -43,11 +44,11 @@ TitleBar.setGraphicsPart1 = function() {
 
   if (FinchBlox) {
     TB.tallButtonH = 62;
-    TB.buttonH = 60; //botones cuadrados (nivel, deshacer)
-    TB.buttonW = 60;
+    TB.buttonH = 54; //botones cuadrados secundarios (nivel)
+    TB.buttonW = 54;
     const maxBnWidth = (TB.width - 6 * TB.buttonMargin) / 8;
     TB.buttonW = Math.min(maxBnWidth, TB.buttonW);
-    TB.longButtonW = 104; //Play y Stop
+    TB.longButtonW = 112; //ancho de Play y Stop (botones PRINCIPALES)
     const maxLongBnW = maxBnWidth * 2;
     TB.longButtonW = Math.min(maxLongBnW, TB.longButtonW);
 
@@ -134,39 +135,44 @@ TitleBar.createBar = function() {
 };
 
 /**
- * Contorno de la barra flotante FinchBlox: rectángulo redondeado cuyo borde
- * inferior sube en el centro (S-curvas) dejando una franja fina de alto
- * centerH bajo la cual cuelgan Play y Stop. Deja los límites de la muesca en
- * TB.notchLeftX / TB.notchRightX para ubicar los botones.
+ * Contorno de la barra flotante FinchBlox: rectángulo redondeado con una
+ * muesca cóncava en el borde inferior que abraza a Play/Stop. Comandos
+ * absolutos, simétrico. Deja los límites de la muesca en TB.notchLeftX /
+ * TB.notchRightX para ubicar los botones.
  * @return {string} - atributo "d" del path
  */
 TitleBar.barPathD = function() {
   const TB = TitleBar;
-  const x0 = TB.inset;
+  const x = TB.inset, y = TB.inset;
   const W = TB.width - 2 * TB.inset;
-  const r0 = TB.barRadius;
-  const r = (TB.barH - TB.centerH) / 2;
+  const H = TB.barH;
+  const r = TB.barRadius;
+  const dep = TB.notchDepth;
+  const sh = TB.notchShoulder;
   const cx = TB.width / 2;
-  const gapHalf = TB.longButtonW + TB.buttonMargin / 2 + 6;
-  TB.notchLeftX = cx - gapHalf - 2 * r;
-  TB.notchRightX = cx + gapHalf + 2 * r;
+  const half = TB.longButtonW + TB.buttonMargin / 2 + 12; //medio ancho del par Play+Stop
+  const nL = cx - half, nR = cx + half;
+  TB.notchLeftX = nL;
+  TB.notchRightX = nR;
 
-  var d = "m " + (x0 + r0) + "," + TB.inset;
-  d += " l " + (W - 2 * r0) + ",0";
-  d += " a " + r0 + " " + r0 + " 0 0 1 " + r0 + " " + r0;
-  d += " l 0," + (TB.barH - 2 * r0);
-  d += " a " + r0 + " " + r0 + " 0 0 1 " + (-r0) + " " + r0;
-  d += " l " + (TB.notchRightX - (x0 + W - r0)) + ",0";
-  d += " a " + r + " " + r + " 0 0 1 " + (-r) + " " + (-r);
-  d += " a " + r + " " + r + " 0 0 0 " + (-r) + " " + (-r);
-  d += " l " + (-2 * gapHalf) + ",0";
-  d += " a " + r + " " + r + " 0 0 0 " + (-r) + " " + r;
-  d += " a " + r + " " + r + " 0 0 1 " + (-r) + " " + r;
-  d += " l " + ((x0 + r0) - TB.notchLeftX) + ",0";
-  d += " a " + r0 + " " + r0 + " 0 0 1 " + (-r0) + " " + (-r0);
-  d += " l 0," + (-(TB.barH - 2 * r0));
-  d += " a " + r0 + " " + r0 + " 0 0 1 " + r0 + " " + (-r0);
-  d += " z";
+  let d = "M " + (x + r) + " " + y;
+  d += " H " + (x + W - r);
+  d += " A " + r + " " + r + " 0 0 1 " + (x + W) + " " + (y + r); //esq. sup-der
+  d += " V " + (y + H - r);
+  d += " A " + r + " " + r + " 0 0 1 " + (x + W - r) + " " + (y + H); //esq. inf-der
+  d += " H " + (nR + sh);
+  d += " A " + sh + " " + sh + " 0 0 1 " + nR + " " + (y + H - sh); //hombro der (sube)
+  d += " V " + (y + H - dep + sh);
+  d += " A " + sh + " " + sh + " 0 0 0 " + (nR - sh) + " " + (y + H - dep); //al techo
+  d += " H " + (nL + sh); //techo de la muesca
+  d += " A " + sh + " " + sh + " 0 0 0 " + nL + " " + (y + H - dep + sh); //baja izq
+  d += " V " + (y + H - sh);
+  d += " A " + sh + " " + sh + " 0 0 1 " + (nL - sh) + " " + (y + H); //hombro izq (baja)
+  d += " H " + (x + r);
+  d += " A " + r + " " + r + " 0 0 1 " + x + " " + (y + H - r); //esq. inf-izq
+  d += " V " + (y + r);
+  d += " A " + r + " " + r + " 0 0 1 " + (x + r) + " " + y; //esq. sup-izq
+  d += " Z";
   return d;
 };
 
@@ -178,15 +184,20 @@ TitleBar.makeButtons = function() {
   const TBLayer = GuiElements.layers.titlebar;
   if (FinchBlox) {
     const r = TB.defaultCornerRounding;
-    const h = TB.tallButtonH;
-    const y = TB.inset + (TB.barH - h) / 2;
     const edge = TB.inset + 18; //padding interno de la barra flotante
+    //Jerarquía de tamaños: Play/Stop principales, Conectar/Nivel secundarios,
+    //Deshacer/toggle terciarios. Cada grupo centrado en la barra por su alto.
+    const primaryH = 66; //Play / Stop
+    const secondaryH = 54; //Conectar, Nivel
+    const tertiaryH = 46; //Deshacer
+    const secondaryY = TB.inset + (TB.barH - secondaryH) / 2;
+    const tertiaryY = TB.inset + (TB.barH - tertiaryH) / 2;
 
     // Logo SmartTEAM blanco, centrado en la franja superior de la muesca
     const logoH = 34;
     const logoW = logoH * 611.316 / 374; //proporción del SVG del logo
     const logoX = (TB.width - logoW) / 2;
-    const logoY = TB.inset + (TB.centerH - logoH) / 2;
+    const logoY = TB.inset + (TB.barH - TB.notchDepth - logoH) / 2;
     TB.logoImg = GuiElements.create.image();
     TB.logoImg.setAttributeNS("http://www.w3.org/1999/xlink", "href", "Images/smartteam-logo-white.svg");
     TB.logoImg.setAttributeNS(null, "x", logoX);
@@ -211,11 +222,11 @@ TitleBar.makeButtons = function() {
     }
     DeviceManager.setStatusListener(TB.updateStatus);
 
-    //Conectar robot a la izquierda; acotado a la zona alta de la barra
-    //(antes de que el borde inferior suba hacia la muesca)
+    //Conectar robot a la izquierda (secundario); acotado antes de que el
+    //borde inferior suba hacia la muesca
     const connectBnX = edge;
-    const connectBnW = Math.max(120, Math.min(190, TB.notchLeftX - connectBnX - 8));
-    TB.finchButton = new Button(connectBnX, y, connectBnW, h, TBLayer, Colors.stCoral, r, r);
+    const connectBnW = Math.max(120, Math.min(180, TB.notchLeftX - connectBnX - 8));
+    TB.finchButton = new Button(connectBnX, secondaryY, connectBnW, secondaryH, TBLayer, Colors.stCoral, r, r);
     TB.finchButton.addRobotBnContent();
     TB.finchButton.setCallbackFunction(function() {
       switch (DeviceManager.getStatus()) {
@@ -231,12 +242,13 @@ TitleBar.makeButtons = function() {
       }
     }, true);
 
-    // Centro: Play / Stop colgando en la muesca de la barra. En modo vivo
-    // Play ejecuta; en modo programa (descarga) el mismo Play compila y
-    // transfiere a la placa, y Stop se apaga. No hay botón Enviar aparte.
-    // Ver ProgramModeManager.
-    const playStopY = TB.inset + TB.centerH - 12;
-    TB.flagBn = new Button(TB.flagBnX, playStopY, TB.longButtonW, h, TBLayer, Colors.flagGreen, r, r);
+    // Centro: Play / Stop (PRINCIPALES) colgando encastrados en la muesca.
+    // En modo vivo Play ejecuta; en modo programa (descarga) el mismo Play
+    // compila y transfiere a la placa, y Stop se apaga. No hay botón Enviar
+    // aparte. Ver ProgramModeManager.
+    const primaryR = 22;
+    const playStopY = TB.inset + TB.barH - TB.notchDepth + 4;
+    TB.flagBn = new Button(TB.flagBnX, playStopY, TB.longButtonW, primaryH, TBLayer, Colors.flagGreen, primaryR, primaryR);
     TB.flagBn.addIcon(VectorPaths.faPlay, TB.bnIconH);
     TB.flagBn.setCallbackFunction(function() {
       if (ProgramModeManager.isProgramMode()) {
@@ -246,16 +258,17 @@ TitleBar.makeButtons = function() {
       }
     }, false);
 
-    TB.stopBn = new Button(TB.stopBnX, playStopY, TB.longButtonW, h, TBLayer, Colors.stopRed, r, r);
+    TB.stopBn = new Button(TB.stopBnX, playStopY, TB.longButtonW, primaryH, TBLayer, Colors.stopRed, primaryR, primaryR);
     TB.stopBn.addIcon(VectorPaths.stStopSquare, TB.bnIconH * 0.9);
     TB.stopBn.setCallbackFunction(CodeManager.stop, false);
 
-    // Derecha: toggle vivo/programa segmentado, nivel y deshacer
-    TB.undoBnX = TB.width - TB.inset - 18 - TB.buttonW;
-    TB.levelBnX = TB.undoBnX - TB.buttonMargin - TB.buttonW;
+    // Derecha: grupo Modo+Nivel (secundarios) junto, aire, y Deshacer
+    // (terciario) separado para que se lean como bloques funcionales
+    TB.undoBnX = TB.width - TB.inset - 18 - tertiaryH;
+    TB.levelBnX = TB.undoBnX - 24 - TB.buttonW; //aire entre grupos
 
-    const cell = 46; //celdas del toggle segmentado
-    const cellPad = 5;
+    const cell = 40; //celdas del toggle segmentado
+    const cellPad = 4;
     const toggleW = 2 * cell + 3 * cellPad;
     const toggleH = cell + 2 * cellPad;
     const toggleX = TB.levelBnX - TB.buttonMargin - toggleW;
@@ -294,11 +307,11 @@ TitleBar.makeButtons = function() {
     };
     TB.updateModeButtons();
 
-    TB.undoButton = new Button(TB.undoBnX, y, TB.buttonW, h, TBLayer, Colors.stAmber, r, r);
-    TB.undoButton.addIcon(VectorPaths.faUndoAlt, TB.bnIconH * 0.8);
+    TB.undoButton = new Button(TB.undoBnX, tertiaryY, tertiaryH, tertiaryH, TBLayer, Colors.stAmber, 16, 16);
+    TB.undoButton.addIcon(VectorPaths.faUndoAlt, TB.bnIconH * 0.75);
     UndoManager.setUndoButton(TB.undoButton);
 
-    TB.levelButton = new Button(TB.levelBnX, y, TB.buttonW, h, TBLayer, Colors.white, r, r);
+    TB.levelButton = new Button(TB.levelBnX, secondaryY, TB.buttonW, secondaryH, TBLayer, Colors.white, r, r);
     TB.levelButton.addText(LevelManager.currentLevel, LevelManager.levelButtonFont, Colors.stViolet);
     TB.levelButton.setCallbackFunction(function() {
       (new LevelDialog()).show();
