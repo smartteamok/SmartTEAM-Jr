@@ -34,19 +34,27 @@ BlockPalette.setGraphics = function() {
 
   // Dimensions for the region with CategoryBNs
   if (FinchBlox) {
+    //Bandeja flotante SmartTEAM: separada de los bordes, tinte por categoría
+    //y muesca cóncava en el borde superior donde encastran las pestañas
+    BlockPalette.inset = 14;
+    BlockPalette.cornerRadius = 26;
+    BlockPalette.notchDepth = 34; //cuánto BAJA el borde superior en el centro
+    BlockPalette.notchShoulder = 16; //radio de los hombros
     BlockPalette.width = GuiElements.width;
-    BlockPalette.height = 90; //100;
-    BlockPalette.y = GuiElements.height - BlockPalette.height;
-    BlockPalette.bg = Colors.bbtDarkGray;
+    BlockPalette.height = 128;
+    BlockPalette.y = GuiElements.height - BlockPalette.height - BlockPalette.inset;
+    BlockPalette.bg = Colors.stCyanTint;
+    BlockPalette.mainVMargin = 46; //baja los bloques para centrarlos DEBAJO de la muesca
     BlockPalette.catW = 300;
     BlockPalette.catX = GuiElements.width / 2 - BlockPalette.catW / 2;
-    BlockPalette.catH = 40;
-    BlockPalette.catY = BlockPalette.y - BlockPalette.catH;
-    BlockPalette.blockMargin = 35; //25;   // The horizontal spacing between Blocks
-    BlockPalette.trashHeight = BlockPalette.height * 0.75;
+    BlockPalette.catH = 56; //alto de las pestañas
+    //El borde inferior de la pestaña apoya en el piso de la muesca
+    BlockPalette.catY = BlockPalette.y + BlockPalette.notchDepth - BlockPalette.catH;
+    BlockPalette.blockMargin = 20; // The horizontal spacing between Blocks
+    BlockPalette.trashHeight = BlockPalette.height * 0.6;
     BlockPalette.trashIconVP = VectorPaths.faTrash;
     BlockPalette.trashOpacity = 0.9;
-    BlockPalette.trashColor = Colors.easternBlue;
+    BlockPalette.trashColor = Colors.stGray400;
     BlockPalette.blockButtonOverhang = 10; //12; //How much block buttons are allowd to hang over the bottom of the block
   } else {
     BlockPalette.width = 253;
@@ -77,13 +85,11 @@ BlockPalette.setGraphics = function() {
 BlockPalette.updateZoom = function() {
   let BP = BlockPalette;
   BP.setGraphics();
-  GuiElements.update.rect(BP.palRect, 0, BP.y, BP.width, BP.height);
   if (FinchBlox) {
-    //BP.updatePath(BP.leftShape);
-    //BP.updatePath(BP.rightShape);
-    BP.updatePath();
+    BP.palRect.setAttributeNS(null, "d", BP.trayPathD());
     GuiElements.update.rect(BP.catRect, 0, BP.catY, 0, BP.catH);
   } else {
+    GuiElements.update.rect(BP.palRect, 0, BP.y, BP.width, BP.height);
     GuiElements.update.rect(BP.catRect, 0, BP.catY, BP.width, BP.catH);
   }
   //GuiElements.move.group(GuiElements.layers.categories, 0, TitleBar.height);
@@ -118,73 +124,68 @@ BlockPalette.createCatBg = function() {
  */
 BlockPalette.createPalBg = function() {
   let BP = BlockPalette;
-  BP.palRect = GuiElements.draw.rect(0, BP.y, BP.width, BP.height, BP.bg);
-  GuiElements.layers.paletteBG.appendChild(BP.palRect);
   if (FinchBlox) {
-    BP.shape = GuiElements.create.path(GuiElements.layers.paletteBG);
-    BP.shape.setAttributeNS(null, "fill", BP.bg);
-    BlockPalette.updatePath();
-    /*
-    BP.leftShape = GuiElements.create.path(GuiElements.layers.paletteBG);
-    BP.rightShape = GuiElements.create.path(GuiElements.layers.paletteBG);
-    BP.leftShape.setAttributeNS(null, "fill", BP.bg);
-    BP.rightShape.setAttributeNS(null, "fill", BP.bg);
-    BlockPalette.updatePath(BP.leftShape);
-    BlockPalette.updatePath(BP.rightShape);*/
+    //Bandeja flotante con esquinas redondeadas y muesca para las pestañas
+    BP.palRect = GuiElements.create.path(GuiElements.layers.paletteBG);
+    BP.palRect.setAttributeNS(null, "fill", BP.bg);
+    BP.palRect.setAttributeNS(null, "d", BP.trayPathD());
+  } else {
+    BP.palRect = GuiElements.draw.rect(0, BP.y, BP.width, BP.height, BP.bg);
+    GuiElements.layers.paletteBG.appendChild(BP.palRect);
   }
 };
 
-BlockPalette.updatePath = function() {
-  let BP = BlockPalette;
-  const shapeH = 20;
-  const r = shapeH / 2;
-  const shapeW = (BP.width - BP.catW) / 2 - 2 * BP.catHMargin - 2 * r;
-  const catTabW = BP.catW + 4 * BP.catHMargin;
+/**
+ * Contorno de la bandeja FinchBlox: rectángulo redondeado con muesca cóncava
+ * en el borde superior donde encastran las pestañas de categoría. Comandos
+ * absolutos, simétrico.
+ * @return {string} - atributo "d" del path
+ */
+BlockPalette.trayPathD = function() {
+  const BP = BlockPalette;
+  const x = BP.inset, y = BP.y;
+  const W = BP.width - 2 * BP.inset;
+  const H = BP.height;
+  const r = BP.cornerRadius;
+  const dep = BP.notchDepth;
+  const sh = BP.notchShoulder;
+  const cx = BP.width / 2;
 
-  var path = "m 0," + (BP.y - shapeH);
-  path += " l " + shapeW + ",0 ";
-  path += " a " + r + " " + r + " 0 0 1 " + r + " " + r;
-  path += " a " + r + " " + r + " 0 0 0 " + r + " " + r;
-  path += " l " + (catTabW) + ",0 ";
-  path += " a " + r + " " + r + " 0 0 0 " + r + " " + (-r);
-  path += " a " + r + " " + r + " 0 0 1 " + r + " " + (-r);
-  path += " l " + shapeW + ",0 0," + (shapeH + BP.height) + " " + (-BP.width) + ",0";
-  path += " z";
-
-  BP.shape.setAttributeNS(null, "d", path);
-}
-/*
-BlockPalette.updatePath = function(pathE) {
-  let BP = BlockPalette;
-  const shapeH = 20;
-  const r = shapeH/2;
-  const shapeW = (BP.width - BP.catW)/2 - 2*BP.catHMargin - 2*r;
-  var path = "";
-  switch(pathE){
-    case BP.leftShape:
-      path += "m 0," + (BP.y - shapeH);
-      path += " l " + shapeW + ",0 ";
-      path += " a " + r + " " + r + " 0 0 1 " + r + " " + r;
-      path += " a " + r + " " + r + " 0 0 0 " + r + " " + r;
-      path += " l " + (-shapeW-2*r) + ",0 ";
-      path += " z";
-      break;
-    case BP.rightShape:
-      path += "m " + BP.width + "," + (BP.y - shapeH);
-      path += " l " + (-shapeW) + ",0 ";
-      path += " a " + r + " " + r + " 0 0 0 " + (-r) + " " + r;
-      path += " a " + r + " " + r + " 0 0 1 " + (-r) + " " + r;
-      path += " l " + (shapeW + 2*r) + ",0 ";
-      path += " z";
-      break;
+  //La muesca se adapta a la cantidad de pestañas visibles del nivel actual
+  let tabCount = 3;
+  if (BP.categories != null && BP.categories.length > 0 && typeof LevelManager !== "undefined") {
+    let visible = 0;
+    BP.categories.forEach(function(cat) {
+      if (cat.level == LevelManager.currentLevel) visible++;
+    });
+    if (visible > 0) tabCount = visible;
   }
-  pathE.setAttributeNS(null, "d", path);
-}*/
+  const half = (tabCount * CategoryBN.width + (tabCount - 1) * CategoryBN.hMargin) / 2 + 16;
+  const nL = cx - half, nR = cx + half;
+
+  let d = "M " + (x + r) + " " + y;
+  d += " H " + (nL - sh);
+  d += " A " + sh + " " + sh + " 0 0 1 " + nL + " " + (y + sh); //hombro izq (baja)
+  d += " V " + (y + dep - sh);
+  d += " A " + sh + " " + sh + " 0 0 0 " + (nL + sh) + " " + (y + dep); //al piso
+  d += " H " + (nR - sh); //piso de la muesca
+  d += " A " + sh + " " + sh + " 0 0 0 " + nR + " " + (y + dep - sh); //sube der
+  d += " V " + (y + sh);
+  d += " A " + sh + " " + sh + " 0 0 1 " + (nR + sh) + " " + y; //hombro der (sube)
+  d += " H " + (x + W - r);
+  d += " A " + r + " " + r + " 0 0 1 " + (x + W) + " " + (y + r);
+  d += " V " + (y + H - r);
+  d += " A " + r + " " + r + " 0 0 1 " + (x + W - r) + " " + (y + H);
+  d += " H " + (x + r);
+  d += " A " + r + " " + r + " 0 0 1 " + x + " " + (y + H - r);
+  d += " V " + (y + r);
+  d += " A " + r + " " + r + " 0 0 1 " + (x + r) + " " + y;
+  d += " Z";
+  return d;
+};
+
 BlockPalette.updatePaletteColor = function(color) {
   GuiElements.update.color(BlockPalette.palRect, color);
-  //GuiElements.update.color(BlockPalette.leftShape, color);
-  //GuiElements.update.color(BlockPalette.rightShape, color);
-  GuiElements.update.color(BlockPalette.shape, color);
 }
 
 /**
@@ -276,7 +277,19 @@ BlockPalette.showTrash = function() {
   // If the trash is not visible
   if (!BP.trash) {
     BP.trash = GuiElements.create.group(0, 0);
-    let trashBg = GuiElements.draw.rect(0, BP.y, BP.width, BP.height, BP.bg);
+    let trashBg;
+    if (FinchBlox) {
+      //Usa el tinte de la categoría activa para fundirse con la bandeja
+      let bgColor = BP.bg;
+      if (BP.selectedCat != null && Colors.blockPalette[BP.selectedCat.id] != null) {
+        bgColor = Colors.blockPalette[BP.selectedCat.id];
+      }
+      trashBg = GuiElements.create.path(BP.trash);
+      trashBg.setAttributeNS(null, "d", BP.trayPathD());
+      trashBg.setAttributeNS(null, "fill", bgColor);
+    } else {
+      trashBg = GuiElements.draw.rect(0, BP.y, BP.width, BP.height, BP.bg);
+    }
     GuiElements.update.opacity(trashBg, BP.trashOpacity);
     BP.trash.appendChild(trashBg);
 
@@ -353,6 +366,8 @@ BlockPalette.setLevel = function() {
   BlockPalette.categories.forEach(function(category) {
     category.button.setHidden();
   })
+  //La muesca de la bandeja se adapta a la cantidad de pestañas del nivel
+  BlockPalette.palRect.setAttributeNS(null, "d", BlockPalette.trayPathD());
   //  switch (LevelMenu.currentLevel){
   switch (LevelManager.currentLevel) {
     case 1:

@@ -244,6 +244,32 @@ CallbackManager.robot.updateHasV2Microbit = function(robotId, hasV2String) {
   DeviceManager.setHasV2Microbit(robotId, hasV2)
   CodeManager.updateAvailableSensors(); //activates or deactivates micro:bit V2 only blocks
 }
+
+/* ---- Ejecución remota SmartTEAM (programa corriendo en la placa) ---- */
+
+/** La placa informa qué bloque está ejecutando (índice de OP_MARK) */
+CallbackManager.robot.programMarker = function(markIndex) {
+  ProgramModeManager.onMarker(Number(markIndex));
+  return true;
+};
+
+/** La placa informa que el programa terminó solo */
+CallbackManager.robot.programDone = function(reason) {
+  ProgramModeManager.onProgramDone(Number(reason));
+  return true;
+};
+
+/** La placa informa que el programa se detuvo por un error de la VM */
+CallbackManager.robot.programFault = function(errCode) {
+  ProgramModeManager.onProgramFault(Number(errCode));
+  return true;
+};
+
+/** Tipo de placa conectada (STX.BOARD_*): habilita bloques de motores */
+CallbackManager.robot.updateBoardType = function(robotId, boardId) {
+  ProgramModeManager.setBoardId(Number(boardId));
+  return true;
+};
 /**
  * Tells the frontend that a device has just been discovered
  * @param {string} robotTypeId - The percent encoded type of robot being scanned for

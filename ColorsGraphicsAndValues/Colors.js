@@ -39,30 +39,49 @@ Colors.setCommon = function() {
   Colors.controlYellow = "#FFCC00";
   Colors.variablesDkOrange = "#FF5B00";
   Colors.inactiveGray = "#a3a3a3";
-  //BBT Style guide colors
-  Colors.easternBlue = "#089BAB"; //bbt blue
-  Colors.neonCarrot = "#FF9922";
+  //SmartTEAM Design System tokens
+  Colors.stViolet = "#796EB0";     //violet-500: marca / barra / sonido
+  Colors.stVioletDark = "#6457A0"; //violet-600
+  Colors.stVioletTint = "#ECE9F4"; //violet-100
+  Colors.stCyan = "#35BFE9";       //cyan-500: movimiento
+  Colors.stCyanDark = "#1FA9D6";   //cyan-600
+  Colors.stCyanTint = "#E1F5FC";   //cyan-100
+  Colors.stAmber = "#FFB800";      //amber-500: luces/color, undo
+  Colors.stAmberDark = "#F0A500";  //amber-600
+  Colors.stAmberTint = "#FFF3D6";  //amber-100
+  Colors.stGreen = "#59BB6A";      //green-500: play, sensores, conectado
+  Colors.stGreenDark = "#45A156";  //green-600
+  Colors.stGreenTint = "#E4F4E7";  //green-100
+  Colors.stCoral = "#EF506D";      //coral-500: stop, control, desconectado
+  Colors.stCoralDark = "#DA3656";  //coral-600
+  Colors.stCoralTint = "#FDE4E9";  //coral-100
+  Colors.stPaper = "#F3F7FD";      //fondo del lienzo
+  Colors.stInk = "#160A60";        //indigo-ink: texto
+  Colors.stGray400 = "#9A9BA0";    //papelera
+  //BBT Style guide colors (remapeados a tokens SmartTEAM donde aplica)
+  Colors.easternBlue = Colors.stCyan; //antes bbt blue #089BAB, hoy movimiento
+  Colors.neonCarrot = Colors.stCoral; //categoría luces/color (lamparita)
   Colors.fountainBlue = "#62BCC7"; //lighter blue
-  Colors.seance = "#881199"; //dark purple
+  Colors.seance = Colors.stViolet; //antes dark purple #881199, hoy sonido/marca
   Colors.bbtDarkGray = "#535353";
   Colors.iron = "#CACACA";
   //FinchBlox
-  Colors.blockPaletteMotion = "#B4D9DD";
-  Colors.blockPaletteColor = "#FFCE96";
-  Colors.blockPaletteSound = "#B691BB";
-  Colors.blockPaletteControl = "#F4E9A4"; //tmp
-  Colors.flagGreen = "#2FC00B";
-  Colors.fbDarkGreen = "#268D17";
-  Colors.stopRed = "#F03602";
-  Colors.finchGreen = "#B6E9A9";
-  Colors.fbYellow = "#F1CA07";
+  Colors.blockPaletteMotion = Colors.stCyanTint;
+  Colors.blockPaletteColor = Colors.stCoralTint;
+  Colors.blockPaletteSound = Colors.stVioletTint;
+  Colors.blockPaletteControl = Colors.stAmberTint;
+  Colors.flagGreen = Colors.stGreen;
+  Colors.fbDarkGreen = Colors.stGreenDark;
+  Colors.stopRed = Colors.stCoral;
+  Colors.finchGreen = Colors.stGreen;
+  Colors.fbYellow = Colors.stAmber; //estado intermedio de conexión
   Colors.fbHighlight = "#ffff00";
   Colors.fbGray = "#E8E8E8";
   Colors.levelBN = "#E8E8E8";
-  Colors.fbYellowBorder = "#BD9F0D";
-  Colors.fbBlueBorder = "#097F8A";
-  Colors.fbPurpleBorder = "#691675";
-  Colors.fbOrangeBorder = "#F78705";
+  Colors.fbYellowBorder = Colors.stAmberDark; //borde de control (bloques amarillos)
+  Colors.fbBlueBorder = Colors.stCyanDark;
+  Colors.fbPurpleBorder = Colors.stVioletDark;
+  Colors.fbOrangeBorder = Colors.stCoralDark; //borde de luces/color (bloques coral)
   Colors.darkTeal = "#114F53";
   if (FinchBlox) {
     Colors.inactiveGray = Colors.fbGray;
@@ -93,8 +112,9 @@ Colors.setCategory = function() {
     "motion_3": Colors.easternBlue,
     "color_3": Colors.neonCarrot,
     "sound_3": Colors.seance,
-    "control_3": Colors.fbYellow,
-    "sensor_3": Colors.finchGreen
+    "control_3": Colors.stAmber,
+    "sensor_3": Colors.stGreen,
+    "start": Colors.stAmber //pseudo-categoría del bloque de inicio (amarillo, play verde)
   };
   //In FinchBlox, the block palette changes colors per category
   Colors.blockPalette = {
@@ -108,7 +128,7 @@ Colors.setCategory = function() {
     "color_3": Colors.blockPaletteColor,
     "sound_3": Colors.blockPaletteSound,
     "control_3": Colors.blockPaletteControl,
-    "sensor_3": Colors.finchGreen
+    "sensor_3": Colors.stGreenTint
   };
   //In FinchBlox, each block is outlined with a darker color
   Colors.blockOutline = {
@@ -122,7 +142,8 @@ Colors.setCategory = function() {
     "color_3": Colors.fbOrangeBorder,
     "sound_3": Colors.fbPurpleBorder,
     "control_3": Colors.fbYellowBorder,
-    "sensor_3": Colors.finchGreen,
+    "sensor_3": Colors.stGreenDark,
+    "start": Colors.stAmberDark,
     "inactive": Colors.iron
   }
 };

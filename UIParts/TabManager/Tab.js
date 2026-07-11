@@ -155,7 +155,8 @@ Tab.prototype.fitBox = function(box) {
  * Adds a new start block to the tab. Used in FinchBlox.
  */
 Tab.prototype.addStartBlock = function() {
-  let blockY = GuiElements.height / 2 - BlockPalette.height;
+  //Centrado verticalmente en la zona de programación (entre barra y bandeja)
+  let blockY = TitleBar.height + (BlockPalette.y - TitleBar.height) / 2 - 30;
   let stack = new BlockStack(new B_WhenFlagTapped(50, blockY), this);
 }
 

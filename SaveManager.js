@@ -529,6 +529,10 @@ SaveManager.saveAsNew = function() {
  */
 SaveManager.markEdited = function() {
   CodeManager.updateModified();
+  if (FinchBlox && typeof ProgramModeManager !== "undefined") {
+    // El canvas cambió: el mapa de marcadores de la placa quedó viejo
+    ProgramModeManager.invalidateMarkers();
+  }
   if (SaveManager.fileName != null) {
     SaveManager.autoSave();
   }

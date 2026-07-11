@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>SmartTEAM FinchBlox — Web Bluetooth</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+    <style>
+        html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; }
+        #editor { width: 100%; height: 100%; border: none; display: block; }
+    </style>
+    <!-- Constantes y utilidades compartidas con el editor (mismo origin) -->
+    <script src="../Program/STXConstants.js"></script>
+    <script src="../Program/BytecodeAssembler.js"></script>
+    <script src="backend.js"></script>
+</head>
+<body>
+    <!-- El editor detecta este host vía Program/HostDetect.js
+         (window.parent.parseFinchBloxRequest) y activa GuiElements.isPWA -->
+    <iframe id="editor" src="../HummingbirdDragAndDrop2.html"></iframe>
+</body>
+</html>

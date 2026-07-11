@@ -330,6 +330,32 @@ function VectorPaths(){
 	VP.info.width = 20;
 	VP.info.height = 20;
 	VP.info.path = "m 10,0 c -5.52,0 -10,4.48 -10,10 0,5.52 4.48,10 10,10 5.52,0 10,-4.48 10,-10 0,-5.52 -4.48,-10 -10,-10 z m 1,15 -2,0 0,-6 2,0 0,6 z m 0,-8 -2,0 0,-2 2,0 0,2 z";
+	// SmartTEAM: triángulo de play (Font Awesome faPlay) y rayo para el modo vivo
+	// (Font Awesome faBolt), usados en la barra superior.
+	VP.faPlay = {};
+	VP.faPlay.width = 448;
+	VP.faPlay.height = 512;
+	VP.faPlay.path = "M424.4 214.7L72.4 6.6C43.8-10.3 0 6.1 0 47.9V464c0 37.5 39.7 60.1 72.4 41.3l352-208c32.4-19.2 32.5-66.5 0-82.6z";
+	VP.faBolt = {};
+	VP.faBolt.width = 320;
+	VP.faBolt.height = 512;
+	VP.faBolt.path = "M296 160H180.6l42.6-129.8C227.2 15 215.7 0 200 0H56C44 0 33.8 8.9 32.2 20.8l-32 240C-1.7 275.2 9.5 288 24 288h118.7L96.6 482.5c-3.6 15.2 8 29.5 23.3 29.5 8.4 0 16.4-4.4 20.8-12l176-304c9.3-15.9-2.2-36-20.7-36z";
+	// SmartTEAM: robot-rover lineal (antena, cabeza con ojos y sonrisa, ruedas).
+	// Placeholder hasta que llegue el arte final del rover del cliente.
+	VP.stRover = {};
+	VP.stRover.width = 40;
+	VP.stRover.height = 40;
+	VP.stRover.path = "M18 3 a2 2 0 1 0 4 0 a2 2 0 1 0 -4 0 z M19.2 4.5 h1.6 v5 h-1.6 z M11 9 h18 a6 6 0 0 1 6 6 v8 a6 6 0 0 1 -6 6 h-18 a6 6 0 0 1 -6 -6 v-8 a6 6 0 0 1 6 -6 z M11 12 h18 a3 3 0 0 1 3 3 v8 a3 3 0 0 1 -3 3 h-18 a3 3 0 0 1 -3 -3 v-8 a3 3 0 0 1 3 -3 z M12.3 17.5 a2.2 2.2 0 1 0 4.4 0 a2.2 2.2 0 1 0 -4.4 0 z M23.3 17.5 a2.2 2.2 0 1 0 4.4 0 a2.2 2.2 0 1 0 -4.4 0 z M15 21.5 Q20 25 25 21.5 Q20 28 15 21.5 z M9.2 34 a3.8 3.8 0 1 0 7.6 0 a3.8 3.8 0 1 0 -7.6 0 z M23.2 34 a3.8 3.8 0 1 0 7.6 0 a3.8 3.8 0 1 0 -7.6 0 z";
+	// SmartTEAM: chip para la celda "programa/descarga" del toggle de modo
+	VP.stChip = {};
+	VP.stChip.width = 40;
+	VP.stChip.height = 40;
+	VP.stChip.path = "M12 8 h16 a4 4 0 0 1 4 4 v16 a4 4 0 0 1 -4 4 h-16 a4 4 0 0 1 -4 -4 v-16 a4 4 0 0 1 4 -4 z M13.5 11.5 h13 a2 2 0 0 1 2 2 v13 a2 2 0 0 1 -2 2 h-13 a2 2 0 0 1 -2 -2 v-13 a2 2 0 0 1 2 -2 z M16.5 16.5 h7 v7 h-7 z M12 2.5 h2.4 v5 h-2.4 z M18.8 2.5 h2.4 v5 h-2.4 z M25.6 2.5 h2.4 v5 h-2.4 z M12 32.5 h2.4 v5 h-2.4 z M18.8 32.5 h2.4 v5 h-2.4 z M25.6 32.5 h2.4 v5 h-2.4 z M2.5 12 h5 v2.4 h-5 z M2.5 18.8 h5 v2.4 h-5 z M2.5 25.6 h5 v2.4 h-5 z M32.5 12 h5 v2.4 h-5 z M32.5 18.8 h5 v2.4 h-5 z M32.5 25.6 h5 v2.4 h-5 z";
+	// SmartTEAM: cuadrado redondeado del botón Stop
+	VP.stStopSquare = {};
+	VP.stStopSquare.width = 24;
+	VP.stStopSquare.height = 24;
+	VP.stStopSquare.path = "M7 0 h10 a7 7 0 0 1 7 7 v10 a7 7 0 0 1 -7 7 h-10 a7 7 0 0 1 -7 -7 v-10 a7 7 0 0 1 7 -7 z";
 	VP.undoDelete = {};
 	VP.undoDelete.width = 87.924;
 	VP.undoDelete.height = 113.045;

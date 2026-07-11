@@ -13,7 +13,7 @@ function LevelManager() {
 LevelManager.setConstants = function() {
   const LM = LevelManager;
   LM.totalLevels = 3;
-  LM.levelButtonFont = Font.uiFont(35);
+  LM.levelButtonFont = Font.displayFont(30);
 
   LM.savePointFileNames = {
     1: "FinchBloxSavePoint_Level1",
@@ -38,7 +38,7 @@ LevelManager.setLevel = function(level) {
     //SaveManager.userClose(); //necessary? maybe add callback?
     BlockPalette.setLevel();
     //TabManager.activeTab.clear();
-    TitleBar.levelButton.addText(level, LM.levelButtonFont, Colors.white);
+    TitleBar.levelButton.addText(level, LM.levelButtonFont, Colors.stViolet);
     //LM.loadLevelSavePoint();
   }
 }

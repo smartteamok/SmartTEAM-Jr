@@ -2430,6 +2430,9 @@ Language.en = {
 "Send_debug_log":"Send debug log",
 "Show_debug_menu":"Show debug menu",
 "Connect_Device":"Connect Device",
+"Connect_Robot":"Connect robot",
+"Status_Connected":"connected",
+"Status_Disconnected":"no connection",
 "Connect_Multiple":"Connect Multiple",
 "Disconnect_Device":"Disconnect Device",
 "Tap":"Tap + to connect",
@@ -2667,6 +2670,9 @@ Language.es = {
 "Send_debug_log":"Enviar registro del debug",
 "Show_debug_menu":"Mostrar resultados del debug",
 "Connect_Device":"Conectar dispositivo",
+"Connect_Robot":"Conectar robot",
+"Status_Connected":"conectado",
+"Status_Disconnected":"sin conexión",
 "Connect_Multiple":"Coneccion multiple",
 "Disconnect_Device":"Desconectar dispositivo",
 "Tap":"Presionar + para conectar",
@@ -6417,7 +6423,9 @@ window.onresize = function() {
       if (FinchBlox) {
         if (!FBPopup.isEditingText) { //prevent iOS9 from resizing while editing text
           //The screen FinchBlox is designed for is about 800 wide by 600 tall.
-          GuiElements.zoomMultiple = window.innerWidth / 800; //window.innerHeight/600;
+          //Se limita por alto para que en pantallas apaisadas la UI no se
+          //agrande tanto que aplaste el lienzo de programación.
+          GuiElements.zoomMultiple = Math.min(window.innerWidth / 800, window.innerHeight / 600);
           GuiElements.updateZoom();
         }
       } else {
@@ -6472,8 +6480,10 @@ GuiElements.setGuiConstants = function() {
   GuiElements.computedZoom = GuiElements.defaultZoomMultiple; //The computed default zoom amount for the device
   GuiElements.zoomMultiple = 1; //GuiElements.zoomFactor = zoomMultiple * computedZoom
   if (FinchBlox) {
-    GuiElements.zoomMultiple = window.innerWidth / 800;
-  } //window.innerHeight/600; } //FinchBlox designed for a 800w x 600h screen
+    //FinchBlox designed for a 800w x 600h screen. Se limita por alto para que
+    //en pantallas apaisadas el lienzo de programación no quede aplastado.
+    GuiElements.zoomMultiple = Math.min(window.innerWidth / 800, window.innerHeight / 600);
+  }
   GuiElements.zoomFactor = GuiElements.defaultZoomMultiple;
 
   GuiElements.width = window.innerWidth / GuiElements.zoomFactor;
@@ -7936,6 +7946,25 @@ GuiElements.removeVideo = function(videoElement) {
   container.parentNode.removeChild(container);
 };
 
+
+
+/**
+ * Si este frontend corre embebido en un iframe cuyo padre implementa
+ * parseFinchBloxRequest (la página host webble/ con Web Bluetooth, o cualquier
+ * otro host PWA), activa el modo PWA de HtmlServer ANTES del primer request.
+ * Debe cargarse después de GuiElements.js y antes de que dispare window.load.
+ */
+(function() {
+  try {
+    if (window.parent !== window &&
+      typeof window.parent.parseFinchBloxRequest === "function") {
+      GuiElements.isPWA = true;
+    }
+  } catch (e) {
+    // window.parent de otro origen: no es nuestro host
+  }
+})();
+
 /* BlockList is a static class that holds a list of blocks and categories.
  * It is in charge of populating the BlockPalette by helping to create Category objects.
  */
@@ -8426,30 +8455,49 @@ Colors.setCommon = function() {
   Colors.controlYellow = "#FFCC00";
   Colors.variablesDkOrange = "#FF5B00";
   Colors.inactiveGray = "#a3a3a3";
-  //BBT Style guide colors
-  Colors.easternBlue = "#089BAB"; //bbt blue
-  Colors.neonCarrot = "#FF9922";
+  //SmartTEAM Design System tokens
+  Colors.stViovar = "#796EB0";     //violet-500: marca / barra / sonido
+  Colors.stVioletDark = "#6457A0"; //violet-600
+  Colors.stVioletTint = "#ECE9F4"; //violet-100
+  Colors.stCyan = "#35BFE9";       //cyan-500: movimiento
+  Colors.stCyanDark = "#1FA9D6";   //cyan-600
+  Colors.stCyanTint = "#E1F5FC";   //cyan-100
+  Colors.stAmber = "#FFB800";      //amber-500: luces/color, undo
+  Colors.stAmberDark = "#F0A500";  //amber-600
+  Colors.stAmberTint = "#FFF3D6";  //amber-100
+  Colors.stGreen = "#59BB6A";      //green-500: play, sensores, conectado
+  Colors.stGreenDark = "#45A156";  //green-600
+  Colors.stGreenTint = "#E4F4E7";  //green-100
+  Colors.stCoral = "#EF506D";      //coral-500: stop, control, desconectado
+  Colors.stCoralDark = "#DA3656";  //coral-600
+  Colors.stCoralTint = "#FDE4E9";  //coral-100
+  Colors.stPaper = "#F3F7FD";      //fondo del lienzo
+  Colors.stInk = "#160A60";        //indigo-ink: texto
+  Colors.stGray400 = "#9A9BA0";    //papelera
+  //BBT Style guide colors (remapeados a tokens SmartTEAM donde aplica)
+  Colors.easternBlue = Colors.stCyan; //antes bbt blue #089BAB, hoy movimiento
+  Colors.neonCarrot = Colors.stCoral; //categoría luces/color (lamparita)
   Colors.fountainBlue = "#62BCC7"; //lighter blue
-  Colors.seance = "#881199"; //dark purple
+  Colors.seance = Colors.stViolet; //antes dark purple #881199, hoy sonido/marca
   Colors.bbtDarkGray = "#535353";
   Colors.iron = "#CACACA";
   //FinchBlox
-  Colors.blockPaletteMotion = "#B4D9DD";
-  Colors.blockPaletteColor = "#FFCE96";
-  Colors.blockPaletteSound = "#B691BB";
-  Colors.blockPaletteControl = "#F4E9A4"; //tmp
-  Colors.flagGreen = "#2FC00B";
-  Colors.fbDarkGreen = "#268D17";
-  Colors.stopRed = "#F03602";
-  Colors.finchGreen = "#B6E9A9";
-  Colors.fbYellow = "#F1CA07";
+  Colors.blockPaletteMotion = Colors.stCyanTint;
+  Colors.blockPaletteColor = Colors.stCoralTint;
+  Colors.blockPaletteSound = Colors.stVioletTint;
+  Colors.blockPaletteControl = Colors.stAmberTint;
+  Colors.flagGreen = Colors.stGreen;
+  Colors.fbDarkGreen = Colors.stGreenDark;
+  Colors.stopRed = Colors.stCoral;
+  Colors.finchGreen = Colors.stGreen;
+  Colors.fbYellow = Colors.stAmber; //estado intermedio de conexión
   Colors.fbHighlight = "#ffff00";
   Colors.fbGray = "#E8E8E8";
   Colors.levelBN = "#E8E8E8";
-  Colors.fbYellowBorder = "#BD9F0D";
-  Colors.fbBlueBorder = "#097F8A";
-  Colors.fbPurpleBorder = "#691675";
-  Colors.fbOrangeBorder = "#F78705";
+  Colors.fbYellowBorder = Colors.stAmberDark; //borde de control (bloques amarillos)
+  Colors.fbBlueBorder = Colors.stCyanDark;
+  Colors.fbPurpleBorder = Colors.stVioletDark;
+  Colors.fbOrangeBorder = Colors.stCoralDark; //borde de luces/color (bloques coral)
   Colors.darkTeal = "#114F53";
   if (FinchBlox) {
     Colors.inactiveGray = Colors.fbGray;
@@ -8480,8 +8528,9 @@ Colors.setCategory = function() {
     "motion_3": Colors.easternBlue,
     "color_3": Colors.neonCarrot,
     "sound_3": Colors.seance,
-    "control_3": Colors.fbYellow,
-    "sensor_3": Colors.finchGreen
+    "control_3": Colors.stAmber,
+    "sensor_3": Colors.stGreen,
+    "start": Colors.stAmber //pseudo-categoría del bloque de inicio (amarillo, play verde)
   };
   //In FinchBlox, the block palette changes colors per category
   Colors.blockPalette = {
@@ -8495,7 +8544,7 @@ Colors.setCategory = function() {
     "color_3": Colors.blockPaletteColor,
     "sound_3": Colors.blockPaletteSound,
     "control_3": Colors.blockPaletteControl,
-    "sensor_3": Colors.finchGreen
+    "sensor_3": Colors.stGreenTint
   };
   //In FinchBlox, each block is outlined with a darker color
   Colors.blockOutline = {
@@ -8509,7 +8558,8 @@ Colors.setCategory = function() {
     "color_3": Colors.fbOrangeBorder,
     "sound_3": Colors.fbPurpleBorder,
     "control_3": Colors.fbYellowBorder,
-    "sensor_3": Colors.finchGreen,
+    "sensor_3": Colors.stGreenDark,
+    "start": Colors.stAmberDark,
     "inactive": Colors.iron
   }
 };
@@ -8657,7 +8707,7 @@ Font.uiFont = function(fontSize) {
   //if (FinchBlox) { return new Font('FredericBlack', fontSize, "normal"); }
   //if (FinchBlox) { return new Font("NunitoSans-ExtraBold", fontSize, "normal"); }
   if (FinchBlox) {
-    return new Font("Nunito-ExtraBold", fontSize, "normal");
+    return new Font("LexendDeca-SemiBold", fontSize, "normal");
   }
   return new Font("Arial", fontSize, "normal");
 };
@@ -8672,9 +8722,21 @@ Font.secondaryUiFont = function(fontSize) {
   //if (FinchBlox) { return new Font('FredericRegular', fontSize, "normal"); }
   //if (FinchBlox) { return new Font("NunitoSans-Regular", fontSize, "normal"); }
   if (FinchBlox) {
-    return new Font("Nunito-Regular", fontSize, "normal");
+    return new Font("LexendDeca-Medium", fontSize, "normal");
   }
   return new Font("Arial", fontSize, "normal");
+}
+
+/**
+ * SmartTEAM: fuente display (Livvic Black) para números de nivel y letras grandes.
+ * @param {number} fontSize
+ * @return {Font}
+ */
+Font.displayFont = function(fontSize) {
+  if (FinchBlox) {
+    return new Font("Livvic-Black", fontSize, "normal");
+  }
+  return Font.uiFont(fontSize).bold();
 }
 
 /**
@@ -9009,6 +9071,32 @@ function VectorPaths(){
 	VP.info.width = 20;
 	VP.info.height = 20;
 	VP.info.path = "m 10,0 c -5.52,0 -10,4.48 -10,10 0,5.52 4.48,10 10,10 5.52,0 10,-4.48 10,-10 0,-5.52 -4.48,-10 -10,-10 z m 1,15 -2,0 0,-6 2,0 0,6 z m 0,-8 -2,0 0,-2 2,0 0,2 z";
+	// SmartTEAM: triángulo de play (Font Awesome faPlay) y rayo para el modo vivo
+	// (Font Awesome faBolt), usados en la barra superior.
+	VP.faPlay = {};
+	VP.faPlay.width = 448;
+	VP.faPlay.height = 512;
+	VP.faPlay.path = "M424.4 214.7L72.4 6.6C43.8-10.3 0 6.1 0 47.9V464c0 37.5 39.7 60.1 72.4 41.3l352-208c32.4-19.2 32.5-66.5 0-82.6z";
+	VP.faBolt = {};
+	VP.faBolt.width = 320;
+	VP.faBolt.height = 512;
+	VP.faBolt.path = "M296 160H180.6l42.6-129.8C227.2 15 215.7 0 200 0H56C44 0 33.8 8.9 32.2 20.8l-32 240C-1.7 275.2 9.5 288 24 288h118.7L96.6 482.5c-3.6 15.2 8 29.5 23.3 29.5 8.4 0 16.4-4.4 20.8-12l176-304c9.3-15.9-2.2-36-20.7-36z";
+	// SmartTEAM: robot-rover lineal (antena, cabeza con ojos y sonrisa, ruedas).
+	// Placeholder hasta que llegue el arte final del rover del cliente.
+	VP.stRover = {};
+	VP.stRover.width = 40;
+	VP.stRover.height = 40;
+	VP.stRover.path = "M18 3 a2 2 0 1 0 4 0 a2 2 0 1 0 -4 0 z M19.2 4.5 h1.6 v5 h-1.6 z M11 9 h18 a6 6 0 0 1 6 6 v8 a6 6 0 0 1 -6 6 h-18 a6 6 0 0 1 -6 -6 v-8 a6 6 0 0 1 6 -6 z M11 12 h18 a3 3 0 0 1 3 3 v8 a3 3 0 0 1 -3 3 h-18 a3 3 0 0 1 -3 -3 v-8 a3 3 0 0 1 3 -3 z M12.3 17.5 a2.2 2.2 0 1 0 4.4 0 a2.2 2.2 0 1 0 -4.4 0 z M23.3 17.5 a2.2 2.2 0 1 0 4.4 0 a2.2 2.2 0 1 0 -4.4 0 z M15 21.5 Q20 25 25 21.5 Q20 28 15 21.5 z M9.2 34 a3.8 3.8 0 1 0 7.6 0 a3.8 3.8 0 1 0 -7.6 0 z M23.2 34 a3.8 3.8 0 1 0 7.6 0 a3.8 3.8 0 1 0 -7.6 0 z";
+	// SmartTEAM: chip para la celda "programa/descarga" del toggle de modo
+	VP.stChip = {};
+	VP.stChip.width = 40;
+	VP.stChip.height = 40;
+	VP.stChip.path = "M12 8 h16 a4 4 0 0 1 4 4 v16 a4 4 0 0 1 -4 4 h-16 a4 4 0 0 1 -4 -4 v-16 a4 4 0 0 1 4 -4 z M13.5 11.5 h13 a2 2 0 0 1 2 2 v13 a2 2 0 0 1 -2 2 h-13 a2 2 0 0 1 -2 -2 v-13 a2 2 0 0 1 2 -2 z M16.5 16.5 h7 v7 h-7 z M12 2.5 h2.4 v5 h-2.4 z M18.8 2.5 h2.4 v5 h-2.4 z M25.6 2.5 h2.4 v5 h-2.4 z M12 32.5 h2.4 v5 h-2.4 z M18.8 32.5 h2.4 v5 h-2.4 z M25.6 32.5 h2.4 v5 h-2.4 z M2.5 12 h5 v2.4 h-5 z M2.5 18.8 h5 v2.4 h-5 z M2.5 25.6 h5 v2.4 h-5 z M32.5 12 h5 v2.4 h-5 z M32.5 18.8 h5 v2.4 h-5 z M32.5 25.6 h5 v2.4 h-5 z";
+	// SmartTEAM: cuadrado redondeado del botón Stop
+	VP.stStopSquare = {};
+	VP.stStopSquare.width = 24;
+	VP.stStopSquare.height = 24;
+	VP.stStopSquare.path = "M7 0 h10 a7 7 0 0 1 7 7 v10 a7 7 0 0 1 -7 7 h-10 a7 7 0 0 1 -7 -7 v-10 a7 7 0 0 1 7 -7 z";
 	VP.undoDelete = {};
 	VP.undoDelete.width = 87.924;
 	VP.undoDelete.height = 113.045;
@@ -11555,8 +11643,16 @@ TitleBar.setGraphicsPart1 = function() {
     TB.buttonMargin = Button.defaultMargin / 2;
   } else {
     if (FinchBlox) {
-      TB.height = 90; //100;
-      TB.solidHeight = 5; //height that is solid blue all the way across
+      //Barra flotante SmartTEAM: separada de los bordes, esquinas redondeadas
+      //y muesca central cóncava donde cuelgan Play/Stop. El logo va arriba,
+      //centrado sobre la muesca.
+      TB.inset = 14; //separación de la barra a los bordes
+      TB.barH = 84; //alto de la barra flotante
+      TB.barRadius = 26; //redondeo de esquinas exteriores
+      TB.notchDepth = 30; //cuánto sube el borde inferior en el centro (muesca)
+      TB.notchShoulder = 16; //radio de los hombros de la muesca (curva suave)
+      TB.height = TB.barH + 2 * TB.inset;
+      TB.solidHeight = 0; //el lienzo pasa por detrás de la barra flotante
     } else {
       TB.height = 54;
     }
@@ -11565,25 +11661,22 @@ TitleBar.setGraphicsPart1 = function() {
   TB.width = GuiElements.width;
 
   if (FinchBlox) {
-    TB.buttonH = TB.height / 2;
-    TB.tallButtonH = TB.buttonH * 1.25;
-    TB.buttonW = TB.tallButtonH * (5 / 4);
-    //TB.buttonW = TB.tallButtonH * (3/4);
+    TB.tallButtonH = 62;
+    TB.buttonH = 54; //botones cuadrados secundarios (nivel)
+    TB.buttonW = 54;
     var maxBnWidth = (TB.width - 6 * TB.buttonMargin) / 8;
     TB.buttonW = Math.min(maxBnWidth, TB.buttonW);
-    //TB.longButtonW = 2.5 * TB.buttonW;
-    //TB.finchBnW = 1.5 * TB.buttonW;
-    TB.longButtonW = TB.tallButtonH * (5 / 2);
+    TB.longButtonW = 112; //ancho de Play y Stop (botones PRINCIPALES)
     var maxLongBnW = maxBnWidth * 2;
     TB.longButtonW = Math.min(maxLongBnW, TB.longButtonW);
 
     TB.bnIconMargin = 3;
-    TB.bg = Colors.easternBlue;
-    TB.bnIconH = TB.buttonH - 2 * TB.bnIconMargin;
+    TB.bg = Colors.stViolet;
+    TB.bnIconH = 26;
     var maxIconHeight = maxBnWidth * 0.7;
     TB.bnIconH = Math.min(maxIconHeight, TB.bnIconH);
 
-    TB.defaultCornerRounding = 10;
+    TB.defaultCornerRounding = 20;
   } else {
     TB.buttonW = TB.height * 64 / 54;
     var maxBnWidth = (TB.width - 11 * TB.buttonMargin - DeviceStatusLight.radius * 2) / 7;
@@ -11649,81 +11742,57 @@ TitleBar.setGraphicsPart2 = function() {
 TitleBar.createBar = function() {
   var TB = TitleBar;
   if (FinchBlox) {
-    TB.bgRect = GuiElements.draw.rect(0, 0, TB.width, TB.solidHeight, TB.bg); //TB.buttonMargin, TB.bg);
+    //Barra flotante violeta con esquinas redondeadas y muesca central
+    TB.bgRect = GuiElements.create.path(GuiElements.layers.titleBg);
+    TB.bgRect.setAttributeNS(null, "fill", TB.bg);
+    TB.bgRect.setAttributeNS(null, "d", TB.barPathD());
   } else {
     TB.bgRect = GuiElements.draw.rect(0, 0, TB.width, TB.height, TB.bg);
-  }
-
-  GuiElements.layers.titleBg.appendChild(TB.bgRect);
-  if (FinchBlox) {
-    //TB.bgShape = GuiElements.create.path(GuiElements.layers.titleBg);
-    //TB.bgShape.setAttributeNS(null, "fill", Colors.white);
-    //TB.leftShape = GuiElements.create.path(GuiElements.layers.titleBg);
-    //TB.rightShape = GuiElements.create.path(GuiElements.layers.titleBg);
-    //TB.leftShape.setAttributeNS(null, "fill", TB.bg);
-    //TB.rightShape.setAttributeNS(null, "fill", TB.bg);
-    TB.bgShape = GuiElements.create.path(GuiElements.layers.titleBg);
-    TB.bgShape.setAttributeNS(null, "fill", TB.bg);
-    TB.updateShapePath();
+    GuiElements.layers.titleBg.appendChild(TB.bgRect);
   }
 };
-TitleBar.updateShapePath = function() {
+
+/**
+ * Contorno de la barra flotante FinchBlox: rectángulo redondeado con una
+ * muesca cóncava en el borde inferior que abraza a Play/Stop. Comandos
+ * absolutos, simétrico. Deja los límites de la muesca en TB.notchLeftX /
+ * TB.notchRightX para ubicar los botones.
+ * @return {string} - atributo "d" del path
+ */
+TitleBar.barPathD = function() {
   var TB = TitleBar;
-  var r = (TB.height - TB.solidHeight) / 2; //TB.buttonMargin)/2;
-  var shapeW = TB.width / 2 - TB.longButtonW - 2 * r;
+  var x = TB.inset, y = TB.inset;
+  var W = TB.width - 2 * TB.inset;
+  var H = TB.barH;
+  var r = TB.barRadius;
+  var dep = TB.notchDepth;
+  var sh = TB.notchShoulder;
+  var cx = TB.width / 2;
+  var half = TB.longButtonW + TB.buttonMargin / 2 + 12; //medio ancho del par Play+Stop
+  var nL = cx - half, nR = cx + half;
+  TB.notchLeftX = nL;
+  TB.notchRightX = nR;
 
-  var path = " m 0,0";
-  path += " l " + TB.width + ",0 0," + TB.height + " " + (-shapeW) + ",0";
-  path += " a " + r + " " + r + " 0 0 1 " + (-r) + " " + (-r);
-  path += " a " + r + " " + r + " 0 0 0 " + (-r) + " " + (-r);
-  path += " l " + (-2 * TB.longButtonW) + ",0";
-  path += " a " + r + " " + r + " 0 0 0 " + (-r) + " " + r;
-  path += " a " + r + " " + r + " 0 0 1 " + (-r) + " " + r;
-  path += " l " + (-shapeW) + ",0";
-  path += " z ";
-
-  TB.bgShape.setAttributeNS(null, "d", path);
-
-  TB.sideWidth = shapeW + r;
-
-  /*
-  var shapeW = TB.width/2 - TB.longButtonW;
-  var shapeH = TB.height - TB.buttonMargin;
-  var r = shapeH/2;
-
-  var pathL = " m 0," + TB.buttonMargin;
-  pathL += " l " + shapeW + ",0";
-  pathL += " a " + r + " " + r + " 0 0 0 " + (-r) + " " + r;
-  pathL += " a " + r + " " + r + " 0 0 1 " + (-r) + " " + r;
-  pathL += " l " + (-shapeW-2*r) + ",0";
-  pathL += " z ";
-
-  var pathR = " m " + TB.width + "," + TB.buttonMargin;
-  pathR += " l " + (-shapeW) + ",0";
-  pathR += " a " + r + " " + r + " 0 0 1 " + r + " " + r;
-  pathR += " a " + r + " " + r + " 0 0 0 " + r + " " + r;
-  pathR += " l " + (shapeW+2*r) + ",0";
-  pathR += " z ";
-
-  TB.leftShape.setAttributeNS(null, "d", pathL);
-  TB.rightShape.setAttributeNS(null, "d", pathR);
-  */
-
-  /*
-  var shapeW = 2*TB.longButtonW;
-  var shapeH = TB.height - TB.buttonMargin;
-  var r = shapeH/2;
-  var path = " m " + (TB.width - shapeW)/2 + "," + TB.buttonMargin;
-  path += " l " + shapeW + ",0";
-  path += " a " + r + " " + r + " 0 0 1 " + r + " " + r;
-  path += " a " + r + " " + r + " 0 0 0 " + r + " " + r;
-  path += " l " + (-shapeW-4*r) + ",0";
-  path += " a " + r + " " + r + " 0 0 0 " + r + " " + (-r);
-  path += " a " + r + " " + r + " 0 0 1 " + r + " " + (-r);
-  path += " z ";
-
-  TB.bgShape.setAttributeNS(null, "d", path);*/
-}
+  var d = "M " + (x + r) + " " + y;
+  d += " H " + (x + W - r);
+  d += " A " + r + " " + r + " 0 0 1 " + (x + W) + " " + (y + r); //esq. sup-der
+  d += " V " + (y + H - r);
+  d += " A " + r + " " + r + " 0 0 1 " + (x + W - r) + " " + (y + H); //esq. inf-der
+  d += " H " + (nR + sh);
+  d += " A " + sh + " " + sh + " 0 0 1 " + nR + " " + (y + H - sh); //hombro der (sube)
+  d += " V " + (y + H - dep + sh);
+  d += " A " + sh + " " + sh + " 0 0 0 " + (nR - sh) + " " + (y + H - dep); //al techo
+  d += " H " + (nL + sh); //techo de la muesca
+  d += " A " + sh + " " + sh + " 0 0 0 " + nL + " " + (y + H - dep + sh); //baja izq
+  d += " V " + (y + H - sh);
+  d += " A " + sh + " " + sh + " 0 0 1 " + (nL - sh) + " " + (y + H); //hombro izq (baja)
+  d += " H " + (x + r);
+  d += " A " + r + " " + r + " 0 0 1 " + x + " " + (y + H - r); //esq. inf-izq
+  d += " V " + (y + r);
+  d += " A " + r + " " + r + " 0 0 1 " + (x + r) + " " + y; //esq. sup-izq
+  d += " Z";
+  return d;
+};
 
 /**
  * Creates all the buttons and menus
@@ -11733,77 +11802,50 @@ TitleBar.makeButtons = function() {
   var TBLayer = GuiElements.layers.titlebar;
   if (FinchBlox) {
     var r = TB.defaultCornerRounding;
-    var y = (TB.height / 2) - (TB.tallButtonH / 2);
-    var h = TB.tallButtonH;
-    TB.undoBnX = TB.width - TB.sideWidth / 2 + TB.buttonMargin / 2;
-    TB.levelBnX = TB.width - TB.sideWidth / 2 - TB.buttonMargin / 2 - TB.buttonW;
-    //TB.undoBnX = TB.width - TB.sideWidth/2 + TB.buttonW/2 + TB.buttonMargin;
-    //TB.levelBnX = TB.width - TB.sideWidth/2 - TB.buttonW/2;
-    //TB.trashBnX = TB.width - TB.sideWidth/2 - TB.buttonW/2 - TB.buttonMargin - TB.buttonW;
+    var edge = TB.inset + 18; //padding interno de la barra flotante
+    //Jerarquía de tamaños: Play/Stop principales, Conectar/Nivel secundarios,
+    //Deshacer/toggle terciarios. Cada grupo centrado en la barra por su alto.
+    var primaryH = 66; //Play / Stop
+    var secondaryH = 54; //Conectar, Nivel
+    var tertiaryH = 46; //Deshacer
+    var secondaryY = TB.inset + (TB.barH - secondaryH) / 2;
+    var tertiaryY = TB.inset + (TB.barH - tertiaryH) / 2;
 
-    TB.flagBn = new Button(TB.flagBnX, y, TB.longButtonW, h, TBLayer, Colors.flagGreen, r, r);
-    TB.flagBn.addIcon(VectorPaths.faFlag, TB.bnIconH);
-    TB.flagBn.setCallbackFunction(CodeManager.eventFlagClicked, false);
-
-    TB.stopBn = new Button(TB.stopBnX, y, TB.longButtonW, h, TBLayer, Colors.stopRed, r, r);
-    TB.stopBn.addIcon(VectorPaths.stop, TB.bnIconH * 0.9);
-    TB.stopBn.setCallbackFunction(CodeManager.stop, false);
-
-    //TB.undoButton = new Button(TB.undoBnX, (TB.height/2) - (TB.buttonH/2), TB.buttonW, TB.buttonH, TBLayer, Colors.neonCarrot, r, r);
-    TB.undoButton = new Button(TB.undoBnX, y, TB.buttonW, h, TBLayer, Colors.neonCarrot, r, r);
-    TB.undoButton.addIcon(VectorPaths.faUndoAlt, TB.bnIconH * 0.8);
-    UndoManager.setUndoButton(TB.undoButton);
-
-    //TB.trashButton = new Button(TB.trashBnX, (TB.height/2) - (TB.buttonH/2), TB.buttonW, TB.buttonH, TBLayer, Colors.seance, r, r);
-    //TB.trashButton = new Button(TB.trashBnX, y, TB.buttonW, h, TBLayer, Colors.neonCarrot, r, r);
-    //TB.trashButton.addIcon(VectorPaths.faTrash, TB.bnIconH * 0.8);
-    //TB.trashButton.setCallbackFunction(function(){TabManager.activeTab.clear();}, false);
-    //TB.trashButton.setCallbackFunction(function(){ UndoManager.deleteTab(); }, false);
-
-    //TB.levelButton = new Button(TB.levelBnX, TB.levelBnY, TB.buttonW, TB.buttonH, TBLayer, Colors.levelBN, r, r);
-    TB.levelButton = new Button(TB.levelBnX, y, TB.buttonW, h, TBLayer, Colors.seance, r, r);
-    //TB.levelButton.addText("1", Font.uiFont(24).bold(), Colors.bbtDarkGray);
-    TB.levelButton.addText(LevelManager.currentLevel, LevelManager.levelButtonFont, Colors.white);
-    //TB.levelButton.setCallbackFunction(function(){
-    //  new LevelMenu(TB.levelBnX + TB.buttonW/2, TB.levelBnY + TB.buttonH);
-    //},false);
-    TB.levelButton.setCallbackFunction(function() {
-      (new LevelDialog()).show();
-    }, true);
-
+    // Logo SmartTEAM blanco, centrado en la franja superior de la muesca
+    var logoH = 34;
+    var logoW = logoH * 611.316 / 374; //proporción del SVG del logo
+    var logoX = (TB.width - logoW) / 2;
+    var logoY = TB.inset + (TB.barH - TB.notchDepth - logoH) / 2;
+    TB.logoImg = GuiElements.create.image();
+    TB.logoImg.setAttributeNS("http://www.w3.org/1999/xlink", "href", "Images/smartteam-logo-white.svg");
+    TB.logoImg.setAttributeNS(null, "x", logoX);
+    TB.logoImg.setAttributeNS(null, "y", logoY);
+    TB.logoImg.setAttributeNS(null, "width", logoW);
+    TB.logoImg.setAttributeNS(null, "height", logoH);
+    TB.logoImg.setAttributeNS(null, "visibility", "visible");
+    TBLayer.appendChild(TB.logoImg);
 
     TB.updateStatus = function(status) {
       GuiElements.alert("TitleBar update status to " + status);
-      var finchBn = TitleBar.finchButton;
-      //var color = Colors.fbGray;
-      //var outlineColor = Colors.iron;
-      var color = Colors.stopRed;
-      var outlineColor = Colors.darkenColor(Colors.stopRed, 0.5);
-      var shortName = "";
-      if (status === DeviceManager.statuses.connected) {
-        color = Colors.finchGreen;
-        outlineColor = Colors.flagGreen;
-        var sn = DeviceFinch.getManager().connectedDevices[0].shortName;
-        if (sn != null) {
-          shortName = sn;
-        }
-        finchBn.battIcon.group.appendChild(finchBn.battIcon.pathE);
-        finchBn.xIcon.pathE.remove();
-        finchBn.icon.move(finchBn.finchConnectedX, finchBn.finchY);
+      var bn = TitleBar.finchButton;
+      if (bn == null) return;
+      var connected = (status === DeviceManager.statuses.connected);
+      var color = connected ? Colors.stGreen : Colors.stCoral;
+      var statusText = connected ? Language.getStr("Status_Connected") : Language.getStr("Status_Disconnected");
+      bn.updateBgColor(color);
+      bn.updateRobotStatus(statusText);
+      if (connected) {
         DeviceManager.checkBattery();
-      } else {
-        finchBn.xIcon.group.appendChild(finchBn.xIcon.pathE);
-        finchBn.battIcon.pathE.remove();
-        finchBn.icon.move(finchBn.finchX, finchBn.finchY);
       }
-      finchBn.updateBgColor(color);
-      GuiElements.update.stroke(finchBn.icon.pathE, outlineColor, 4);
-      GuiElements.update.text(finchBn.textE, shortName);
     }
     DeviceManager.setStatusListener(TB.updateStatus);
 
-    TB.finchButton = new Button((TB.sideWidth - TB.longButtonW) / 2, (TB.height / 2) - (TB.tallButtonH / 2), TB.longButtonW, TB.tallButtonH, TBLayer, Colors.fbGray, r, r);
-    TB.finchButton.addFinchBnIcons();
+    //Conectar robot a la izquierda (secundario); acotado antes de que el
+    //borde inferior suba hacia la muesca
+    var connectBnX = edge;
+    var connectBnW = Math.max(120, Math.min(180, TB.notchLeftX - connectBnX - 8));
+    TB.finchButton = new Button(connectBnX, secondaryY, connectBnW, secondaryH, TBLayer, Colors.stCoral, r, r);
+    TB.finchButton.addRobotBnContent();
     TB.finchButton.setCallbackFunction(function() {
       switch (DeviceManager.getStatus()) {
         case DeviceManager.statuses.noDevices:
@@ -11816,6 +11858,69 @@ TitleBar.makeButtons = function() {
           DeviceManager.removeAllDevices();
           (new DiscoverDialog(DeviceFinch)).show();
       }
+    }, true);
+
+    // Centro: Play / Stop (PRINCIPALES) colgando encastrados en la muesca.
+    // Play unificado: compila, transfiere por BLE y la placa ejecuta
+    // (volátil en vivo, persistente en modo descarga). Ver
+    // ProgramModeManager.playClicked.
+    var primaryR = 22;
+    var playStopY = TB.inset + TB.barH - TB.notchDepth + 4;
+    TB.flagBn = new Button(TB.flagBnX, playStopY, TB.longButtonW, primaryH, TBLayer, Colors.flagGreen, primaryR, primaryR);
+    TB.flagBn.addIcon(VectorPaths.faPlay, TB.bnIconH);
+    TB.flagBn.setCallbackFunction(ProgramModeManager.playClicked, false);
+
+    TB.stopBn = new Button(TB.stopBnX, playStopY, TB.longButtonW, primaryH, TBLayer, Colors.stopRed, primaryR, primaryR);
+    TB.stopBn.addIcon(VectorPaths.stStopSquare, TB.bnIconH * 0.9);
+    TB.stopBn.setCallbackFunction(CodeManager.stop, false);
+
+    // Derecha: grupo Modo+Nivel (secundarios) junto, aire, y Deshacer
+    // (terciario) separado para que se lean como bloques funcionales
+    TB.undoBnX = TB.width - TB.inset - 18 - tertiaryH;
+    TB.levelBnX = TB.undoBnX - 24 - TB.buttonW; //aire entre grupos
+
+    var cell = 40; //celdas del toggle segmentado
+    var cellPad = 4;
+    var toggleW = 2 * cell + 3 * cellPad;
+    var toggleH = cell + 2 * cellPad;
+    var toggleX = TB.levelBnX - TB.buttonMargin - toggleW;
+    var toggleY = TB.inset + (TB.barH - toggleH) / 2;
+    TB.modeGroup = GuiElements.create.group(toggleX, toggleY, TBLayer);
+    var modeBg = GuiElements.draw.rect(0, 0, toggleW, toggleH, Colors.stVioletDark, 16, 16);
+    TB.modeGroup.appendChild(modeBg);
+    TB.liveCellBn = new Button(cellPad, cellPad, cell, cell, TB.modeGroup, Colors.stVioletDark, 12, 12);
+    TB.liveCellBn.addColorIcon(VectorPaths.faBolt, cell * 0.55, Colors.stAmber);
+    TB.liveCellBn.setCallbackFunction(function() {
+      if (ProgramModeManager.isProgramMode()) {
+        ProgramModeManager.toggle();
+      }
+    }, true);
+    TB.progCellBn = new Button(2 * cellPad + cell, cellPad, cell, cell, TB.modeGroup, Colors.stVioletDark, 12, 12);
+    TB.progCellBn.addColorIcon(VectorPaths.stChip, cell * 0.55, Colors.white);
+    TB.progCellBn.setCallbackFunction(function() {
+      if (!ProgramModeManager.isProgramMode()) {
+        ProgramModeManager.toggle();
+      }
+    }, true);
+
+    TB.updateModeButtons = function() {
+      var programMode = ProgramModeManager.isProgramMode();
+      //Celda activa en blanco; la inactiva se funde con el fondo del toggle.
+      //Stop queda activo en ambos modos: siempre puede frenar a la placa.
+      TB.liveCellBn.updateBgColor(programMode ? Colors.stVioletDark : Colors.white);
+      TB.progCellBn.iconColor = programMode ? Colors.stViovar : Colors.white;
+      TB.progCellBn.updateBgColor(programMode ? Colors.white : Colors.stVioletDark);
+    };
+    TB.updateModeButtons();
+
+    TB.undoButton = new Button(TB.undoBnX, tertiaryY, tertiaryH, tertiaryH, TBLayer, Colors.stAmber, 16, 16);
+    TB.undoButton.addIcon(VectorPaths.faUndoAlt, TB.bnIconH * 0.75);
+    UndoManager.setUndoButton(TB.undoButton);
+
+    TB.levelButton = new Button(TB.levelBnX, secondaryY, TB.buttonW, secondaryH, TBLayer, Colors.white, r, r);
+    TB.levelButton.addText(LevelManager.currentLevel, LevelManager.levelButtonFont, Colors.stViolet);
+    TB.levelButton.setCallbackFunction(function() {
+      (new LevelDialog()).show();
     }, true);
 
     TB.fileBn = new FBFileNameDisplay();
@@ -11913,7 +12018,16 @@ TitleBar.removeButtons = function() {
   if (FinchBlox) {
     TB.finchButton.remove();
     TB.levelButton.remove();
-    //  TB.trashButton.remove();
+    if (TB.logoImg != null) TB.logoImg.remove();
+    if (TB.modeGroup != null) TB.modeGroup.remove();
+    if (TB.recenterBn != null) {
+      TB.recenterBn.remove();
+      TB.recenterBn = null;
+    }
+    if (TB.zoomBnGroup != null) {
+      TB.zoomBnGroup.remove();
+      TB.zoomBnGroup = null;
+    }
   } else {
     TB.viewBn.remove();
     TB.hummingbirdBn.remove();
@@ -12019,8 +12133,7 @@ TitleBar.updateZoomPart2 = function() {
   }
   TB.setGraphicsPart2();
   if (FinchBlox) {
-    GuiElements.update.rect(TB.bgRect, 0, 0, TB.width, TB.solidHeight); //TB.buttonMargin);
-    TB.updateShapePath();
+    TB.bgRect.setAttributeNS(null, "d", TB.barPathD());
   } else {
     GuiElements.update.rect(TB.bgRect, 0, 0, TB.width, TB.height);
   }
@@ -12094,19 +12207,27 @@ BlockPalette.setGraphics = function() {
 
   // Dimensions for the region with CategoryBNs
   if (FinchBlox) {
+    //Bandeja flotante SmartTEAM: separada de los bordes, tinte por categoría
+    //y muesca cóncava en el borde superior donde encastran las pestañas
+    BlockPalette.inset = 14;
+    BlockPalette.cornerRadius = 26;
+    BlockPalette.notchDepth = 34; //cuánto BAJA el borde superior en el centro
+    BlockPalette.notchShoulder = 16; //radio de los hombros
     BlockPalette.width = GuiElements.width;
-    BlockPalette.height = 90; //100;
-    BlockPalette.y = GuiElements.height - BlockPalette.height;
-    BlockPalette.bg = Colors.bbtDarkGray;
+    BlockPalette.height = 128;
+    BlockPalette.y = GuiElements.height - BlockPalette.height - BlockPalette.inset;
+    BlockPalette.bg = Colors.stCyanTint;
+    BlockPalette.mainVMargin = 46; //baja los bloques para centrarlos DEBAJO de la muesca
     BlockPalette.catW = 300;
     BlockPalette.catX = GuiElements.width / 2 - BlockPalette.catW / 2;
-    BlockPalette.catH = 40;
-    BlockPalette.catY = BlockPalette.y - BlockPalette.catH;
-    BlockPalette.blockMargin = 35; //25;   // The horizontal spacing between Blocks
-    BlockPalette.trashHeight = BlockPalette.height * 0.75;
+    BlockPalette.catH = 56; //alto de las pestañas
+    //El borde inferior de la pestaña apoya en el piso de la muesca
+    BlockPalette.catY = BlockPalette.y + BlockPalette.notchDepth - BlockPalette.catH;
+    BlockPalette.blockMargin = 20; // The horizontal spacing between Blocks
+    BlockPalette.trashHeight = BlockPalette.height * 0.6;
     BlockPalette.trashIconVP = VectorPaths.faTrash;
     BlockPalette.trashOpacity = 0.9;
-    BlockPalette.trashColor = Colors.easternBlue;
+    BlockPalette.trashColor = Colors.stGray400;
     BlockPalette.blockButtonOverhang = 10; //12; //How much block buttons are allowd to hang over the bottom of the block
   } else {
     BlockPalette.width = 253;
@@ -12137,13 +12258,11 @@ BlockPalette.setGraphics = function() {
 BlockPalette.updateZoom = function() {
   var BP = BlockPalette;
   BP.setGraphics();
-  GuiElements.update.rect(BP.palRect, 0, BP.y, BP.width, BP.height);
   if (FinchBlox) {
-    //BP.updatePath(BP.leftShape);
-    //BP.updatePath(BP.rightShape);
-    BP.updatePath();
+    BP.palRect.setAttributeNS(null, "d", BP.trayPathD());
     GuiElements.update.rect(BP.catRect, 0, BP.catY, 0, BP.catH);
   } else {
+    GuiElements.update.rect(BP.palRect, 0, BP.y, BP.width, BP.height);
     GuiElements.update.rect(BP.catRect, 0, BP.catY, BP.width, BP.catH);
   }
   //GuiElements.move.group(GuiElements.layers.categories, 0, TitleBar.height);
@@ -12178,73 +12297,68 @@ BlockPalette.createCatBg = function() {
  */
 BlockPalette.createPalBg = function() {
   var BP = BlockPalette;
-  BP.palRect = GuiElements.draw.rect(0, BP.y, BP.width, BP.height, BP.bg);
-  GuiElements.layers.paletteBG.appendChild(BP.palRect);
   if (FinchBlox) {
-    BP.shape = GuiElements.create.path(GuiElements.layers.paletteBG);
-    BP.shape.setAttributeNS(null, "fill", BP.bg);
-    BlockPalette.updatePath();
-    /*
-    BP.leftShape = GuiElements.create.path(GuiElements.layers.paletteBG);
-    BP.rightShape = GuiElements.create.path(GuiElements.layers.paletteBG);
-    BP.leftShape.setAttributeNS(null, "fill", BP.bg);
-    BP.rightShape.setAttributeNS(null, "fill", BP.bg);
-    BlockPalette.updatePath(BP.leftShape);
-    BlockPalette.updatePath(BP.rightShape);*/
+    //Bandeja flotante con esquinas redondeadas y muesca para las pestañas
+    BP.palRect = GuiElements.create.path(GuiElements.layers.paletteBG);
+    BP.palRect.setAttributeNS(null, "fill", BP.bg);
+    BP.palRect.setAttributeNS(null, "d", BP.trayPathD());
+  } else {
+    BP.palRect = GuiElements.draw.rect(0, BP.y, BP.width, BP.height, BP.bg);
+    GuiElements.layers.paletteBG.appendChild(BP.palRect);
   }
 };
 
-BlockPalette.updatePath = function() {
+/**
+ * Contorno de la bandeja FinchBlox: rectángulo redondeado con muesca cóncava
+ * en el borde superior donde encastran las pestañas de categoría. Comandos
+ * absolutos, simétrico.
+ * @return {string} - atributo "d" del path
+ */
+BlockPalette.trayPathD = function() {
   var BP = BlockPalette;
-  var shapeH = 20;
-  var r = shapeH / 2;
-  var shapeW = (BP.width - BP.catW) / 2 - 2 * BP.catHMargin - 2 * r;
-  var catTabW = BP.catW + 4 * BP.catHMargin;
+  var x = BP.inset, y = BP.y;
+  var W = BP.width - 2 * BP.inset;
+  var H = BP.height;
+  var r = BP.cornerRadius;
+  var dep = BP.notchDepth;
+  var sh = BP.notchShoulder;
+  var cx = BP.width / 2;
 
-  var path = "m 0," + (BP.y - shapeH);
-  path += " l " + shapeW + ",0 ";
-  path += " a " + r + " " + r + " 0 0 1 " + r + " " + r;
-  path += " a " + r + " " + r + " 0 0 0 " + r + " " + r;
-  path += " l " + (catTabW) + ",0 ";
-  path += " a " + r + " " + r + " 0 0 0 " + r + " " + (-r);
-  path += " a " + r + " " + r + " 0 0 1 " + r + " " + (-r);
-  path += " l " + shapeW + ",0 0," + (shapeH + BP.height) + " " + (-BP.width) + ",0";
-  path += " z";
-
-  BP.shape.setAttributeNS(null, "d", path);
-}
-/*
-BlockPalette.updatePath = function(pathE) {
-  var BP = BlockPalette;
-  var shapeH = 20;
-  var r = shapeH/2;
-  var shapeW = (BP.width - BP.catW)/2 - 2*BP.catHMargin - 2*r;
-  var path = "";
-  switch(pathE){
-    case BP.leftShape:
-      path += "m 0," + (BP.y - shapeH);
-      path += " l " + shapeW + ",0 ";
-      path += " a " + r + " " + r + " 0 0 1 " + r + " " + r;
-      path += " a " + r + " " + r + " 0 0 0 " + r + " " + r;
-      path += " l " + (-shapeW-2*r) + ",0 ";
-      path += " z";
-      break;
-    case BP.rightShape:
-      path += "m " + BP.width + "," + (BP.y - shapeH);
-      path += " l " + (-shapeW) + ",0 ";
-      path += " a " + r + " " + r + " 0 0 0 " + (-r) + " " + r;
-      path += " a " + r + " " + r + " 0 0 1 " + (-r) + " " + r;
-      path += " l " + (shapeW + 2*r) + ",0 ";
-      path += " z";
-      break;
+  //La muesca se adapta a la cantidad de pestañas visibles del nivel actual
+  var tabCount = 3;
+  if (BP.categories != null && BP.categories.length > 0 && typeof LevelManager !== "undefined") {
+    var visible = 0;
+    BP.categories.forEach(function(cat) {
+      if (cat.level == LevelManager.currentLevel) visible++;
+    });
+    if (visible > 0) tabCount = visible;
   }
-  pathE.setAttributeNS(null, "d", path);
-}*/
+  var half = (tabCount * CategoryBN.width + (tabCount - 1) * CategoryBN.hMargin) / 2 + 16;
+  var nL = cx - half, nR = cx + half;
+
+  var d = "M " + (x + r) + " " + y;
+  d += " H " + (nL - sh);
+  d += " A " + sh + " " + sh + " 0 0 1 " + nL + " " + (y + sh); //hombro izq (baja)
+  d += " V " + (y + dep - sh);
+  d += " A " + sh + " " + sh + " 0 0 0 " + (nL + sh) + " " + (y + dep); //al piso
+  d += " H " + (nR - sh); //piso de la muesca
+  d += " A " + sh + " " + sh + " 0 0 0 " + nR + " " + (y + dep - sh); //sube der
+  d += " V " + (y + sh);
+  d += " A " + sh + " " + sh + " 0 0 1 " + (nR + sh) + " " + y; //hombro der (sube)
+  d += " H " + (x + W - r);
+  d += " A " + r + " " + r + " 0 0 1 " + (x + W) + " " + (y + r);
+  d += " V " + (y + H - r);
+  d += " A " + r + " " + r + " 0 0 1 " + (x + W - r) + " " + (y + H);
+  d += " H " + (x + r);
+  d += " A " + r + " " + r + " 0 0 1 " + x + " " + (y + H - r);
+  d += " V " + (y + r);
+  d += " A " + r + " " + r + " 0 0 1 " + (x + r) + " " + y;
+  d += " Z";
+  return d;
+};
+
 BlockPalette.updatePaletteColor = function(color) {
   GuiElements.update.color(BlockPalette.palRect, color);
-  //GuiElements.update.color(BlockPalette.leftShape, color);
-  //GuiElements.update.color(BlockPalette.rightShape, color);
-  GuiElements.update.color(BlockPalette.shape, color);
 }
 
 /**
@@ -12336,7 +12450,19 @@ BlockPalette.showTrash = function() {
   // If the trash is not visible
   if (!BP.trash) {
     BP.trash = GuiElements.create.group(0, 0);
-    var trashBg = GuiElements.draw.rect(0, BP.y, BP.width, BP.height, BP.bg);
+    var trashBg;
+    if (FinchBlox) {
+      //Usa el tinte de la categoría activa para fundirse con la bandeja
+      var bgColor = BP.bg;
+      if (BP.selectedCat != null && Colors.blockPalette[BP.selectedCat.id] != null) {
+        bgColor = Colors.blockPalette[BP.selectedCat.id];
+      }
+      trashBg = GuiElements.create.path(BP.trash);
+      trashBg.setAttributeNS(null, "d", BP.trayPathD());
+      trashBg.setAttributeNS(null, "fill", bgColor);
+    } else {
+      trashBg = GuiElements.draw.rect(0, BP.y, BP.width, BP.height, BP.bg);
+    }
     GuiElements.update.opacity(trashBg, BP.trashOpacity);
     BP.trash.appendChild(trashBg);
 
@@ -12413,6 +12539,8 @@ BlockPalette.setLevel = function() {
   BlockPalette.categories.forEach(function(category) {
     category.button.setHidden();
   })
+  //La muesca de la bandeja se adapta a la cantidad de pestañas del nivel
+  BlockPalette.palRect.setAttributeNS(null, "d", BlockPalette.trayPathD());
   //  switch (LevelMenu.currentLevel){
   switch (LevelManager.currentLevel) {
     case 1:
@@ -12724,15 +12852,15 @@ CategoryBN.setGraphics = function() {
   CBN.labelLMargin = 6; // The amount of space between the text of the button and the band of color
 
   if (FinchBlox) {
-    CBN.hMargin = BP.catHMargin;
+    CBN.hMargin = 12;
     CBN.height = BP.catH;
-    CBN.selectedH = BP.catH + 10;
-    CBN.iconScale = 0.65;
-    CBN.width = 60;
+    CBN.selectedH = BP.catH + 8; //la pestaña activa sube 8px
+    CBN.iconScale = 0.55;
+    CBN.width = 74;
     CBN.vMargin = 15;
     CBN.labelX = CBN.colorW + CBN.labelLMargin;
     CBN.labelY = (CBN.height + CBN.font.charHeight) / 2;
-    CBN.cornerRadius = 8;
+    CBN.cornerRadius = 14;
   } else {
     CBN.hMargin = BP.catHMargin;
     CBN.height = 30;
@@ -13848,8 +13976,9 @@ Button.setGraphics = function() {
   // The suggested margin between adjacent margins
   if (FinchBlox) {
     Button.defaultMargin = 10;
-    Button.disabledBg = Colors.darkenColor(Colors.easternBlue, 0.85);
-    Button.disabledFore = Colors.darkenColor(Colors.blockPaletteMotion, 0.9);
+    //Gris neutro para que los botones deshabilitados se vean "apagados"
+    Button.disabledBg = Colors.iron;
+    Button.disabledFore = Colors.white;
   } else {
     Button.defaultMargin = 5;
     Button.disabledBg = Colors.darkGray;
@@ -14196,6 +14325,59 @@ Button.prototype.addFinchBnIcons = function() {
   TouchReceiver.addListenersBN(this.textE, this);
 
   TitleBar.updateStatus(DeviceManager.getStatus());
+}
+
+/**
+ * SmartTEAM: contenido del botón "Conectar robot" — ícono del robot a la
+ * izquierda (se reutiliza el finch hasta que llegue el arte del rover) y dos
+ * líneas de texto: etiqueta y estado de conexión con punto.
+ */
+Button.prototype.addRobotBnContent = function() {
+  var robotPathId = VectorPaths.stRover;
+  var font = Font.uiFont(13);
+  var font2 = Font.secondaryUiFont(11);
+  var padding = 9;
+
+  var robotH = this.height * 0.6;
+  var robotW = VectorIcon.computeWidth(robotPathId, robotH);
+  var iconX = padding;
+  var iconY = (this.height - robotH) / 2;
+  var textX = padding + robotW + 8;
+  var lineGap = 5;
+  var line1Y = (this.height - font.charHeight - font2.charHeight - lineGap) / 2 + font.charHeight;
+  var line2Y = line1Y + lineGap + font2.charHeight;
+  var dotR = 3;
+
+  this.removeContent();
+  this.hasIcon = true;
+  this.iconInverts = false;
+  this.hasText = true;
+
+  this.icon = new VectorIcon(iconX, iconY, robotPathId, Colors.white, robotH, this.group);
+  this.textE = GuiElements.draw.text(0, 0, "", font, Colors.white);
+  GuiElements.update.textLimitWidth(this.textE, Language.getStr("Connect_Robot"), this.width - textX - padding);
+  GuiElements.move.text(this.textE, textX, line1Y);
+  this.group.appendChild(this.textE);
+  this.statusDotE = GuiElements.draw.circle(textX + dotR, line2Y - font2.charHeight / 2 + 1, dotR, Colors.white, this.group);
+  this.statusTextE = GuiElements.draw.text(textX + 2 * dotR + 5, line2Y, "", font2, Colors.white);
+  this.group.appendChild(this.statusTextE);
+
+  TouchReceiver.addListenersBN(this.icon.pathE, this);
+  TouchReceiver.addListenersBN(this.textE, this);
+  TouchReceiver.addListenersBN(this.statusDotE, this);
+  TouchReceiver.addListenersBN(this.statusTextE, this);
+
+  TitleBar.updateStatus(DeviceManager.getStatus());
+}
+
+/**
+ * Actualiza la línea de estado del botón "Conectar robot"
+ * @param {string} statusText
+ */
+Button.prototype.updateRobotStatus = function(statusText) {
+  if (this.statusTextE != null) {
+    GuiElements.update.text(this.statusTextE, statusText);
+  }
 }
 
 /**
@@ -15013,7 +15195,7 @@ function FBFileNameDisplay() {
   this.r = TB.defaultCornerRounding;
   this.font = Font.secondaryUiFont(16); //Button.defaultFont;
   this.textW = 0;
-  this.bgColor = Colors.fbGray;
+  this.bgColor = Colors.white;
 
   this.group = GuiElements.create.group(this.X, this.Y, TBLayer);
   var fileDisplayBG = GuiElements.draw.rect(0, 0, this.W, this.H, this.bgColor, this.r, this.r);
@@ -15085,8 +15267,8 @@ FBFileNameDisplay.prototype.addButton = function(isSaveBn) {
     this.button.remove();
   }
 
-  this.button = new Button(bnX, this.margin, this.bnW, bnH, this.group, Colors.easternBlue, bnR, bnR);
-  this.button.addIcon(icon, TB.bnIconH * 0.5);
+  this.button = new Button(bnX, this.margin, this.bnW, bnH, this.group, Colors.white, bnR, bnR);
+  this.button.addColorIcon(icon, TB.bnIconH * 0.7, Colors.stViolet);
   //TB.fileBn.setCallbackFunction(function() {(new FBFileSelect(TB.fileBn, TB.fileDisplay)).show();}, true);
   if (isSaveBn) {
     this.button.setCallbackFunction(function() {
@@ -20220,6 +20402,10 @@ CodeManager.stop = function() {
   DisplayBoxManager.hide(); // Hide any messages being displayed.
   Sound.stopAllSounds() // Stops all sounds and tones
   BlockPalette.passRecursively("passRecursively", "stop"); //Stop any block running in the block palette
+  if (FinchBlox && typeof ProgramModeManager !== "undefined") {
+    // El stopAll llegó a la placa como CMD_STOP: limpiar la ejecución remota
+    ProgramModeManager.onRemoteStopped();
+  }
   // Note: Tones are not allowed to be async, so they
   // must be stopped manually
 
@@ -20531,8 +20717,14 @@ CodeManager.checkBroadcastRunning = function(message) {
 
 /**
  * Recursively passes on the message that the flag button was tapped.
+ * En FinchBlox con modo programa activo, la bandera corre el programa ya
+ * transferido a la placa en vez de ejecutar los bloques en vivo.
  */
 CodeManager.eventFlagClicked = function() {
+  if (FinchBlox && ProgramModeManager.isProgramMode()) {
+    ProgramModeManager.flagClicked();
+    return;
+  }
   TabManager.eventFlagClicked();
 };
 
@@ -20764,6 +20956,914 @@ CodeManager.dragRelToAbsY = function(y) {
 
 
 
+/* STXConstants — GENERADO por firmware/tools/gen_js_constants.py.
+ * NO editar a mano: cambiar firmware/source/vm/stx_isa.h o
+ * firmware/source/proto/stx_proto.h y regenerar. */
+var STX = {};
+
+/* ---- stx_isa.h ---- */
+STX.MAGIC_0 = 0x53;  // 'S'
+STX.MAGIC_1 = 0x54;  // 'T'
+STX.MAGIC_2 = 0x58;  // 'X'
+STX.MAGIC_3 = 0x31;  // '1'
+STX.BC_VERSION = 0x02;  // versión del bytecode (v2: OP_MARK)
+STX.HEADER_SIZE = 0x0C;  // bytes de header antes de la tabla de eventos
+STX.EVENT_ENTRY_SIZE = 0x04;  // bytes por entrada de la tabla de eventos
+STX.MAX_IMAGE_SIZE = 0x800;  // tamaño máximo de la imagen completa (header incluido)
+STX.MAX_EVENTS = 0x08;  // entradas máximas en la tabla de eventos
+STX.MAX_CONTEXTS = 0x04;  // contextos de ejecución concurrentes en la VM
+STX.MAX_LOOP_DEPTH = 0x08;  // profundidad máxima de loops anidados por contexto
+STX.EVT_ON_START = 0x00;  // al arrancar el programa (RUN o boot)
+STX.EVT_ON_DARK = 0x01;  // luz < param
+STX.EVT_ON_LOUD = 0x02;  // nivel de sonido > param (requiere V2)
+STX.EVT_ON_BUTTON_A = 0x03;  // botón A presionado
+STX.EVT_ON_BUTTON_B = 0x04;  // botón B presionado
+STX.OP_NOP = 0x00;  // sin operandos
+STX.OP_HALT = 0x01;  // sin operandos — termina el handler
+STX.OP_WAIT_MS = 0x02;  // u16 ms — espera no bloqueante
+STX.OP_LOOP_N = 0x03;  // u8 n (1-255) — abre loop de n vueltas
+STX.OP_LOOP_END = 0x04;  // sin operandos — cierra loop
+STX.OP_LOOP_FOREVER = 0x05;  // sin operandos — abre loop infinito
+STX.OP_JMP = 0x06;  // i16 rel — RESERVADO v1 (la VM lo rechaza)
+STX.OP_WAIT_UNTIL = 0x07;  // u8 cond, u8 param — espera condición
+STX.OP_MARK = 0x08;  // u8 index — bloque en ejecución (notificación al editor)
+STX.OP_LED_PATTERN = 0x10;  // 4 bytes: 25 bits row-major LSB-first, bit0 = LED(0,0)
+STX.OP_LED_CLEAR = 0x11;  // sin operandos
+STX.OP_LED_BRIGHT = 0x12;  // u8 brillo 0-255
+STX.OP_RGB_SET = 0x18;  // u8 r, u8 g, u8 b (0-255) — color abstracto, mapea el HAL
+STX.OP_TONE = 0x20;  // u8 nota MIDI, u16 durMs — NO bloqueante
+STX.OP_TONE_STOP = 0x21;  // sin operandos
+STX.OP_MOTORS = 0x30;  // i8 spdL, i8 spdR (-100..100) — continuo
+STX.OP_MOTORS_TICKS = 0x31;  // i8 spdL, i8 spdR, u16 ticks — bloqueante hasta completar
+STX.OP_MOTORS_STOP = 0x32;  // sin operandos
+STX.COND_DARK = 0x01;  // luz < param
+STX.COND_BRIGHT = 0x02;  // luz > param
+STX.COND_LOUD = 0x03;  // sonido > param (requiere V2)
+STX.COND_BTN_A = 0x04;  // botón A presionado
+STX.COND_BTN_B = 0x05;  // botón B presionado
+STX.COND_OBSTACLE = 0x10;  // distancia < param cm (v2)
+STX.COND_LINE = 0x11;  // sensor de línea activo (v2)
+STX.COND_SOIL_DRY = 0x12;  // humedad < param (v2)
+STX.VMSTATE_STOPPED = 0x00;
+STX.VMSTATE_RUNNING = 0x01;
+STX.VMSTATE_PAUSED = 0x02;  // reservado
+STX.ERR_NONE = 0x00;
+STX.ERR_BAD_OPCODE = 0x01;  // opcode desconocido o reservado
+STX.ERR_PC_RANGE = 0x02;  // PC fuera de la sección de código
+STX.ERR_LOOP_OVERFLOW = 0x03;  // más de STX_MAX_LOOP_DEPTH loops anidados
+STX.ERR_LOOP_UNDERFLOW = 0x04;  // LOOP_END sin loop abierto
+STX.ERR_BAD_IMAGE = 0x05;  // imagen inválida (magic/CRC/longitud)
+
+/* ---- stx_proto.h ---- */
+STX.PROTO_VERSION = 0x02;
+STX.FW_MAJOR = 0x00;
+STX.FW_MINOR = 0x02;
+STX.BOARD_BASIC = 0x00;  // micro:bit sola
+STX.BOARD_TINYBIT = 0x01;  // Yahboom Tiny:bit (motores I2C)
+STX.CMD_XFER_BEGIN = 0x01;  // [len u16][crc32 u32][flags u8]
+STX.CMD_XFER_CHUNK = 0x02;  // [seq u8][data ≤16B]
+STX.CMD_XFER_END = 0x03;  // sin payload
+STX.CMD_RUN = 0x10;  // sin payload
+STX.CMD_STOP = 0x11;  // sin payload
+STX.CMD_GET_STATUS = 0x12;  // sin payload
+STX.CMD_ERASE = 0x13;  // sin payload
+STX.CMD_GET_SENSORS = 0x14;  // sin payload
+STX.CMD_LIVE_EXEC = 0x20;  // [instrucción STX cruda]
+STX.RESP_FLAG = 0x80;  // respuesta = comando | STX_RESP_FLAG
+STX.XFER_FLAG_VOLATILE = 0x01;  // no persistir: la imagen vive en RAM (modo vivo)
+STX.NOTIF_MARK = 0xF0;  // [index u8] bloque en ejecución
+STX.NOTIF_DONE = 0xF1;  // [reason u8] programa terminó (0 = fin natural)
+STX.NOTIF_FAULT = 0xF2;  // [err u8] la VM se detuvo por error (STX_ERR_*)
+STX.NOTIF_MIN_INTERVAL_MS = 0x3C;  // intervalo mínimo entre NOTIF_MARK enviados
+STX.STATUS_OK = 0x00;
+STX.STATUS_TOO_LARGE = 0x01;  // imageLen > STX_MAX_IMAGE_SIZE
+STX.STATUS_BUSY = 0x02;  // transferencia u operación en curso
+STX.STATUS_BAD_CRC = 0x03;  // CRC32 no coincide en XFER_END
+STX.STATUS_BAD_LENGTH = 0x04;  // faltan/sobran bytes al terminar
+STX.STATUS_FLASH_ERROR = 0x05;  // error al grabar en flash
+STX.STATUS_BAD_SEQ = 0x06;  // chunk fuera de orden — reenviar
+STX.STATUS_NO_PROGRAM = 0x07;  // RUN sin imagen válida cargada
+STX.STATUS_REJECTED = 0x08;  // comando/instrucción no permitida (ej. WAIT en live)
+STX.STATUS_NO_SESSION = 0x09;  // chunk/end sin XFER_BEGIN previo
+STX.STATUS_BAD_IMAGE = 0x0A;  // la imagen no pasa la validación de la VM (versión/formato)
+STX.CHUNK_DATA_SIZE = 0x10;  // bytes de datos por XFER_CHUNK
+STX.XFER_TIMEOUT_MS = 0x1388;  // el firmware aborta la sesión sin datos
+STX.PKT_MAX = 0x14;  // tamaño máximo de paquete de aplicación
+
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = STX;
+}
+
+
+
+/**
+ * ProgramCompiler compila el árbol vivo de bloques FinchBlox a una
+ * representación intermedia (IR) JSON, independiente del bytecode.
+ * Es puro: no toca GuiElements/TabManager/DeviceFinch, así que puede
+ * testearse en Node con fixtures duck-typed. Quien junta los stacks del
+ * editor (TabManager.activeTab.stackList) es ProgramModeManager.
+ *
+ * IR = { version: 1, handlers: [Handler] }
+ * Handler = { trigger: "start"|"dark"|"loud", param: number, body: [Op] }
+ * Op:
+ *   {op:"tone", note, ms}                — bloqueante (el assembler emite TONE+WAIT)
+ *   {op:"ledMatrix", pattern}            — string de 25 chars "0"/"1", row-major
+ *   {op:"ledClear"}
+ *   {op:"rgb", target, r, g, b}          — target 0=beak 1=tail; valores 0-100
+ *   {op:"wait", ms}
+ *   {op:"motors", speedL, speedR, ticksL, ticksR}   — kit v2
+ *   {op:"motorsFree", speedL, speedR}               — kit v2
+ *   {op:"motorsStop"}                               — kit v2
+ *   {op:"waitUntil", cond, param}        — cond: "dark"|"loud"|"obstacle"
+ *   {op:"repeat", count, body:[Op]}      — count 0 = forever
+ *   {op:"mark", index}                   — bloque en ejecución (options.emitMarkers)
+ *
+ * Con options.emitMarkers el resultado incluye markerMap: array índice→Block
+ * (las referencias a Block viven solo en la app; NO forman parte del IR, que
+ * sigue siendo puro/serializable).
+ */
+function ProgramCompiler() {}
+
+/** Umbrales idénticos al modo live (BlockDefs_control.js:558-589) */
+ProgramCompiler.DARK_THRESHOLD = 5;
+ProgramCompiler.LOUD_THRESHOLD = 50;
+/** Umbral de obstáculo en cm (BlockDefs_fbMotion.js, B_FBForwardUntilObstacle) */
+ProgramCompiler.OBSTACLE_THRESHOLD_CM = 20;
+/** Límites que impone la VM (ver firmware/source/vm/stx_isa.h) */
+ProgramCompiler.MAX_HANDLERS = 8;
+ProgramCompiler.MAX_START_HANDLERS = 4;
+
+/** Máximo de marcadores por programa (OP_MARK lleva índice u8) */
+ProgramCompiler.MAX_MARKERS = 256;
+
+/* Estado de marcadores de la compilación en curso (el compilador es síncrono);
+ * null = sin marcadores */
+ProgramCompiler._markerMap = null;
+
+/**
+ * Punto de entrada.
+ * @param {Array} firstBlocks - primer Block de cada stack top-level, en orden
+ * @param {object} [options] - {allowMotors: boolean, emitMarkers: boolean}
+ * @return {{ir: object|null, markerMap: Array|null, errors: Array, warnings: Array}}
+ */
+ProgramCompiler.compile = function(firstBlocks, options) {
+  if (options == null) {
+    options = {};
+  }
+  var errors = [];
+  var warnings = [];
+  var handlers = [];
+  ProgramCompiler._markerMap = options.emitMarkers ? [] : null;
+
+  for (var i = 0; i < firstBlocks.length; i++) {
+    var firstBlock = firstBlocks[i];
+    if (firstBlock == null) {
+      continue;
+    }
+    var handler = ProgramCompiler.compileStack(firstBlock, errors, warnings);
+    if (handler != null && handler.body.length > 0) {
+      handlers.push(handler);
+    }
+  }
+
+  ProgramCompiler.validate(handlers, options, errors, warnings);
+
+  var markerMap = ProgramCompiler._markerMap;
+  ProgramCompiler._markerMap = null;
+  if (markerMap != null && markerMap.length > ProgramCompiler.MAX_MARKERS) {
+    errors.push({ code: "E_TOO_MANY_BLOCKS", count: markerMap.length });
+  }
+
+  if (errors.length > 0) {
+    return { ir: null, markerMap: null, errors: errors, warnings: warnings };
+  }
+  return {
+    ir: { version: 1, handlers: handlers },
+    markerMap: markerMap,
+    errors: errors,
+    warnings: warnings
+  };
+};
+
+/**
+ * Compila un stack completo a un Handler. El hat (si hay) define el trigger;
+ * un stack sin hat es un handler "start" directo (niveles 1-2).
+ */
+ProgramCompiler.compileStack = function(firstBlock, errors, warnings) {
+  var trigger = "start";
+  var param = 0;
+  var bodyStart = firstBlock;
+
+  var hat = ProgramCompiler.hats[firstBlock.blockTypeName];
+  if (hat != null) {
+    trigger = hat.trigger;
+    param = hat.param;
+    bodyStart = firstBlock.nextBlock;
+  } else if (firstBlock.isStartBlock) {
+    // Hat desconocido (ej. bloque nuevo de BirdBlox): error explícito
+    errors.push(ProgramCompiler.unsupportedError(firstBlock.blockTypeName));
+    return null;
+  }
+
+  var body = ProgramCompiler.compileSequence(bodyStart, errors, warnings);
+  return { trigger: trigger, param: param, body: body };
+};
+
+/**
+ * Sigue la cadena nextBlock y concatena la IR de cada bloque.
+ * @param {object|null} block - primer Block de la secuencia
+ * @return {Array} lista de Ops
+ */
+ProgramCompiler.compileSequence = function(block, errors, warnings) {
+  var ops = [];
+  while (block != null) {
+    var encoder = ProgramCompiler.encoders[block.blockTypeName];
+    if (encoder == null) {
+      errors.push(ProgramCompiler.unsupportedError(block.blockTypeName));
+      return ops;
+    }
+    if (ProgramCompiler._markerMap != null) {
+      ops.push({ op: "mark", index: ProgramCompiler._markerMap.length });
+      ProgramCompiler._markerMap.push(block);
+    }
+    var blockOps = encoder(block, errors, warnings);
+    for (var i = 0; i < blockOps.length; i++) {
+      ops.push(blockOps[i]);
+    }
+    if (ProgramCompiler.isForever(blockOps) && block.nextBlock != null) {
+      warnings.push({
+        code: "W_UNREACHABLE_AFTER_FOREVER",
+        blockType: block.blockTypeName
+      });
+      return ops;
+    }
+    block = block.nextBlock;
+  }
+  return ops;
+};
+
+ProgramCompiler.isForever = function(ops) {
+  return ops.length === 1 && ops[0].op === "repeat" && ops[0].count === 0;
+};
+
+ProgramCompiler.unsupportedError = function(blockTypeName) {
+  return { code: "E_UNSUPPORTED_BLOCK", blockType: blockTypeName };
+};
+
+/** Validaciones globales post-compilación */
+ProgramCompiler.validate = function(handlers, options, errors, warnings) {
+  var totalOps = 0;
+  var startCount = 0;
+  for (var i = 0; i < handlers.length; i++) {
+    totalOps += ProgramCompiler.countOps(handlers[i].body);
+    if (handlers[i].trigger === "start") {
+      startCount++;
+    }
+  }
+  if (handlers.length === 0 || totalOps === 0) {
+    errors.push({ code: "E_EMPTY" });
+    return;
+  }
+  if (handlers.length > ProgramCompiler.MAX_HANDLERS) {
+    errors.push({ code: "E_TOO_MANY_STACKS", count: handlers.length });
+  }
+  if (startCount > ProgramCompiler.MAX_START_HANDLERS) {
+    errors.push({ code: "E_TOO_MANY_STACKS", count: startCount });
+  }
+  if (!options.allowMotors) {
+    var motorOps = { motors: true, motorsFree: true, motorsStop: true };
+    for (var i = 0; i < handlers.length; i++) {
+      if (ProgramCompiler.usesOps(handlers[i].body, motorOps)) {
+        errors.push({ code: "E_UNSUPPORTED_ON_BOARD", trigger: handlers[i].trigger });
+      }
+    }
+  }
+};
+
+ProgramCompiler.countOps = function(body) {
+  var n = 0;
+  for (var i = 0; i < body.length; i++) {
+    n++;
+    if (body[i].op === "repeat") {
+      n += ProgramCompiler.countOps(body[i].body);
+    }
+  }
+  return n;
+};
+
+ProgramCompiler.usesOps = function(body, opNames) {
+  for (var i = 0; i < body.length; i++) {
+    if (opNames[body[i].op]) {
+      return true;
+    }
+    if (body[i].op === "repeat" && ProgramCompiler.usesOps(body[i].body, opNames)) {
+      return true;
+    }
+  }
+  return false;
+};
+
+/* ---------------------------------------------------------------------------
+ * Tabla de hats: blockTypeName -> trigger de handler.
+ * Umbrales idénticos a los del modo live.
+ */
+ProgramCompiler.hats = {
+  B_WhenFlagTapped: { trigger: "start", param: 0 },
+  B_StartWhenDark: { trigger: "dark", param: ProgramCompiler.DARK_THRESHOLD },
+  B_StartWhenClap: { trigger: "loud", param: ProgramCompiler.LOUD_THRESHOLD }
+};
+
+/* ---------------------------------------------------------------------------
+ * Tabla de encoders: blockTypeName -> function(block, errors, warnings) -> [Op].
+ * Se construye programáticamente: un encoder compartido registrado bajo N
+ * nombres. Los campos leídos son los que cada bloque cachea vía updateValues()
+ * (ver BlockDefs_fbSound.js:18, BlockDefs_fbColor.js:18-23,
+ * BlockDefs_fbMotion.js:92-177, BlockDefs_control.js:69/176).
+ */
+ProgramCompiler.encoders = {};
+
+(function() {
+  var enc = ProgramCompiler.encoders;
+
+  function register(names, fn) {
+    for (var i = 0; i < names.length; i++) {
+      enc[names[i]] = fn;
+    }
+  }
+
+  // Sound: nota midi + beats (cada beat = 0.1 s, igual que el modo live)
+  register(["B_FBC", "B_FBD", "B_FBE", "B_FBF", "B_FBG", "B_FBA",
+    "B_FBSoundL2", "B_FBSoundL3"], function(block) {
+    return [{ op: "tone", note: block.midiNote, ms: block.beats * 100 }];
+  });
+
+  // LED array: patrón + duración (duration en décimas de segundo) + apagar
+  register(["B_FBLedArrayL2", "B_FBLedArrayL3"], function(block) {
+    return [
+      { op: "ledMatrix", pattern: block.ledStatusString },
+      { op: "wait", ms: block.duration * 100 },
+      { op: "ledClear" }
+    ];
+  });
+
+  // Beak/Tail: color RGB (0-100) + duración + apagar
+  register(["B_FBBeakRed", "B_FBBeakGreen", "B_FBBeakBlue", "B_FBBeakL2", "B_FBBeakL3",
+    "B_FBTailRed", "B_FBTailGreen", "B_FBTailBlue", "B_FBTailL2", "B_FBTailL3"],
+    function(block) {
+      var target = block.isBeak ? 0 : 1;
+      return [
+        { op: "rgb", target: target, r: block.red, g: block.green, b: block.blue },
+        { op: "wait", ms: block.duration * 100 },
+        { op: "rgb", target: target, r: 0, g: 0, b: 0 }
+      ];
+    });
+
+  // Wait: slider en décimas de segundo
+  register(["B_Wait"], function(block) {
+    return [{ op: "wait", ms: block.timeSelection * 100 }];
+  });
+
+  // Repeat: cuerpo en blockSlot1
+  register(["B_Repeat"], function(block, errors, warnings) {
+    var child = block.blockSlot1 != null ? block.blockSlot1.child : null;
+    var body = ProgramCompiler.compileSequence(child, errors, warnings);
+    return [{ op: "repeat", count: block.countSelection, body: body }];
+  });
+
+  // Forever: repeat con count 0
+  register(["B_Forever"], function(block, errors, warnings) {
+    var child = block.blockSlot1 != null ? block.blockSlot1.child : null;
+    var body = ProgramCompiler.compileSequence(child, errors, warnings);
+    return [{ op: "repeat", count: 0, body: body }];
+  });
+
+  // Motion: los ticks/speeds ya vienen calculados por updateValues()
+  register(["B_FBForward", "B_FBBackward", "B_FBRight", "B_FBLeft",
+    "B_FBForwardL2", "B_FBBackwardL2", "B_FBRightL2", "B_FBLeftL2",
+    "B_FBForwardL3", "B_FBBackwardL3", "B_FBRightL3", "B_FBLeftL3"],
+    function(block) {
+      return [{
+        op: "motors",
+        speedL: block.leftSpeed,
+        speedR: block.rightSpeed,
+        ticksL: block.leftTicks,
+        ticksR: block.rightTicks
+      }];
+    });
+
+  // Avanzar hasta condición: primitivas motores + waitUntil + stop
+  register(["B_FBForwardUntilDark"], function(block) {
+    return [
+      { op: "motorsFree", speedL: 50, speedR: 50 },
+      { op: "waitUntil", cond: "dark", param: ProgramCompiler.DARK_THRESHOLD },
+      { op: "motorsStop" }
+    ];
+  });
+  register(["B_FBForwardUntilObstacle"], function(block) {
+    return [
+      { op: "motorsFree", speedL: 50, speedR: 50 },
+      { op: "waitUntil", cond: "obstacle", param: ProgramCompiler.OBSTACLE_THRESHOLD_CM },
+      { op: "motorsStop" }
+    ];
+  });
+})();
+
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = ProgramCompiler;
+}
+
+
+
+/**
+ * BytecodeAssembler convierte la IR de ProgramCompiler en una imagen STX1
+ * (Uint8Array) lista para transferir a la micro:bit. El formato lo define
+ * firmware/source/vm/stx_isa.h (fuente de verdad); las constantes vienen de
+ * STXConstants.js (generado). Puro y dual-load para testear en Node.
+ *
+ * Lanza Error con .code = "E_TOO_LARGE" si la imagen supera STX.MAX_IMAGE_SIZE.
+ */
+function BytecodeAssembler() {}
+
+(function() {
+  var STXRef;
+  if (typeof STX !== "undefined") {
+    STXRef = STX;
+  } else if (typeof require !== "undefined") {
+    STXRef = require("./STXConstants.js");
+  }
+  BytecodeAssembler.STX = STXRef;
+})();
+
+BytecodeAssembler.TRIGGERS = {
+  start: function(S) { return S.EVT_ON_START; },
+  dark: function(S) { return S.EVT_ON_DARK; },
+  loud: function(S) { return S.EVT_ON_LOUD; }
+};
+
+BytecodeAssembler.CONDS = {
+  dark: function(S) { return S.COND_DARK; },
+  bright: function(S) { return S.COND_BRIGHT; },
+  loud: function(S) { return S.COND_LOUD; },
+  obstacle: function(S) { return S.COND_OBSTACLE; }
+};
+
+/**
+ * @param {object} ir - {version, handlers:[{trigger, param, body}]}
+ * @return {Uint8Array} imagen STX1 completa
+ */
+BytecodeAssembler.assemble = function(ir) {
+  var S = BytecodeAssembler.STX;
+  var events = [];
+  var code = [];
+
+  for (var i = 0; i < ir.handlers.length; i++) {
+    var handler = ir.handlers[i];
+    var triggerFn = BytecodeAssembler.TRIGGERS[handler.trigger];
+    if (triggerFn == null) {
+      throw BytecodeAssembler.error("E_BAD_TRIGGER", handler.trigger);
+    }
+    events.push({
+      type: triggerFn(S),
+      param: handler.param | 0,
+      offset: code.length
+    });
+    BytecodeAssembler.emitOps(handler.body, code, S);
+    code.push(S.OP_HALT);
+  }
+
+  var eventTableSize = events.length * S.EVENT_ENTRY_SIZE;
+  var imageSize = S.HEADER_SIZE + eventTableSize + code.length;
+  if (imageSize > S.MAX_IMAGE_SIZE) {
+    throw BytecodeAssembler.error("E_TOO_LARGE", imageSize);
+  }
+
+  var image = new Uint8Array(imageSize);
+  image[0] = S.MAGIC_0;
+  image[1] = S.MAGIC_1;
+  image[2] = S.MAGIC_2;
+  image[3] = S.MAGIC_3;
+  image[4] = S.BC_VERSION;
+  image[5] = events.length;
+  image[6] = code.length & 0xFF;
+  image[7] = (code.length >> 8) & 0xFF;
+  // crc32 va en [8..11] al final
+
+  var pos = S.HEADER_SIZE;
+  for (var i = 0; i < events.length; i++) {
+    image[pos] = events[i].type;
+    image[pos + 1] = events[i].param & 0xFF;
+    image[pos + 2] = events[i].offset & 0xFF;
+    image[pos + 3] = (events[i].offset >> 8) & 0xFF;
+    pos += S.EVENT_ENTRY_SIZE;
+  }
+  for (var i = 0; i < code.length; i++) {
+    image[pos + i] = code[i];
+  }
+
+  var crc = BytecodeAssembler.crc32(image.subarray(S.HEADER_SIZE));
+  image[8] = crc & 0xFF;
+  image[9] = (crc >>> 8) & 0xFF;
+  image[10] = (crc >>> 16) & 0xFF;
+  image[11] = (crc >>> 24) & 0xFF;
+  return image;
+};
+
+/** Emite la lista de Ops de la IR como bytes de código */
+BytecodeAssembler.emitOps = function(body, code, S) {
+  for (var i = 0; i < body.length; i++) {
+    var op = body[i];
+    switch (op.op) {
+      case "tone":
+        // TONE es no bloqueante en la VM; el bloque del editor es bloqueante
+        code.push(S.OP_TONE, op.note & 0xFF);
+        BytecodeAssembler.pushU16(code, op.ms);
+        code.push(S.OP_WAIT_MS);
+        BytecodeAssembler.pushU16(code, op.ms);
+        break;
+      case "ledMatrix": {
+        code.push(S.OP_LED_PATTERN);
+        var packed = BytecodeAssembler.packLedPattern(op.pattern);
+        code.push(packed[0], packed[1], packed[2], packed[3]);
+        break;
+      }
+      case "ledClear":
+        code.push(S.OP_LED_CLEAR);
+        break;
+      case "rgb":
+        // IR trae 0-100 (rango del editor); la VM espera 0-255
+        code.push(S.OP_RGB_SET,
+          BytecodeAssembler.scale100(op.r),
+          BytecodeAssembler.scale100(op.g),
+          BytecodeAssembler.scale100(op.b));
+        break;
+      case "wait":
+        code.push(S.OP_WAIT_MS);
+        BytecodeAssembler.pushU16(code, op.ms);
+        break;
+      case "mark":
+        if (op.index < 0 || op.index > 0xFF) {
+          throw BytecodeAssembler.error("E_BAD_MARK", String(op.index));
+        }
+        code.push(S.OP_MARK, op.index & 0xFF);
+        break;
+      case "waitUntil": {
+        var condFn = BytecodeAssembler.CONDS[op.cond];
+        if (condFn == null) {
+          throw BytecodeAssembler.error("E_BAD_COND", op.cond);
+        }
+        code.push(S.OP_WAIT_UNTIL, condFn(S), op.param & 0xFF);
+        break;
+      }
+      case "repeat":
+        if (op.count === 0) {
+          code.push(S.OP_LOOP_FOREVER);
+        } else {
+          code.push(S.OP_LOOP_N, op.count & 0xFF);
+        }
+        BytecodeAssembler.emitOps(op.body, code, S);
+        code.push(S.OP_LOOP_END);
+        break;
+      case "motors":
+        // Los bloques FinchBlox siempre generan ticksL === ticksR
+        code.push(S.OP_MOTORS_TICKS,
+          BytecodeAssembler.i8(op.speedL),
+          BytecodeAssembler.i8(op.speedR));
+        BytecodeAssembler.pushU16(code, op.ticksL);
+        break;
+      case "motorsFree":
+        code.push(S.OP_MOTORS,
+          BytecodeAssembler.i8(op.speedL),
+          BytecodeAssembler.i8(op.speedR));
+        break;
+      case "motorsStop":
+        code.push(S.OP_MOTORS_STOP);
+        break;
+      default:
+        throw BytecodeAssembler.error("E_BAD_OP", op.op);
+    }
+  }
+};
+
+BytecodeAssembler.pushU16 = function(code, value) {
+  var v = Math.max(0, Math.min(0xFFFF, Math.round(value)));
+  code.push(v & 0xFF, (v >> 8) & 0xFF);
+};
+
+BytecodeAssembler.i8 = function(value) {
+  var v = Math.max(-128, Math.min(127, Math.round(value)));
+  return v & 0xFF;
+};
+
+BytecodeAssembler.scale100 = function(value) {
+  var v = Math.max(0, Math.min(100, Math.round(value)));
+  return Math.round(v * 255 / 100);
+};
+
+/**
+ * Empaqueta un patrón de 25 chars "0"/"1" (row-major) en 4 bytes.
+ * Bit k del byte j = LED de índice j*8+k (LSB-first).
+ */
+BytecodeAssembler.packLedPattern = function(str25) {
+  var bytes = [0, 0, 0, 0];
+  for (var i = 0; i < 25 && i < str25.length; i++) {
+    if (str25.charAt(i) === "1") {
+      bytes[i >> 3] |= (1 << (i & 7));
+    }
+  }
+  return bytes;
+};
+
+/** CRC-32/IEEE (el mismo que zlib), sobre un Uint8Array */
+BytecodeAssembler.crc32 = function(bytes) {
+  var table = BytecodeAssembler.crcTable;
+  if (table == null) {
+    table = [];
+    for (var n = 0; n < 256; n++) {
+      var c = n;
+      for (var k = 0; k < 8; k++) {
+        c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+      }
+      table[n] = c;
+    }
+    BytecodeAssembler.crcTable = table;
+  }
+  var crc = 0xFFFFFFFF;
+  for (var i = 0; i < bytes.length; i++) {
+    crc = table[(crc ^ bytes[i]) & 0xFF] ^ (crc >>> 8);
+  }
+  return (crc ^ 0xFFFFFFFF) >>> 0;
+};
+
+BytecodeAssembler.error = function(code, detail) {
+  var err = new Error(code + (detail != null ? ": " + detail : ""));
+  err.code = code;
+  return err;
+};
+
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = BytecodeAssembler;
+}
+
+
+
+/**
+ * ProgramModeManager orquesta la ejecución remota de FinchBlox/SmartTEAM:
+ * compila el programa a bytecode STX1, lo transfiere a la micro:bit por BLE
+ * y la placa lo ejecuta con su VM. La app recibe notificaciones push
+ * (bloque en ejecución / fin / error) vía CallbackManager.robot.program*.
+ *
+ * Dos modos, mismo flujo (Play unificado en TitleBar.flagBn):
+ *   - Vivo (default): transferencia VOLÁTIL (RAM, cero desgaste de flash)
+ *     + RUN. Para probar mientras se arma el programa.
+ *   - Programa/descarga: transferencia PERSISTENTE (flash con wear-leveling)
+ *     + RUN. La placa lo sigue corriendo standalone tras reset.
+ *   - Stop: CodeManager.stop → Device.stopAll → CMD_STOP en la placa.
+ *   - Play con un programa ya corriendo = reiniciar (la transferencia nueva
+ *     detiene la anterior en el firmware).
+ *
+ * El toggle vivo/programa (TitleBar.liveCellBn/progCellBn) persiste en
+ * SettingsManager.programMode.
+ */
+function ProgramModeManager() {}
+
+/** Placa conectada (STX.BOARD_*); lo informa el backend al conectar */
+ProgramModeManager.boardId = 0;
+/** true mientras la placa ejecuta un programa que mandamos nosotros */
+ProgramModeManager.remoteRunning = false;
+/** índice de OP_MARK → Block del canvas (de la última compilación enviada) */
+ProgramModeManager.markerMap = null;
+/* bloques actualmente resaltados, uno por stack: [{stack, block}] */
+ProgramModeManager._active = [];
+
+ProgramModeManager.isProgramMode = function() {
+  return SettingsManager.programMode.getValue() === "true";
+};
+
+ProgramModeManager.toggle = function() {
+  var newValue = ProgramModeManager.isProgramMode() ? "false" : "true";
+  SettingsManager.programMode.writeValue(newValue);
+  if (typeof TitleBar.updateModeButtons === "function") {
+    TitleBar.updateModeButtons();
+  }
+};
+
+ProgramModeManager.setBoardId = function(boardId) {
+  ProgramModeManager.boardId = boardId;
+};
+
+/** Los bloques de movimiento solo corren en placas con motores (Tiny:bit) */
+ProgramModeManager.allowMotors = function() {
+  return ProgramModeManager.boardId === STX.BOARD_TINYBIT;
+};
+
+/**
+ * Compila los stacks del tab activo (con marcadores de bloque).
+ * @return {{bytes: Uint8Array|null, markerMap: Array|null, errors: Array, warnings: Array}}
+ */
+ProgramModeManager.compileCurrent = function() {
+  var firstBlocks = [];
+  if (TabManager.activeTab != null) {
+    var stackList = TabManager.activeTab.stackList;
+    for (var i = 0; i < stackList.length; i++) {
+      if (!stackList[i].isDisplayStack && stackList[i].firstBlock != null) {
+        firstBlocks.push(stackList[i].firstBlock);
+      }
+    }
+  }
+  var result = ProgramCompiler.compile(firstBlocks, {
+    emitMarkers: true,
+    allowMotors: ProgramModeManager.allowMotors()
+  });
+  if (result.errors.length > 0) {
+    return { bytes: null, markerMap: null, errors: result.errors, warnings: result.warnings };
+  }
+  try {
+    var bytes = BytecodeAssembler.assemble(result.ir);
+    return { bytes: bytes, markerMap: result.markerMap, errors: [], warnings: result.warnings };
+  } catch (e) {
+    return {
+      bytes: null,
+      markerMap: null,
+      errors: [{ code: e.code || "E_ASSEMBLE", detail: e.message }],
+      warnings: result.warnings
+    };
+  }
+};
+
+/**
+ * Play unificado: compila, transfiere (volátil en vivo, persistente en
+ * descarga) y manda RUN. Si ya hay un programa corriendo, lo reemplaza.
+ */
+ProgramModeManager.playClicked = function() {
+  var result = ProgramModeManager.compileCurrent();
+  if (result.bytes == null) {
+    ProgramModeManager.reportErrors(result.errors);
+    return;
+  }
+  if (ProgramModeManager.debugWithoutBackend()) {
+    console.log("[ProgramMode] bytecode STX1 (" + result.bytes.length + " bytes): " +
+      ProgramModeManager.toHex(result.bytes));
+    return;
+  }
+  var device = DeviceFinch.getManager().getDevice(0);
+  if (device == null) {
+    TitleBar.flashFinchButton();
+    return;
+  }
+  ProgramModeManager.clearHighlights();
+  ProgramModeManager.markerMap = result.markerMap;
+
+  var mode = ProgramModeManager.isProgramMode() ? "download" : "live";
+  var request = new HttpRequestBuilder("robot/out/program");
+  request.addParam("type", device.getDeviceTypeId());
+  request.addParam("id", device.id);
+  request.addParam("mode", mode);
+  var base64 = ProgramModeManager.toBase64(result.bytes);
+  HtmlServer.sendRequestWithCallback(request.toString(), function() {
+    GuiElements.alert("Programa transferido (" + mode + ")");
+    ProgramModeManager.sendRun(device);
+  }, function(status, message) {
+    GuiElements.alert("Fallo de transferencia: " + status + " " + message);
+    ProgramModeManager.flashSendButton();
+  }, true, base64, true, true);
+};
+
+/** Manda RUN tras una transferencia exitosa */
+ProgramModeManager.sendRun = function(device) {
+  var request = new HttpRequestBuilder("robot/out/runProgram");
+  request.addParam("type", device.getDeviceTypeId());
+  request.addParam("id", device.id);
+  HtmlServer.sendRequestWithCallback(request.toString(), function() {
+    ProgramModeManager.remoteRunning = true;
+  }, function() {
+    ProgramModeManager.flashSendButton();
+  }, false, null, true);
+};
+
+/* ---------------- Notificaciones push desde la placa (CallbackManager) --- */
+
+/** La placa está ejecutando el bloque markerMap[index]: resaltarlo */
+ProgramModeManager.onMarker = function(index) {
+  var map = ProgramModeManager.markerMap;
+  if (!ProgramModeManager.remoteRunning || map == null) {
+    return;
+  }
+  var block = map[index];
+  if (block == null || typeof block.setRemoteHighlight !== "function") {
+    return;
+  }
+  // un resaltado por stack: apagar el anterior del mismo stack
+  var active = ProgramModeManager._active;
+  for (var i = 0; i < active.length; i++) {
+    if (active[i].stack === block.stack) {
+      active[i].block.setRemoteHighlight(false);
+      active[i].block = block;
+      block.setRemoteHighlight(true);
+      return;
+    }
+  }
+  active.push({ stack: block.stack, block: block });
+  block.setRemoteHighlight(true);
+};
+
+/** El programa terminó solo en la placa */
+ProgramModeManager.onProgramDone = function(reason) {
+  ProgramModeManager.clearHighlights();
+  ProgramModeManager.remoteRunning = false;
+};
+
+/** La VM de la placa se detuvo por un error */
+ProgramModeManager.onProgramFault = function(errCode) {
+  ProgramModeManager.clearHighlights();
+  ProgramModeManager.remoteRunning = false;
+  DialogManager.showAlertDialog("SmartTEAM",
+    "El programa se detuvo por un error (código " + errCode + ")", "OK");
+};
+
+/** Stop (local o del botón): limpiar el estado de ejecución remota */
+ProgramModeManager.onRemoteStopped = function() {
+  ProgramModeManager.clearHighlights();
+  ProgramModeManager.remoteRunning = false;
+};
+
+/** El usuario editó el canvas: el mapa de marcadores quedó viejo */
+ProgramModeManager.invalidateMarkers = function() {
+  ProgramModeManager.clearHighlights();
+  ProgramModeManager.markerMap = null;
+};
+
+ProgramModeManager.clearHighlights = function() {
+  var active = ProgramModeManager._active;
+  for (var i = 0; i < active.length; i++) {
+    if (typeof active[i].block.setRemoteHighlight === "function") {
+      active[i].block.setRemoteHighlight(false);
+    }
+  }
+  ProgramModeManager._active = [];
+};
+
+/* ------------------------------------------------------------- helpers --- */
+
+/** Sin backend nativo ni host PWA: modo debug, loguear en consola */
+ProgramModeManager.debugWithoutBackend = function() {
+  return HtmlServer.iosHandler == null && !window.AndroidInterface && !GuiElements.isPWA;
+};
+
+/** Textos de error de compilación para el docente/niño */
+ProgramModeManager.errorText = function(code) {
+  var table = {
+    E_EMPTY: "No hay bloques para enviar",
+    E_UNSUPPORTED_BLOCK: "Hay un bloque que la placa no entiende",
+    E_UNSUPPORTED_ON_BOARD: "Los bloques de movimiento necesitan el robot conectado",
+    E_TOO_MANY_STACKS: "Hay demasiados programas a la vez",
+    E_TOO_LARGE: "El programa es demasiado grande",
+    E_TOO_MANY_BLOCKS: "El programa tiene demasiados bloques"
+  };
+  return table[code] || ("No se pudo preparar el programa (" + code + ")");
+};
+
+ProgramModeManager.reportErrors = function(errors) {
+  ProgramModeManager.flashSendButton();
+  var text = "";
+  for (var i = 0; i < errors.length; i++) {
+    text += errors[i].code;
+    if (errors[i].blockType != null) {
+      text += " (" + errors[i].blockType + ")";
+    }
+    text += " ";
+  }
+  console.log("[ProgramMode] errores de compilación: " + text);
+  if (errors.length > 0 && !ProgramModeManager.debugWithoutBackend()) {
+    DialogManager.showAlertDialog("SmartTEAM",
+      ProgramModeManager.errorText(errors[0].code), "OK");
+  }
+};
+
+ProgramModeManager.flashSendButton = function() {
+  //El Play unificado es quien envía el programa
+  if (TitleBar.flagBn != null) {
+    TitleBar.flagBn.flash();
+  }
+};
+
+ProgramModeManager.toBase64 = function(bytes) {
+  var binary = "";
+  for (var i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+};
+
+ProgramModeManager.toHex = function(bytes) {
+  var hex = "";
+  for (var i = 0; i < bytes.length; i++) {
+    hex += (bytes[i] < 16 ? "0" : "") + bytes[i].toString(16);
+  }
+  return hex;
+};
+
+
+
 /**
  * BlockMoveManager is a class that moves the BlockStack that the user is dragging
  * BlockMoveManager contains function to start, stop, and update the movement of a BlockStack.
@@ -20970,7 +22070,28 @@ TabManager.createTabSpaceBg = function() {
   var TM = TabManager;
   var canvasColor = Colors.canvasGray;
   if (FinchBlox) {
-    canvasColor = Colors.white;
+    //Lienzo SmartTEAM: fondo paper con grilla de puntos (celda 34px, punto 2px)
+    if (document.getElementById("stDotGrid") == null) {
+      var cellSize = 34;
+      var pattern = document.createElementNS("http://www.w3.org/2000/svg", 'pattern');
+      pattern.setAttributeNS(null, "id", "stDotGrid");
+      pattern.setAttributeNS(null, "width", cellSize);
+      pattern.setAttributeNS(null, "height", cellSize);
+      pattern.setAttributeNS(null, "patternUnits", "userSpaceOnUse");
+      var bgTile = document.createElementNS("http://www.w3.org/2000/svg", 'rect');
+      bgTile.setAttributeNS(null, "width", cellSize);
+      bgTile.setAttributeNS(null, "height", cellSize);
+      bgTile.setAttributeNS(null, "fill", Colors.stPaper);
+      pattern.appendChild(bgTile);
+      var dot = document.createElementNS("http://www.w3.org/2000/svg", 'circle');
+      dot.setAttributeNS(null, "cx", cellSize / 2);
+      dot.setAttributeNS(null, "cy", cellSize / 2);
+      dot.setAttributeNS(null, "r", 2);
+      dot.setAttributeNS(null, "fill", Colors.stVioletTint);
+      pattern.appendChild(dot);
+      GuiElements.defs.appendChild(pattern);
+    }
+    canvasColor = "url(#stDotGrid)";
   }
   TM.bgRect = GuiElements.draw.rect(TM.tabSpaceX, TM.tabSpaceY, TM.tabSpaceWidth, TM.tabSpaceHeight, canvasColor);
   TouchReceiver.addListenersTabSpace(TM.bgRect);
@@ -21492,7 +22613,8 @@ Tab.prototype.fitBox = function(box) {
  * Adds a new start block to the tab. Used in FinchBlox.
  */
 Tab.prototype.addStartBlock = function() {
-  var blockY = GuiElements.height / 2 - BlockPalette.height;
+  //Centrado verticalmente en la zona de programación (entre barra y bandeja)
+  var blockY = TitleBar.height + (BlockPalette.y - TitleBar.height) / 2 - 30;
   var stack = new BlockStack(new B_WhenFlagTapped(50, blockY), this);
 }
 
@@ -26006,6 +27128,8 @@ function SettingsManager() {
   SM.zoom = new Setting("zoom", 1, true, false, GuiElements.minZoomMult, GuiElements.maxZoomMult);
   SM.enableSnapNoise = new Setting("enableSnapNoise", "true"); //"false");
   SM.sideBarVisible = new Setting("sideBarVisible", "true");
+  // FinchBlox: "true" = modo programa (compilar+transferir), "false" = modo live
+  SM.programMode = new Setting("programMode", "false");
 }
 
 /**
@@ -26016,7 +27140,9 @@ SettingsManager.loadSettings = function(callbackFn) {
   var SM = SettingsManager;
   SM.sideBarVisible.readValue(function() {
     SM.enableSnapNoise.readValue(function() {
-      SM.zoom.readValue(callbackFn);
+      SM.programMode.readValue(function() {
+        SM.zoom.readValue(callbackFn);
+      });
     });
   });
 };
@@ -26770,6 +27896,32 @@ CallbackManager.robot.updateHasV2Microbit = function(robotId, hasV2String) {
   DeviceManager.setHasV2Microbit(robotId, hasV2)
   CodeManager.updateAvailableSensors(); //activates or deactivates micro:bit V2 only blocks
 }
+
+/* ---- Ejecución remota SmartTEAM (programa corriendo en la placa) ---- */
+
+/** La placa informa qué bloque está ejecutando (índice de OP_MARK) */
+CallbackManager.robot.programMarker = function(markIndex) {
+  ProgramModeManager.onMarker(Number(markIndex));
+  return true;
+};
+
+/** La placa informa que el programa terminó solo */
+CallbackManager.robot.programDone = function(reason) {
+  ProgramModeManager.onProgramDone(Number(reason));
+  return true;
+};
+
+/** La placa informa que el programa se detuvo por un error de la VM */
+CallbackManager.robot.programFault = function(errCode) {
+  ProgramModeManager.onProgramFault(Number(errCode));
+  return true;
+};
+
+/** Tipo de placa conectada (STX.BOARD_*): habilita bloques de motores */
+CallbackManager.robot.updateBoardType = function(robotId, boardId) {
+  ProgramModeManager.setBoardId(Number(boardId));
+  return true;
+};
 /**
  * Tells the frontend that a device has just been discovered
  * @param {string} robotTypeId - The percent encoded type of robot being scanned for
@@ -27673,6 +28825,10 @@ SaveManager.saveAsNew = function() {
  */
 SaveManager.markEdited = function() {
   CodeManager.updateModified();
+  if (FinchBlox && typeof ProgramModeManager !== "undefined") {
+    // El canvas cambió: el mapa de marcadores de la placa quedó viejo
+    ProgramModeManager.invalidateMarkers();
+  }
   if (SaveManager.fileName != null) {
     SaveManager.autoSave();
   }
@@ -27866,7 +29022,7 @@ function LevelManager() {
 LevelManager.setConstants = function() {
   var LM = LevelManager;
   LM.totalLevels = 3;
-  LM.levelButtonFont = Font.uiFont(35);
+  LM.levelButtonFont = Font.displayFont(30);
 
   LM.savePointFileNames = {
     1: "FinchBloxSavePoint_Level1",
@@ -27891,7 +29047,7 @@ LevelManager.setLevel = function(level) {
     //SaveManager.userClose(); //necessary? maybe add callback?
     BlockPalette.setLevel();
     //TabManager.activeTab.clear();
-    TitleBar.levelButton.addText(level, LM.levelButtonFont, Colors.white);
+    TitleBar.levelButton.addText(level, LM.levelButtonFont, Colors.stViolet);
     //LM.loadLevelSavePoint();
   }
 }
@@ -28346,6 +29502,26 @@ Block.prototype.updateRunColor = function() {
     return;
   }
   if (this.running === 1 || this.running === 2) {
+    GuiElements.update.color(this.path, Colors.flagGreen);
+    if (this.topPath != null) {
+      GuiElements.update.color(this.topPath, Colors.fbDarkGreen);
+    }
+  } else {
+    GuiElements.update.color(this.path, Colors.categoryColors[this.category]);
+    if (this.topPath != null) {
+      GuiElements.update.color(this.topPath, this.topPathColor);
+    }
+  }
+}
+
+/**
+ * Resaltado de ejecución REMOTA (el programa corre en la placa, que notifica
+ * el bloque actual vía OP_MARK). Mismos colores que updateRunColor, pero sin
+ * tocar this.running, que es estado del intérprete local.
+ * @param {boolean} on
+ */
+Block.prototype.setRemoteHighlight = function(on) {
+  if (on) {
     GuiElements.update.color(this.path, Colors.flagGreen);
     if (this.topPath != null) {
       GuiElements.update.color(this.topPath, Colors.fbDarkGreen);
@@ -36380,8 +37556,9 @@ B_FBSoundL3.prototype.constructor = B_FBSoundL3;
 function B_WhenFlagTapped(x, y) {
 
   if (FinchBlox) {
-    HatBlock.call(this, x, y, "control_3");
-    this.addPart(new BlockIcon(this, VectorPaths.faFlag, Colors.flagGreen, "flag", 35));
+    //Pseudo-categoría "start": bloque inicio amarillo con play verde (SmartTEAM)
+    HatBlock.call(this, x, y, "start");
+    this.addPart(new BlockIcon(this, VectorPaths.faPlay, Colors.stGreen, "flag", 32));
     this.isStartBlock = true;
   } else {
     HatBlock.call(this, x, y, "control");

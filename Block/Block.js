@@ -335,6 +335,26 @@ Block.prototype.updateRunColor = function() {
 }
 
 /**
+ * Resaltado de ejecución REMOTA (el programa corre en la placa, que notifica
+ * el bloque actual vía OP_MARK). Mismos colores que updateRunColor, pero sin
+ * tocar this.running, que es estado del intérprete local.
+ * @param {boolean} on
+ */
+Block.prototype.setRemoteHighlight = function(on) {
+  if (on) {
+    GuiElements.update.color(this.path, Colors.flagGreen);
+    if (this.topPath != null) {
+      GuiElements.update.color(this.topPath, Colors.fbDarkGreen);
+    }
+  } else {
+    GuiElements.update.color(this.path, Colors.categoryColors[this.category]);
+    if (this.topPath != null) {
+      GuiElements.update.color(this.topPath, this.topPathColor);
+    }
+  }
+}
+
+/**
  * Will be overridden. Is triggered once when the Block is first executed. Contains the Block's actual behavior.
  * @return {ExecutionStatus} - indicating if it has finished.
  */
