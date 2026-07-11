@@ -84,6 +84,13 @@ DiscoverDialog.prototype.updateDeviceList = function(deviceList) {
   // Read the JSON
   this.discoveredDevices = this.deviceClass.getManager().fromJsonArrayString(deviceList);
 
+  // En hosts con chooser del sistema (Web Bluetooth / nativo) el usuario ya
+  // eligió la placa: si llegó exactamente una, conectarla sin segundo tap
+  if (FinchBlox && GuiElements.isPWA && this.discoveredDevices.length === 1) {
+    this.selectDevice(this.discoveredDevices[0]);
+    return;
+  }
+
   // Sort the devices by signal strength
 
   this.discoveredDevicesRSSISorted = this.discoveredDevices.sort(function(a, b) {

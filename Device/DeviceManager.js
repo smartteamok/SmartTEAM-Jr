@@ -80,6 +80,9 @@ DeviceManager.checkBattery = function() {
     worstBatteryStatus = "2" //Status 3 is full charge for finch
   }
   if (FinchBlox) {
+    //El botón "Conectar robot" SmartTEAM ya no tiene ícono de batería: el
+    //estado se refleja en el color del punto de estado (blanco = sin dato)
+    color = Colors.white;
     if (worstBatteryStatus === "2") {
       color = Colors.flagGreen;
     } else if (worstBatteryStatus === "1") {
@@ -87,7 +90,10 @@ DeviceManager.checkBattery = function() {
     } else if (worstBatteryStatus === "0") {
       color = Colors.stopRed;
     }
-    TitleBar.finchButton.battIcon.setColor(color);
+    const finchBn = TitleBar.finchButton;
+    if (finchBn != null && finchBn.statusDotE != null) {
+      GuiElements.update.color(finchBn.statusDotE, color);
+    }
   } else {
     if (worstBatteryStatus === "2") {
       color = Colors.green;
