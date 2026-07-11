@@ -46,7 +46,7 @@ extern "C" {
 #define STX_MAGIC_1 0x54              // 'T'
 #define STX_MAGIC_2 0x58              // 'X'
 #define STX_MAGIC_3 0x31              // '1'
-#define STX_BC_VERSION 1              // versión del bytecode
+#define STX_BC_VERSION 2              // versión del bytecode (v2: OP_MARK)
 #define STX_HEADER_SIZE 12            // bytes de header antes de la tabla de eventos
 #define STX_EVENT_ENTRY_SIZE 4        // bytes por entrada de la tabla de eventos
 #define STX_MAX_IMAGE_SIZE 2048       // tamaño máximo de la imagen completa (header incluido)
@@ -71,6 +71,7 @@ extern "C" {
 #define STX_OP_LOOP_FOREVER 0x05      // sin operandos — abre loop infinito
 #define STX_OP_JMP 0x06               // i16 rel — RESERVADO v1 (la VM lo rechaza)
 #define STX_OP_WAIT_UNTIL 0x07        // u8 cond, u8 param — espera condición
+#define STX_OP_MARK 0x08              // u8 index — bloque en ejecución (notificación al editor)
 
 /* ---- Opcodes: on-board v1 0x10-0x2F ---- */
 #define STX_OP_LED_PATTERN 0x10       // 4 bytes: 25 bits row-major LSB-first, bit0 = LED(0,0)

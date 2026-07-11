@@ -25,15 +25,27 @@ typedef struct stx_proto_engine {
     uint32_t (*now_ms)(void);
     /* Opcional (puede ser NULL): llena [luz, sonido, botones, temp] */
     void (*read_sensors)(uint8_t out[4]);
+    /* Identidad de placa reportada en GET_STATUS (STX_BOARD_*) */
+    uint8_t board_id;
 
     /* Sesión de transferencia en curso */
     bool session_active;
+    bool session_volatile;      /* XFER_BEGIN con flag VOLATILE: no persistir */
     uint16_t expected_len;
     uint32_t expected_crc;
     uint16_t received;
     uint8_t next_seq;
     uint32_t last_rx_ms;
     uint8_t buffer[STX_MAX_IMAGE_SIZE];
+
+    /* Notificaciones push pendientes (ver stx_proto_notify). El MARK colapsa
+     * al más reciente con rate-limit; DONE/FAULT nunca se pierden. */
+    bool has_pending_mark;
+    uint8_t pending_mark;
+    bool has_pending_evt;
+    uint8_t pending_evt_type;   /* STX_NOTIF_DONE o STX_NOTIF_FAULT */
+    uint8_t pending_evt_arg;
+    uint32_t last_mark_tx_ms;
 
     /* Framing sobre stream (MicroBitUARTService no conserva límites de write) */
     uint8_t rx_buf[STX_PKT_MAX];
@@ -52,8 +64,13 @@ void stx_proto_on_packet(stx_proto_engine_t *pe, const uint8_t *data, uint8_t le
  * Bytes con comando desconocido se descartan de a uno (re-sincronización). */
 void stx_proto_on_bytes(stx_proto_engine_t *pe, const uint8_t *data, uint16_t len);
 
-/* Llamar periódicamente: aborta la sesión de transferencia por timeout */
+/* Llamar periódicamente: aborta la sesión de transferencia por timeout y
+ * despacha las notificaciones push pendientes (nunca durante una sesión) */
 void stx_proto_tick(stx_proto_engine_t *pe);
+
+/* Puente para el hook de la VM (vm->notify): encola la notificación push.
+ * vm_evt es STX_VM_EVT_* (stx_vm.h); se traduce a STX_NOTIF_*. */
+void stx_proto_notify(stx_proto_engine_t *pe, uint8_t vm_evt, uint8_t arg);
 
 
 #ifdef __cplusplus

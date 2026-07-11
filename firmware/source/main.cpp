@@ -37,6 +37,11 @@ static void read_sensors(uint8_t out[4]) {
     out[3] = (uint8_t)uBit.thermometer.getTemperature();
 }
 
+/* Puente VM → protocolo: encola las notificaciones push (MARK/DONE/FAULT) */
+static void vm_notify(uint8_t evt, uint8_t arg) {
+    stx_proto_notify(&engine, evt, arg);
+}
+
 int main() {
     uBit.init();
     stx_store_codal_init();
@@ -44,6 +49,8 @@ int main() {
     stx_vm_init(&vm, &stx_hal_codal);
     stx_proto_init(&engine, &vm, &stx_flash_codal, 0, now_ms);
     engine.read_sensors = read_sensors;
+    engine.board_id = STX_BOARD_BASIC; /* el perfil Tiny:bit lo cambia (Fase 4) */
+    vm.notify = vm_notify;
     stx_ble_init(&engine);
 
     /* Boot: cargar y autorun salvo safe mode (botón A al encender) */

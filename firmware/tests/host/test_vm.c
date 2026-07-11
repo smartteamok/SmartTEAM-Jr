@@ -120,9 +120,12 @@ static void test_simple_sequence(void) {
     stx_vm_tick(&vm);
     CHECK(fake_trace_len == 2);
     CHECK(fake_trace[1].type == T_LED_CLEAR);
-    CHECK(vm.state == STX_VMSTATE_RUNNING);
+    /* v2: al quedar todos los contextos IDLE la VM pasa a STOPPED (fin
+     * natural) sin apagar actuadores */
+    CHECK(vm.state == STX_VMSTATE_STOPPED);
     CHECK(vm.ctx[0].state == STX_CTX_IDLE);
     CHECK(vm.last_error == STX_ERR_NONE);
+    CHECK(fake_trace_len == 2); /* sin led_clear/tone_stop extra del stop */
 }
 
 static void test_nested_loops(void) {
@@ -360,6 +363,114 @@ static void test_multi_start_contexts(void) {
     CHECK(fake_trace_len == 2); /* ambos corrieron en el mismo tick */
 }
 
+/* ---- Hook de notificación (v2: OP_MARK / DONE / FAULT) ---- */
+
+#define NOTIF_LOG_MAX 16
+static struct { uint8_t evt, arg; } notif_log[NOTIF_LOG_MAX];
+static int notif_len = 0;
+
+static void capture_notify(uint8_t evt, uint8_t arg) {
+    if (notif_len < NOTIF_LOG_MAX) {
+        notif_log[notif_len].evt = evt;
+        notif_log[notif_len].arg = arg;
+        notif_len++;
+    }
+}
+
+static void test_mark_fires_hook(void) {
+    const uint8_t code[] = {
+        STX_OP_MARK, 5,
+        STX_OP_LED_CLEAR,
+        STX_OP_MARK, 6,
+        STX_OP_HALT
+    };
+    uint8_t buf[64];
+    uint16_t len = build_start_image(buf, code, sizeof(code));
+    fake_reset();
+    notif_len = 0;
+    stx_vm_t vm;
+    stx_vm_init(&vm, &fake_hal);
+    vm.notify = capture_notify;
+    CHECK(stx_vm_load(&vm, buf, len) == STX_ERR_NONE);
+    stx_vm_start(&vm);
+    stx_vm_tick(&vm);
+    /* MARK 5, MARK 6 y DONE (todos los contextos quedaron IDLE) en orden */
+    CHECK(notif_len == 3);
+    CHECK(notif_log[0].evt == STX_VM_EVT_MARK && notif_log[0].arg == 5);
+    CHECK(notif_log[1].evt == STX_VM_EVT_MARK && notif_log[1].arg == 6);
+    CHECK(notif_log[2].evt == STX_VM_EVT_DONE && notif_log[2].arg == 0);
+    CHECK(vm.state == STX_VMSTATE_STOPPED);
+    /* fin natural: NO se apagan actuadores (solo quedó el led_clear del programa) */
+    CHECK(fake_trace_len == 1 && fake_trace[0].type == T_LED_CLEAR);
+}
+
+static void test_mark_without_hook_is_noop(void) {
+    const uint8_t code[] = { STX_OP_MARK, 1, STX_OP_HALT };
+    uint8_t buf[64];
+    uint16_t len = build_start_image(buf, code, sizeof(code));
+    fake_reset();
+    stx_vm_t vm;
+    stx_vm_init(&vm, &fake_hal); /* notify queda NULL */
+    CHECK(stx_vm_load(&vm, buf, len) == STX_ERR_NONE);
+    stx_vm_start(&vm);
+    stx_vm_tick(&vm); /* no debe crashear */
+    CHECK(vm.state == STX_VMSTATE_STOPPED);
+}
+
+static void test_no_done_while_event_armed(void) {
+    /* un handler ON_START que termina + un hat ON_DARK armado: nunca DONE */
+    const uint8_t code[] = {
+        STX_OP_LED_CLEAR, STX_OP_HALT,  /* handler start (offset 0) */
+        STX_OP_TONE, 60, 100, 0, STX_OP_HALT  /* handler dark (offset 2) */
+    };
+    ev_t evs[2] = {
+        { STX_EVT_ON_START, 0, 0 },
+        { STX_EVT_ON_DARK, 50, 2 }
+    };
+    uint8_t buf[96];
+    uint16_t len = build_image(buf, evs, 2, code, sizeof(code));
+    fake_reset();
+    notif_len = 0;
+    stx_vm_t vm;
+    stx_vm_init(&vm, &fake_hal);
+    vm.notify = capture_notify;
+    CHECK(stx_vm_load(&vm, buf, len) == STX_ERR_NONE);
+    stx_vm_start(&vm);
+    for (int i = 0; i < 10; i++) {
+        stx_vm_tick(&vm);
+        fake_advance(10);
+    }
+    CHECK(vm.state == STX_VMSTATE_RUNNING); /* sigue viva esperando el evento */
+    for (int i = 0; i < notif_len; i++) {
+        CHECK(notif_log[i].evt != STX_VM_EVT_DONE);
+    }
+}
+
+static void test_fault_fires_hook(void) {
+    const uint8_t code[] = { STX_OP_LOOP_END }; /* underflow */
+    uint8_t buf[64];
+    uint16_t len = build_start_image(buf, code, sizeof(code));
+    fake_reset();
+    notif_len = 0;
+    stx_vm_t vm;
+    stx_vm_init(&vm, &fake_hal);
+    vm.notify = capture_notify;
+    CHECK(stx_vm_load(&vm, buf, len) == STX_ERR_NONE);
+    stx_vm_start(&vm);
+    stx_vm_tick(&vm);
+    CHECK(notif_len == 1);
+    CHECK(notif_log[0].evt == STX_VM_EVT_FAULT);
+    CHECK(notif_log[0].arg == STX_ERR_LOOP_UNDERFLOW);
+}
+
+static void test_exec_one_rejects_mark(void) {
+    fake_reset();
+    stx_vm_t vm;
+    stx_vm_init(&vm, &fake_hal);
+    const uint8_t mark[2] = { STX_OP_MARK, 3 };
+    CHECK(stx_vm_exec_one(&vm, mark, 2) == STX_ERR_BAD_OPCODE);
+}
+
 int main(void) {
     test_image_validation();
     test_simple_sequence();
@@ -372,6 +483,11 @@ int main(void) {
     test_motors_rejected_onboard();
     test_exec_one_live();
     test_multi_start_contexts();
+    test_mark_fires_hook();
+    test_mark_without_hook_is_noop();
+    test_no_done_while_event_armed();
+    test_fault_fires_hook();
+    test_exec_one_rejects_mark();
 
     printf("%d checks, %d failures\n", checks, failures);
     return failures == 0 ? 0 : 1;

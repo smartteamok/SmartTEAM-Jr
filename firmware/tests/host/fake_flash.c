@@ -3,6 +3,7 @@
 
 static uint8_t mem[STX_STORE_PAGES][STX_STORE_PAGE_SIZE];
 int fake_flash_erase_count[STX_STORE_PAGES];
+int fake_flash_write_count = 0;
 int fake_flash_power_cut_after = -1;
 static int op_count = 0;
 
@@ -17,6 +18,7 @@ static bool power_ok(void) {
 void fake_flash_reset(void) {
     memset(mem, 0xFF, sizeof(mem));
     memset(fake_flash_erase_count, 0, sizeof(fake_flash_erase_count));
+    fake_flash_write_count = 0;
     fake_flash_power_cut_after = -1;
     op_count = 0;
 }
@@ -35,6 +37,7 @@ static bool f_write(uint8_t page, uint16_t offset, const uint8_t *data, uint16_t
         (offset & 3) != 0 || (len & 3) != 0 || !power_ok()) {
         return false;
     }
+    fake_flash_write_count++;
     for (uint16_t i = 0; i < len; i++) {
         mem[page][offset + i] &= data[i]; /* NOR flash: solo baja bits */
     }

@@ -9,6 +9,7 @@ uint8_t stx_instr_len(uint8_t op) {
         case STX_OP_LOOP_END:     return 1;
         case STX_OP_LOOP_FOREVER: return 1;
         case STX_OP_WAIT_UNTIL:   return 3;
+        case STX_OP_MARK:         return 2;
         case STX_OP_LED_PATTERN:  return 5;
         case STX_OP_LED_CLEAR:    return 1;
         case STX_OP_LED_BRIGHT:   return 2;
@@ -29,6 +30,9 @@ static uint16_t rd_u16(const uint8_t *p) {
 static void vm_fault(stx_vm_t *vm, uint8_t err) {
     vm->last_error = err;
     stx_vm_stop(vm);
+    if (vm->notify != 0) {
+        vm->notify(STX_VM_EVT_FAULT, err);
+    }
 }
 
 void stx_vm_init(stx_vm_t *vm, const stx_hal_t *hal) {
@@ -36,6 +40,7 @@ void stx_vm_init(stx_vm_t *vm, const stx_hal_t *hal) {
     vm->loaded = false;
     vm->state = STX_VMSTATE_STOPPED;
     vm->last_error = STX_ERR_NONE;
+    vm->notify = 0;
     for (int i = 0; i < STX_MAX_CONTEXTS; i++) {
         vm->ctx[i].state = STX_CTX_IDLE;
     }
@@ -171,6 +176,11 @@ static bool step(stx_vm_t *vm, stx_context_t *c) {
                 return false;
             }
             break;
+        case STX_OP_MARK:
+            if (vm->notify != 0) {
+                vm->notify(STX_VM_EVT_MARK, p[1]);
+            }
+            break;
         case STX_OP_LED_PATTERN: {
             uint32_t bits = (uint32_t)p[1] | ((uint32_t)p[2] << 8) |
                             ((uint32_t)p[3] << 16) | ((uint32_t)p[4] << 24);
@@ -261,6 +271,26 @@ void stx_vm_tick(stx_vm_t *vm) {
             if (vm->state != STX_VMSTATE_RUNNING) {
                 return; /* un fault detuvo todo */
             }
+        }
+    }
+    if (vm->state != STX_VMSTATE_RUNNING) {
+        return; /* un fault/stop dentro del tick ya resolvió el estado */
+    }
+    /* Fin natural: todos los contextos quedaron IDLE (los handlers de eventos
+     * quedan ARMED/REARM, así que un programa con hats nunca emite DONE — se
+     * termina con STOP). No se apagan actuadores: lo que el programa dejó
+     * encendido (un dibujo en la matriz) debe quedar. */
+    bool any_active = false;
+    for (int i = 0; i < STX_MAX_CONTEXTS; i++) {
+        if (vm->ctx[i].state != STX_CTX_IDLE) {
+            any_active = true;
+            break;
+        }
+    }
+    if (!any_active) {
+        vm->state = STX_VMSTATE_STOPPED;
+        if (vm->notify != 0) {
+            vm->notify(STX_VM_EVT_DONE, 0);
         }
     }
 }

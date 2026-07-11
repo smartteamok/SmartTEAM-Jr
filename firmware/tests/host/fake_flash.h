@@ -11,6 +11,7 @@
 
 extern const stx_flash_ops_t fake_flash_ops;
 extern int fake_flash_erase_count[STX_STORE_PAGES];
+extern int fake_flash_write_count; /* escrituras totales (verifica modo volátil) */
 /* -1 = sin corte; N = la operación de escritura/borrado número N falla y
  * a partir de ahí todas fallan (simula pérdida de energía) */
 extern int fake_flash_power_cut_after;

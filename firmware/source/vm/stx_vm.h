@@ -29,6 +29,13 @@ extern "C" {
 #define STX_EVENT_DEBOUNCE_MS 500  /* re-armado de eventos por flanco */
 #define STX_TICK_BUDGET 32         /* instrucciones máx por contexto por tick */
 
+/* Eventos del hook notify de la VM. La capa de protocolo los traduce a las
+ * notificaciones BLE (STX_NOTIF_* en stx_proto.h); la VM no conoce el
+ * transporte. */
+#define STX_VM_EVT_MARK 0          /* arg = índice de bloque (OP_MARK) */
+#define STX_VM_EVT_DONE 1          /* arg = 0 — fin natural del programa */
+#define STX_VM_EVT_FAULT 2         /* arg = STX_ERR_* — la VM se detuvo por error */
+
 typedef enum {
     STX_CTX_IDLE = 0,     /* sin uso */
     STX_CTX_ARMED,        /* evento esperando su condición */
@@ -62,6 +69,8 @@ typedef struct stx_vm {
     bool loaded;
     uint8_t state;              /* STX_VMSTATE_* */
     uint8_t last_error;         /* STX_ERR_* */
+    /* Hook opcional de notificación (STX_VM_EVT_*); NULL = sin notificaciones */
+    void (*notify)(uint8_t evt, uint8_t arg);
     stx_context_t ctx[STX_MAX_CONTEXTS];
 } stx_vm_t;
 
