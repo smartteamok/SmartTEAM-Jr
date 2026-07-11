@@ -60,16 +60,16 @@ Colors.setCommon = function() {
   Colors.stGray400 = "#9A9BA0";    //papelera
   //BBT Style guide colors (remapeados a tokens SmartTEAM donde aplica)
   Colors.easternBlue = Colors.stCyan; //antes bbt blue #089BAB, hoy movimiento
-  Colors.neonCarrot = Colors.stAmber;
+  Colors.neonCarrot = Colors.stCoral; //categoría luces/color (lamparita)
   Colors.fountainBlue = "#62BCC7"; //lighter blue
   Colors.seance = Colors.stViolet; //antes dark purple #881199, hoy sonido/marca
   Colors.bbtDarkGray = "#535353";
   Colors.iron = "#CACACA";
   //FinchBlox
   Colors.blockPaletteMotion = Colors.stCyanTint;
-  Colors.blockPaletteColor = Colors.stAmberTint;
+  Colors.blockPaletteColor = Colors.stCoralTint;
   Colors.blockPaletteSound = Colors.stVioletTint;
-  Colors.blockPaletteControl = Colors.stCoralTint;
+  Colors.blockPaletteControl = Colors.stAmberTint;
   Colors.flagGreen = Colors.stGreen;
   Colors.fbDarkGreen = Colors.stGreenDark;
   Colors.stopRed = Colors.stCoral;
@@ -78,10 +78,10 @@ Colors.setCommon = function() {
   Colors.fbHighlight = "#ffff00";
   Colors.fbGray = "#E8E8E8";
   Colors.levelBN = "#E8E8E8";
-  Colors.fbYellowBorder = Colors.stCoralDark; //borde de control (bloques coral)
+  Colors.fbYellowBorder = Colors.stAmberDark; //borde de control (bloques amarillos)
   Colors.fbBlueBorder = Colors.stCyanDark;
   Colors.fbPurpleBorder = Colors.stVioletDark;
-  Colors.fbOrangeBorder = Colors.stAmberDark;
+  Colors.fbOrangeBorder = Colors.stCoralDark; //borde de luces/color (bloques coral)
   Colors.darkTeal = "#114F53";
   if (FinchBlox) {
     Colors.inactiveGray = Colors.fbGray;
@@ -112,9 +112,9 @@ Colors.setCategory = function() {
     "motion_3": Colors.easternBlue,
     "color_3": Colors.neonCarrot,
     "sound_3": Colors.seance,
-    "control_3": Colors.stCoral,
+    "control_3": Colors.stAmber,
     "sensor_3": Colors.stGreen,
-    "start": Colors.stGreen //pseudo-categoría del bloque de inicio (verde)
+    "start": Colors.stAmber //pseudo-categoría del bloque de inicio (amarillo, play verde)
   };
   //In FinchBlox, the block palette changes colors per category
   Colors.blockPalette = {
@@ -143,7 +143,7 @@ Colors.setCategory = function() {
     "sound_3": Colors.fbPurpleBorder,
     "control_3": Colors.fbYellowBorder,
     "sensor_3": Colors.stGreenDark,
-    "start": Colors.stGreenDark,
+    "start": Colors.stAmberDark,
     "inactive": Colors.iron
   }
 };

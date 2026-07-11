@@ -6423,7 +6423,9 @@ window.onresize = function() {
       if (FinchBlox) {
         if (!FBPopup.isEditingText) { //prevent iOS9 from resizing while editing text
           //The screen FinchBlox is designed for is about 800 wide by 600 tall.
-          GuiElements.zoomMultiple = window.innerWidth / 800; //window.innerHeight/600;
+          //Se limita por alto para que en pantallas apaisadas la UI no se
+          //agrande tanto que aplaste el lienzo de programación.
+          GuiElements.zoomMultiple = Math.min(window.innerWidth / 800, window.innerHeight / 600);
           GuiElements.updateZoom();
         }
       } else {
@@ -6478,8 +6480,10 @@ GuiElements.setGuiConstants = function() {
   GuiElements.computedZoom = GuiElements.defaultZoomMultiple; //The computed default zoom amount for the device
   GuiElements.zoomMultiple = 1; //GuiElements.zoomFactor = zoomMultiple * computedZoom
   if (FinchBlox) {
-    GuiElements.zoomMultiple = window.innerWidth / 800;
-  } //window.innerHeight/600; } //FinchBlox designed for a 800w x 600h screen
+    //FinchBlox designed for a 800w x 600h screen. Se limita por alto para que
+    //en pantallas apaisadas el lienzo de programación no quede aplastado.
+    GuiElements.zoomMultiple = Math.min(window.innerWidth / 800, window.innerHeight / 600);
+  }
   GuiElements.zoomFactor = GuiElements.defaultZoomMultiple;
 
   GuiElements.width = window.innerWidth / GuiElements.zoomFactor;
@@ -8472,16 +8476,16 @@ Colors.setCommon = function() {
   Colors.stGray400 = "#9A9BA0";    //papelera
   //BBT Style guide colors (remapeados a tokens SmartTEAM donde aplica)
   Colors.easternBlue = Colors.stCyan; //antes bbt blue #089BAB, hoy movimiento
-  Colors.neonCarrot = Colors.stAmber;
+  Colors.neonCarrot = Colors.stCoral; //categoría luces/color (lamparita)
   Colors.fountainBlue = "#62BCC7"; //lighter blue
   Colors.seance = Colors.stViolet; //antes dark purple #881199, hoy sonido/marca
   Colors.bbtDarkGray = "#535353";
   Colors.iron = "#CACACA";
   //FinchBlox
   Colors.blockPaletteMotion = Colors.stCyanTint;
-  Colors.blockPaletteColor = Colors.stAmberTint;
+  Colors.blockPaletteColor = Colors.stCoralTint;
   Colors.blockPaletteSound = Colors.stVioletTint;
-  Colors.blockPaletteControl = Colors.stCoralTint;
+  Colors.blockPaletteControl = Colors.stAmberTint;
   Colors.flagGreen = Colors.stGreen;
   Colors.fbDarkGreen = Colors.stGreenDark;
   Colors.stopRed = Colors.stCoral;
@@ -8490,10 +8494,10 @@ Colors.setCommon = function() {
   Colors.fbHighlight = "#ffff00";
   Colors.fbGray = "#E8E8E8";
   Colors.levelBN = "#E8E8E8";
-  Colors.fbYellowBorder = Colors.stCoralDark; //borde de control (bloques coral)
+  Colors.fbYellowBorder = Colors.stAmberDark; //borde de control (bloques amarillos)
   Colors.fbBlueBorder = Colors.stCyanDark;
   Colors.fbPurpleBorder = Colors.stVioletDark;
-  Colors.fbOrangeBorder = Colors.stAmberDark;
+  Colors.fbOrangeBorder = Colors.stCoralDark; //borde de luces/color (bloques coral)
   Colors.darkTeal = "#114F53";
   if (FinchBlox) {
     Colors.inactiveGray = Colors.fbGray;
@@ -8524,9 +8528,9 @@ Colors.setCategory = function() {
     "motion_3": Colors.easternBlue,
     "color_3": Colors.neonCarrot,
     "sound_3": Colors.seance,
-    "control_3": Colors.stCoral,
+    "control_3": Colors.stAmber,
     "sensor_3": Colors.stGreen,
-    "start": Colors.stGreen //pseudo-categoría del bloque de inicio (verde)
+    "start": Colors.stAmber //pseudo-categoría del bloque de inicio (amarillo, play verde)
   };
   //In FinchBlox, the block palette changes colors per category
   Colors.blockPalette = {
@@ -8555,7 +8559,7 @@ Colors.setCategory = function() {
     "sound_3": Colors.fbPurpleBorder,
     "control_3": Colors.fbYellowBorder,
     "sensor_3": Colors.stGreenDark,
-    "start": Colors.stGreenDark,
+    "start": Colors.stAmberDark,
     "inactive": Colors.iron
   }
 };
@@ -37362,9 +37366,9 @@ B_FBSoundL3.prototype.constructor = B_FBSoundL3;
 function B_WhenFlagTapped(x, y) {
 
   if (FinchBlox) {
-    //Pseudo-categoría "start": bloque inicio verde (SmartTEAM), ícono blanco
+    //Pseudo-categoría "start": bloque inicio amarillo con play verde (SmartTEAM)
     HatBlock.call(this, x, y, "start");
-    this.addPart(new BlockIcon(this, VectorPaths.faFlag, Colors.white, "flag", 35));
+    this.addPart(new BlockIcon(this, VectorPaths.faPlay, Colors.stGreen, "flag", 32));
     this.isStartBlock = true;
   } else {
     HatBlock.call(this, x, y, "control");

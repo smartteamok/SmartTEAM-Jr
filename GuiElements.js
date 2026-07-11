@@ -52,7 +52,9 @@ window.onresize = function() {
       if (FinchBlox) {
         if (!FBPopup.isEditingText) { //prevent iOS9 from resizing while editing text
           //The screen FinchBlox is designed for is about 800 wide by 600 tall.
-          GuiElements.zoomMultiple = window.innerWidth / 800; //window.innerHeight/600;
+          //Se limita por alto para que en pantallas apaisadas la UI no se
+          //agrande tanto que aplaste el lienzo de programación.
+          GuiElements.zoomMultiple = Math.min(window.innerWidth / 800, window.innerHeight / 600);
           GuiElements.updateZoom();
         }
       } else {
@@ -107,8 +109,10 @@ GuiElements.setGuiConstants = function() {
   GuiElements.computedZoom = GuiElements.defaultZoomMultiple; //The computed default zoom amount for the device
   GuiElements.zoomMultiple = 1; //GuiElements.zoomFactor = zoomMultiple * computedZoom
   if (FinchBlox) {
-    GuiElements.zoomMultiple = window.innerWidth / 800;
-  } //window.innerHeight/600; } //FinchBlox designed for a 800w x 600h screen
+    //FinchBlox designed for a 800w x 600h screen. Se limita por alto para que
+    //en pantallas apaisadas el lienzo de programación no quede aplastado.
+    GuiElements.zoomMultiple = Math.min(window.innerWidth / 800, window.innerHeight / 600);
+  }
   GuiElements.zoomFactor = GuiElements.defaultZoomMultiple;
 
   GuiElements.width = window.innerWidth / GuiElements.zoomFactor;
