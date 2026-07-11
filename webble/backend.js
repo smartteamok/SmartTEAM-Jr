@@ -107,9 +107,18 @@ WebBLE.discover = async function(id) {
 
 WebBLE.connect = async function(id, robotId) {
   const device = WebBLE.discovered;
-  if (device == null || device.id !== robotId) {
+  if (device == null) {
     respond(id, 404, "unknown device");
     return;
+  }
+  // No exigimos que robotId coincida exactamente con device.id: el id viaja
+  // como parámetro de URL sin codificar (HttpRequestBuilder.addParam) y el
+  // parser del backend convierte '+' en espacio, así que los id base64 de Web
+  // Bluetooth se mutilan. Solo hay un candidato (el que el usuario eligió en
+  // el chooser del navegador), así que conectamos a ese.
+  if (device.id !== robotId) {
+    console.warn("[webble] id no coincide (round-trip de URL); conecto al elegido: " +
+      robotId + " vs " + device.id);
   }
   try {
     const server = await device.gatt.connect();
