@@ -31,8 +31,9 @@ TitleBar.setGraphicsPart1 = function() {
       TB.inset = 14; //separación de la barra a los bordes
       TB.barH = 84; //alto de la barra flotante
       TB.barRadius = 26; //redondeo de esquinas exteriores
-      TB.notchDepth = 30; //cuánto sube el borde inferior en el centro (muesca)
-      TB.notchShoulder = 16; //radio de los hombros de la muesca (curva suave)
+      TB.notchPad = 14; //padding uniforme botón↔muesca (arriba = costados)
+      TB.notchDepth = 36; //cuánto sube el borde inferior en el centro (muesca)
+      TB.notchShoulder = 22; //radio de los hombros (iguala primaryR de Play/Stop)
       TB.height = TB.barH + 2 * TB.inset;
       TB.solidHeight = 0; //el lienzo pasa por detrás de la barra flotante
     } else {
@@ -53,7 +54,7 @@ TitleBar.setGraphicsPart1 = function() {
     TB.longButtonW = Math.min(maxLongBnW, TB.longButtonW);
 
     TB.bnIconMargin = 3;
-    TB.bg = Colors.stViolet;
+    TB.bg = Colors.stVioletLight; //violeta claro (violet-400)
     TB.bnIconH = 26;
     const maxIconHeight = maxBnWidth * 0.7;
     TB.bnIconH = Math.min(maxIconHeight, TB.bnIconH);
@@ -150,7 +151,7 @@ TitleBar.barPathD = function() {
   const dep = TB.notchDepth;
   const sh = TB.notchShoulder;
   const cx = TB.width / 2;
-  const half = TB.longButtonW + TB.buttonMargin / 2 + 12; //medio ancho del par Play+Stop
+  const half = TB.longButtonW + TB.buttonMargin / 2 + TB.notchPad; //medio ancho del par Play+Stop
   const nL = cx - half, nR = cx + half;
   TB.notchLeftX = nL;
   TB.notchRightX = nR;
@@ -246,8 +247,8 @@ TitleBar.makeButtons = function() {
     // Play unificado: compila, transfiere por BLE y la placa ejecuta
     // (volátil en vivo, persistente en modo descarga). Ver
     // ProgramModeManager.playClicked.
-    const primaryR = 22;
-    const playStopY = TB.inset + TB.barH - TB.notchDepth + 4;
+    const primaryR = TB.notchShoulder; //22: mismo radio que la muesca (coherencia)
+    const playStopY = TB.inset + TB.barH - TB.notchDepth + TB.notchPad;
     TB.flagBn = new Button(TB.flagBnX, playStopY, TB.longButtonW, primaryH, TBLayer, Colors.flagGreen, primaryR, primaryR);
     TB.flagBn.addIcon(VectorPaths.faPlay, TB.bnIconH);
     TB.flagBn.setCallbackFunction(ProgramModeManager.playClicked, false);

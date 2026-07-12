@@ -40,7 +40,8 @@ Colors.setCommon = function() {
   Colors.variablesDkOrange = "#FF5B00";
   Colors.inactiveGray = "#a3a3a3";
   //SmartTEAM Design System tokens
-  Colors.stViolet = "#796EB0";     //violet-500: marca / barra / sonido
+  Colors.stViolet = "#796EB0";     //violet-500: marca / sonido / nivel
+  Colors.stVioletLight = "#9287B2"; //violet-400: barra superior (violeta claro)
   Colors.stVioletDark = "#6457A0"; //violet-600
   Colors.stVioletTint = "#ECE9F4"; //violet-100
   Colors.stCyan = "#35BFE9";       //cyan-500: movimiento
