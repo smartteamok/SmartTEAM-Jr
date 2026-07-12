@@ -5420,6 +5420,9 @@ DeviceManager.checkBattery = function() {
     worstBatteryStatus = "2" //Status 3 is full charge for finch
   }
   if (FinchBlox) {
+    //El botón "Conectar robot" SmartTEAM ya no tiene ícono de batería: el
+    //estado se refleja en el color del punto de estado (blanco = sin dato)
+    color = Colors.white;
     if (worstBatteryStatus === "2") {
       color = Colors.flagGreen;
     } else if (worstBatteryStatus === "1") {
@@ -5427,7 +5430,10 @@ DeviceManager.checkBattery = function() {
     } else if (worstBatteryStatus === "0") {
       color = Colors.stopRed;
     }
-    TitleBar.finchButton.battIcon.setColor(color);
+    var finchBn = TitleBar.finchButton;
+    if (finchBn != null && finchBn.statusDotE != null) {
+      GuiElements.update.color(finchBn.statusDotE, color);
+    }
   } else {
     if (worstBatteryStatus === "2") {
       color = Colors.green;
@@ -8456,7 +8462,8 @@ Colors.setCommon = function() {
   Colors.variablesDkOrange = "#FF5B00";
   Colors.inactiveGray = "#a3a3a3";
   //SmartTEAM Design System tokens
-  Colors.stViovar = "#796EB0";     //violet-500: marca / barra / sonido
+  Colors.stViovar = "#796EB0";     //violet-500: marca / sonido / nivel
+  Colors.stVioletLight = "#9287B2"; //violet-400: barra superior (violeta claro)
   Colors.stVioletDark = "#6457A0"; //violet-600
   Colors.stVioletTint = "#ECE9F4"; //violet-100
   Colors.stCyan = "#35BFE9";       //cyan-500: movimiento
@@ -11649,8 +11656,9 @@ TitleBar.setGraphicsPart1 = function() {
       TB.inset = 14; //separación de la barra a los bordes
       TB.barH = 84; //alto de la barra flotante
       TB.barRadius = 26; //redondeo de esquinas exteriores
-      TB.notchDepth = 30; //cuánto sube el borde inferior en el centro (muesca)
-      TB.notchShoulder = 16; //radio de los hombros de la muesca (curva suave)
+      TB.notchPad = 14; //padding uniforme botón↔muesca (arriba = costados)
+      TB.notchDepth = 36; //cuánto sube el borde inferior en el centro (muesca)
+      TB.notchShoulder = 22; //radio de los hombros (iguala primaryR de Play/Stop)
       TB.height = TB.barH + 2 * TB.inset;
       TB.solidHeight = 0; //el lienzo pasa por detrás de la barra flotante
     } else {
@@ -11671,7 +11679,7 @@ TitleBar.setGraphicsPart1 = function() {
     TB.longButtonW = Math.min(maxLongBnW, TB.longButtonW);
 
     TB.bnIconMargin = 3;
-    TB.bg = Colors.stViolet;
+    TB.bg = Colors.stVioletLight; //violeta claro (violet-400)
     TB.bnIconH = 26;
     var maxIconHeight = maxBnWidth * 0.7;
     TB.bnIconH = Math.min(maxIconHeight, TB.bnIconH);
@@ -11768,7 +11776,7 @@ TitleBar.barPathD = function() {
   var dep = TB.notchDepth;
   var sh = TB.notchShoulder;
   var cx = TB.width / 2;
-  var half = TB.longButtonW + TB.buttonMargin / 2 + 12; //medio ancho del par Play+Stop
+  var half = TB.longButtonW + TB.buttonMargin / 2 + TB.notchPad; //medio ancho del par Play+Stop
   var nL = cx - half, nR = cx + half;
   TB.notchLeftX = nL;
   TB.notchRightX = nR;
@@ -11864,8 +11872,8 @@ TitleBar.makeButtons = function() {
     // Play unificado: compila, transfiere por BLE y la placa ejecuta
     // (volátil en vivo, persistente en modo descarga). Ver
     // ProgramModeManager.playClicked.
-    var primaryR = 22;
-    var playStopY = TB.inset + TB.barH - TB.notchDepth + 4;
+    var primaryR = TB.notchShoulder; //22: mismo radio que la muesca (coherencia)
+    var playStopY = TB.inset + TB.barH - TB.notchDepth + TB.notchPad;
     TB.flagBn = new Button(TB.flagBnX, playStopY, TB.longButtonW, primaryH, TBLayer, Colors.flagGreen, primaryR, primaryR);
     TB.flagBn.addIcon(VectorPaths.faPlay, TB.bnIconH);
     TB.flagBn.setCallbackFunction(ProgramModeManager.playClicked, false);
@@ -25593,6 +25601,13 @@ DiscoverDialog.prototype.updateDeviceList = function(deviceList) {
   this.updateTimer.stop();
   // Read the JSON
   this.discoveredDevices = this.deviceClass.getManager().fromJsonArrayString(deviceList);
+
+  // En hosts con chooser del sistema (Web Bluetooth / nativo) el usuario ya
+  // eligió la placa: si llegó exactamente una, conectarla sin segundo tap
+  if (FinchBlox && GuiElements.isPWA && this.discoveredDevices.length === 1) {
+    this.selectDevice(this.discoveredDevices[0]);
+    return;
+  }
 
   // Sort the devices by signal strength
 
