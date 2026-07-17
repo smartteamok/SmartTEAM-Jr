@@ -135,6 +135,15 @@ Language.en = {
 "Sound":"Sound",
 "Tablet":"Tablet",
 "Control":"Control",
+"Motion_1":"Motion",
+"Color_1":"Lights & Sound",
+"Motion_2":"Motion",
+"Color_2":"Lights & Sound",
+"Screen_2":"Screen",
+"Motion_3":"Motion",
+"Color_3":"Lights & Sound",
+"Screen_3":"Screen",
+"Control_3":"Control",
 "Variables":"Variables",
 "Zoom_in":"Zoom in",
 "Zoom_out":"Zoom out",
@@ -237,5 +246,7 @@ Language.en = {
 "V2_required":"V2 micro:bit required",
 "Temperature":"Temperature",
 "Add_Comment":"Add Comment",
-"Add_Comment_Here":"add comment here..."
+"Add_Comment_Here":"add comment here...",
+"LedMatrix_Clear":"Clear",
+"LedMatrix_Invert":"Invert"
 }

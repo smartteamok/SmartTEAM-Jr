@@ -10,15 +10,17 @@ function BlockList() {
   // List only includes categories that will appear in the BlockPalette in order.
   // Category names should be capitalized in the way they should be displayed on screen.
   if (FinchBlox) {
+    // L1: movimiento + (luz/sonido)
     cat.push("Motion_1");
     cat.push("Color_1");
-    cat.push("Sound_1");
+    // L2: movimiento + (luz/sonido) + pantallas
     cat.push("Motion_2");
     cat.push("Color_2");
-    cat.push("Sound_2");
+    cat.push("Screen_2");
+    // L3: movimiento + (luz/sonido) + pantallas + control
     cat.push("Motion_3");
     cat.push("Color_3");
-    cat.push("Sound_3");
+    cat.push("Screen_3");
     cat.push("Control_3");
   } else {
     cat.push("Robots");
@@ -77,16 +79,7 @@ BlockList.populateCat_motion_1 = function(category) {
   category.centerBlocks();
 }
 BlockList.populateCat_color_1 = function(category) {
-  category.addBlockByName("B_FBBeakRed");
-  category.addBlockByName("B_FBTailRed");
-  category.addBlockByName("B_FBBeakGreen");
-  category.addBlockByName("B_FBTailGreen");
-  category.addBlockByName("B_FBBeakBlue");
-  category.addBlockByName("B_FBTailBlue");
-  category.trimBottom();
-  category.centerBlocks();
-}
-BlockList.populateCat_sound_1 = function(category) {
+  category.addBlockByName("B_FBLightL1");
   category.addBlockByName("B_FBC");
   category.addBlockByName("B_FBD");
   category.addBlockByName("B_FBF");
@@ -104,14 +97,13 @@ BlockList.populateCat_motion_2 = function(category) {
   category.centerBlocks();
 }
 BlockList.populateCat_color_2 = function(category) {
-  category.addBlockByName("B_FBBeakL2");
-  category.addBlockByName("B_FBTailL2");
-  category.addBlockByName("B_FBLedArrayL2");
+  category.addBlockByName("B_FBLightL2");
+  category.addBlockByName("B_FBSoundL2");
   category.trimBottom();
   category.centerBlocks();
 }
-BlockList.populateCat_sound_2 = function(category) {
-  category.addBlockByName("B_FBSoundL2");
+BlockList.populateCat_screen_2 = function(category) {
+  category.addBlockByName("B_FBLedArrayL2");
   category.trimBottom();
   category.centerBlocks();
 }
@@ -126,14 +118,13 @@ BlockList.populateCat_motion_3 = function(category) {
   category.centerBlocks();
 }
 BlockList.populateCat_color_3 = function(category) {
-  category.addBlockByName("B_FBBeakL3");
-  category.addBlockByName("B_FBTailL3");
-  category.addBlockByName("B_FBLedArrayL3");
+  category.addBlockByName("B_FBLightL3");
+  category.addBlockByName("B_FBSoundL3");
   category.trimBottom();
   category.centerBlocks();
 }
-BlockList.populateCat_sound_3 = function(category) {
-  category.addBlockByName("B_FBSoundL3");
+BlockList.populateCat_screen_3 = function(category) {
+  category.addBlockByName("B_FBLedArrayL3");
   category.trimBottom();
   category.centerBlocks();
 }

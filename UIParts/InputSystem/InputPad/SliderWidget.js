@@ -230,7 +230,8 @@ InputWidget.Slider.prototype.addOption = function(x, y, option, tickH, tickW, is
 
   switch (this.type) {
     case "ledArray":
-      let image = GuiElements.draw.ledArray(this.group, option, 2.2);
+      let image = GuiElements.draw.ledArray(this.group, option, 2.2,
+        FinchBlox ? "#FFFFFF" : null, FinchBlox ? "#E83B66" : null);
       const iX = x - image.width / 2 + tickW / 2;
       const iY = y - image.width - S.optionMargin;
       GuiElements.move.group(image.group, iX, iY);
@@ -507,7 +508,8 @@ InputWidget.Slider.prototype.updateLabel = function() {
   }
   if (this.imageG != null) {
     this.imageG.remove();
-    let image = GuiElements.draw.ledArray(this.group, this.value, 4);
+    let image = GuiElements.draw.ledArray(this.group, this.value, 4,
+      FinchBlox ? "#FFFFFF" : null, FinchBlox ? "#E83B66" : null);
     const iX = this.width - S.hMargin - this.sideSpaceR - image.width / 2;
     const iY = this.height / 2 - image.width / 2;
     GuiElements.move.group(image.group, iX, iY);

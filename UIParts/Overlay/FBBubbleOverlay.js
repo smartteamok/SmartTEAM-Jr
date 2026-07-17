@@ -98,3 +98,21 @@ FBBubbleOverlay.prototype.display = function(x1, x2, y1, y2, innerWidth, innerHe
   GuiElements.update.rect(this.bgRect, 0, 0, width, height);
   this.show();
 }
+
+/**
+ * Center the bubble in the viewport (no pointer triangle).
+ * Used for tall editors like the LED matrix so they don't clip off-screen.
+ */
+FBBubbleOverlay.prototype.displayCentered = function(innerWidth, innerHeight) {
+  DebugOptions.validateNumbers(innerWidth, innerHeight);
+  const height = innerHeight + 2 * this.margin;
+  const width = this.width || innerWidth + 2 * this.margin;
+
+  GuiElements.move.group(this.innerGroup, this.margin, this.margin);
+  this.x = (GuiElements.width - width) / 2;
+  this.y = Math.max(this.margin, (GuiElements.height - height) / 2);
+  GuiElements.move.group(this.group, this.x, this.y);
+  this.triangle.setAttributeNS(null, "d", "");
+  GuiElements.update.rect(this.bgRect, 0, 0, width, height);
+  this.show();
+}

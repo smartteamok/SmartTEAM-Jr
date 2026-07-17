@@ -68,7 +68,18 @@ InputPad.prototype.show = function(slotShape, updateFn, finishFn, data, color, b
     this.bubbleOverlay = new BubbleOverlay(type, IP.background, IP.margin, this.group, this, layer);
 
   }
-  this.bubbleOverlay.display(coords.x1, coords.x2, coords.y1, coords.y2, this.width, this.height);
+  let centerPad = false;
+  for (let i = 0; i < this.widgets.length; i++) {
+    if (this.widgets[i].type == "ledMatrix") {
+      centerPad = true;
+      break;
+    }
+  }
+  if (centerPad && this.bubbleOverlay.displayCentered != null) {
+    this.bubbleOverlay.displayCentered(this.width, this.height);
+  } else {
+    this.bubbleOverlay.display(coords.x1, coords.x2, coords.y1, coords.y2, this.width, this.height);
+  }
   this.showWidgets(this.bubbleOverlay);
 };
 
