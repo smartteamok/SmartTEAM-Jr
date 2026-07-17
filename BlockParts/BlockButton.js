@@ -177,12 +177,17 @@ BlockButton.prototype.updateValue = function(newValue, index) { //, displayStrin
       if (this.ledArrayImage != null) {
         this.ledArrayImage.group.remove();
       }
-      const onC = InputWidget.LedMatrix != null ? InputWidget.LedMatrix.onColor : Colors.bbtDarkGray;
-      const offC = InputWidget.LedMatrix != null ? InputWidget.LedMatrix.offColor : Colors.fbGray;
-      let image = GuiElements.draw.ledArray(this.button.group, val, 1.8, offC, onC);
+      // Fixed all-red 5x5 edit affordance; current pattern already shows on the block icon.
+      const onC = InputWidget.LedMatrix != null ? InputWidget.LedMatrix.onColor : "#E83B66";
+      const editIcon = "1111111111111111111111111";
+      let image = GuiElements.draw.ledArray(this.button.group, editIcon, 1.8, onC, onC);
       const iX = this.button.width / 2 - image.width / 2;
       const iY = (visualI + 1) * this.button.height / (visualCount + 1) - image.width / 2;
       GuiElements.move.group(image.group, iX, iY);
+      const kids = image.group.childNodes;
+      for (let k = 0; k < kids.length; k++) {
+        TouchReceiver.addListenersBN(kids[k], this.button);
+      }
       this.ledArrayImage = image;
     } else {
       lineText = val.toString() + this.displaySuffixes[i];
