@@ -45,7 +45,7 @@ BlockGraphics.SetCommand = function() {
   // Minimum dimensions
   if (FinchBlox) {
     BlockGraphics.command.height = 60; //76;
-    BlockGraphics.command.width = 50; //76;
+    BlockGraphics.command.width = 64; // shared body width so parameter ovals match
     BlockGraphics.command.cornerRadius = 8; //10;
     BlockGraphics.command.vMargin = 10; // The margin above and below the content (BlockParts) of the Block
     BlockGraphics.command.hMargin = 10; //20;//25; // The margin to the left and right of the content

@@ -66,6 +66,23 @@ BlockButton.prototype.draw = function() {
  */
 BlockButton.prototype.updateAlign = function(x, y) {
   DebugOptions.validateNumbers(x, y);
+  if (FinchBlox && this.parent.width > 0) {
+    // Match the visible body (loops use topWidth; normal blocks use width).
+    const bodyW = (this.parent.hasBlockSlot1 && this.parent.topWidth > 0)
+      ? this.parent.topWidth
+      : this.parent.width;
+    const targetW = bodyW;
+    if (Math.abs(this.width - targetW) > 0.5) {
+      this.width = targetW;
+      this.draw();
+      if (this.values.length > 0) {
+        const first = this.widgets[0];
+        const vi = (first != null && first.index != null) ? first.index : 0;
+        this.updateValue(this.values[vi], vi);
+      }
+    }
+    x = (bodyW - this.width) / 2;
+  }
   this.move(x, y);
   //Hide the button while the block is in the blockPalette
   if (this.parent.stack === null || this.parent.stack.isDisplayStack) {
