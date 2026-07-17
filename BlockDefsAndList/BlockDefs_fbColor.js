@@ -181,6 +181,7 @@ B_FBColor.prototype.updateColor = function() {
 
 /**
  * Overlay pink ON pixels onto stScreenBase according to ledStatusString.
+ * Keeps a transparent hit mask on top so taps/drags work on the whole icon.
  */
 B_FBColor.prototype.redrawScreenLeds = function() {
   if (this.blockIcon == null || this.blockIcon.icon == null) {
@@ -203,8 +204,25 @@ B_FBColor.prototype.redrawScreenLeds = function() {
       const y = geo.originY + row * geo.stepY;
       const rect = GuiElements.draw.rect(x, y, geo.cell, geo.cell, onColor, 0.14, 0.14);
       this.ledOnGroup.appendChild(rect);
+      TouchReceiver.addListenersChild(rect, this);
     }
   }
+  this.ensureScreenHitMask();
+};
+
+/**
+ * Invisible full-icon hit target so drags work even over dynamic LED rects.
+ */
+B_FBColor.prototype.ensureScreenHitMask = function() {
+  const icon = this.blockIcon.icon;
+  if (this.screenHitMask == null) {
+    this.screenHitMask = GuiElements.draw.rect(0, 0, icon.pathId.width, icon.pathId.height, "#FFFFFF");
+    this.screenHitMask.setAttributeNS(null, "pointer-events", "all");
+    GuiElements.update.opacity(this.screenHitMask, 0);
+    TouchReceiver.addListenersChild(this.screenHitMask, this);
+  }
+  // Keep mask above LED overlays.
+  icon.group.appendChild(this.screenHitMask);
 };
 
 B_FBColor.prototype.updateValues = function() {

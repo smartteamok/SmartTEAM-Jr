@@ -20,12 +20,35 @@ function BlockIcon(parent, pathId, color, altText, height, rotation) {
   this.y = 0;
   this.parent = parent;
   this.icon = new VectorIcon(0, 0, pathId, color, height, this.parent.group, false, rotation);
-  TouchReceiver.addListenersChild(this.icon.pathE, this.parent);
+  this.attachIconListeners();
   this.isSlot = false;
   this.xOffset = 0;
 }
 BlockIcon.prototype = Object.create(BlockPart.prototype);
 BlockIcon.prototype.constructor = BlockIcon;
+
+/**
+ * Wire drag/tap listeners on every SVG path of the icon (multi-part icons included).
+ */
+BlockIcon.prototype.attachIconListeners = function() {
+  const els = this.icon.pathEs != null ? this.icon.pathEs : [this.icon.pathE];
+  for (let i = 0; i < els.length; i++) {
+    TouchReceiver.addListenersChild(els[i], this.parent);
+  }
+};
+
+/**
+ * Wire listeners on second-path layers (e.g. light outline parts).
+ */
+BlockIcon.prototype.attachSecondIconListeners = function() {
+  if (this.icon.pathE2 == null) {
+    return;
+  }
+  const els = this.icon.pathE2s != null ? this.icon.pathE2s : [this.icon.pathE2];
+  for (let i = 0; i < els.length; i++) {
+    TouchReceiver.addListenersChild(els[i], this.parent);
+  }
+};
 
 /**
  * @param {number} x - The x coord the icon should have relative to the Block it is in
@@ -107,10 +130,13 @@ BlockIcon.prototype.addSecondIcon = function(pathId, color, centerBelow, height,
     this.icon2yOffset = this.height + margin;
     this.height += height + margin;
     this.icon2 = new VectorIcon(0, 0, pathId, color, height, this.parent.group);
-    TouchReceiver.addListenersChild(this.icon2.pathE, this.parent);
+    const els2 = this.icon2.pathEs != null ? this.icon2.pathEs : [this.icon2.pathE];
+    for (let i = 0; i < els2.length; i++) {
+      TouchReceiver.addListenersChild(els2[i], this.parent);
+    }
   } else {
     this.icon.addSecondPath(pathId, color, centerBelow);
-    TouchReceiver.addListenersChild(this.icon.pathE2, this.parent);
+    this.attachSecondIconListeners();
   }
 }
 
