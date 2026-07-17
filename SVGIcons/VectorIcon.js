@@ -20,6 +20,7 @@ function VectorIcon(x, y, pathId, color, height, parent, mirror, rotation) {
 	this.mirror = mirror;
   this.rotation = rotation;
 	this.pathE = null;
+	this.pathEs = null;
 	this.draw();
 }
 
@@ -32,6 +33,55 @@ function VectorIcon(x, y, pathId, color, height, parent, mirror, rotation) {
 VectorIcon.computeWidth = function(pathId, height) {
 	const scale = height / pathId.height;
 	return scale * pathId.width;
+};
+
+/**
+ * Apply fill/stroke/transform styling from a VectorPaths entry (or part).
+ * @param {Element} pathE
+ * @param {object} style - may include strokeWidth, strokeMiterlimit, transform
+ * @param {string} color
+ */
+VectorIcon.stylePath = function(pathE, style, color) {
+	const fill = style.color != null ? style.color : color;
+	pathE.setAttributeNS(null, "fill", fill);
+	if (style.strokeWidth != null) {
+		pathE.setAttributeNS(null, "stroke", fill);
+		pathE.setAttributeNS(null, "stroke-width", style.strokeWidth);
+		pathE.setAttributeNS(null, "stroke-miterlimit",
+			style.strokeMiterlimit != null ? style.strokeMiterlimit : 10);
+		pathE.setAttributeNS(null, "stroke-linejoin", "miter");
+	}
+	if (style.transform != null) {
+		pathE.setAttributeNS(null, "transform", style.transform);
+	}
+};
+
+/**
+ * Create one or more path elements for a VectorPaths entry.
+ * Supports pathId.parts = [{path, strokeWidth}, ...] for multi-stroke icons.
+ * @param {object} pathId
+ * @param {string} color
+ * @return {Element[]}
+ */
+VectorIcon.prototype.createPathElements = function(pathId, color) {
+	const parts = pathId.parts != null
+		? pathId.parts
+		: [{ path: pathId.path, strokeWidth: pathId.strokeWidth, strokeMiterlimit: pathId.strokeMiterlimit }];
+	const elements = [];
+	for (let i = 0; i < parts.length; i++) {
+		const part = parts[i];
+		const pathE = GuiElements.create.path(this.group);
+		pathE.setAttributeNS(null, "d", part.path);
+		VectorIcon.stylePath(pathE, {
+			color: part.color,
+			strokeWidth: part.strokeWidth != null ? part.strokeWidth : pathId.strokeWidth,
+			strokeMiterlimit: part.strokeMiterlimit != null ? part.strokeMiterlimit : pathId.strokeMiterlimit,
+			transform: pathId.transform
+		}, color);
+		this.group.appendChild(pathE);
+		elements.push(pathE);
+	}
+	return elements;
 };
 
 /**
@@ -52,13 +102,8 @@ VectorIcon.prototype.draw = function() {
 
 	this.group = GuiElements.create.group(this.x, this.y, this.parent);
   this.setTransform();
-	this.pathE = GuiElements.create.path(this.group);
-	this.pathE.setAttributeNS(null, "d", this.pathId.path);
-	this.pathE.setAttributeNS(null, "fill", this.color);
-  if (this.pathId.transform != null) {
-    this.pathE.setAttributeNS(null, "transform", this.pathId.transform);
-  }
-	this.group.appendChild(this.pathE);
+	this.pathEs = this.createPathElements(this.pathId, this.color);
+	this.pathE = this.pathEs[0];
 };
 
 VectorIcon.prototype.setTransform = function() {
@@ -93,7 +138,18 @@ VectorIcon.prototype.setRotation = function(rotation) {
  */
 VectorIcon.prototype.setColor = function(color) {
 	this.color = color;
-	this.pathE.setAttributeNS(null, "fill", this.color);
+	const els = this.pathEs != null ? this.pathEs : [this.pathE];
+	const parts = this.pathId.parts;
+	for (let i = 0; i < els.length; i++) {
+		// Parts with a fixed color keep it; others follow the icon color.
+		const fill = (parts != null && parts[i] != null && parts[i].color != null)
+			? parts[i].color
+			: color;
+		els[i].setAttributeNS(null, "fill", fill);
+		if (els[i].getAttribute("stroke") != null) {
+			els[i].setAttributeNS(null, "stroke", fill);
+		}
+	}
 };
 
 /**
@@ -111,7 +167,10 @@ VectorIcon.prototype.move = function(x, y) {
 
 /* Deletes the icon and removes the path from its parent group. */
 VectorIcon.prototype.remove = function() {
-	this.pathE.remove();
+	const els = this.pathEs != null ? this.pathEs : [this.pathE];
+	for (let i = 0; i < els.length; i++) {
+		els[i].remove();
+	}
 };
 
 /**
@@ -123,13 +182,8 @@ VectorIcon.prototype.addSecondPath = function(pathId, color){
   this.pathId2 = pathId;
   this.color2 = color;
 
-  this.pathE2 = GuiElements.create.path(this.group);
-	this.pathE2.setAttributeNS(null, "d", this.pathId2.path);
-	this.pathE2.setAttributeNS(null, "fill", this.color2);
-  if (this.pathId2.transform != null) {
-    this.pathE2.setAttributeNS(null, "transform", this.pathId2.transform);
-  }
-	this.group.appendChild(this.pathE2);
+	this.pathE2s = this.createPathElements(pathId, color);
+	this.pathE2 = this.pathE2s[0];
 }
 
 /**

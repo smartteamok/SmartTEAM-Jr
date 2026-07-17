@@ -231,5 +231,7 @@ Language.es = {
 "Upside_Down":"Boca abajo",
 "logo":"Logo",
 "V2_required":"V2 micro:bit requerida",
-"Temperature":"Temperatura"
+"Temperature":"Temperatura",
+"LedMatrix_Clear":"Borrar",
+"LedMatrix_Invert":"Invertir"
 }

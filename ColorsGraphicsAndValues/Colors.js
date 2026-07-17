@@ -40,20 +40,20 @@ Colors.setCommon = function() {
   Colors.variablesDkOrange = "#FF5B00";
   Colors.inactiveGray = "#a3a3a3";
   //SmartTEAM Design System tokens
-  Colors.stViolet = "#796EB0";     //violet-500: marca / sonido / nivel
+  Colors.stViolet = "#796EB0";     //violet-500: marca / pantallas (matriz)
   Colors.stVioletLight = "#9287B2"; //violet-400: barra superior (violeta claro)
-  Colors.stVioletDark = "#6457A0"; //violet-600
-  Colors.stVioletTint = "#ECE9F4"; //violet-100
+  Colors.stVioletDark = "#6457A0"; //violet-600: borde pantallas
+  Colors.stVioletTint = "#ECE9F4"; //violet-100: palette pantallas
   Colors.stCyan = "#35BFE9";       //cyan-500: movimiento
   Colors.stCyanDark = "#1FA9D6";   //cyan-600
   Colors.stCyanTint = "#E1F5FC";   //cyan-100
-  Colors.stAmber = "#FFB800";      //amber-500: luces/color, undo
+  Colors.stAmber = "#FFB800";      //amber-500: control (espera/repetir), undo
   Colors.stAmberDark = "#F0A500";  //amber-600
   Colors.stAmberTint = "#FFF3D6";  //amber-100
   Colors.stGreen = "#59BB6A";      //green-500: play, sensores, conectado
   Colors.stGreenDark = "#45A156";  //green-600
   Colors.stGreenTint = "#E4F4E7";  //green-100
-  Colors.stCoral = "#EF506D";      //coral-500: stop, control, desconectado
+  Colors.stCoral = "#EF506D";      //coral-500: luces + notas
   Colors.stCoralDark = "#DA3656";  //coral-600
   Colors.stCoralTint = "#FDE4E9";  //coral-100
   Colors.stPaper = "#F3F7FD";      //fondo del lienzo
@@ -61,15 +61,15 @@ Colors.setCommon = function() {
   Colors.stGray400 = "#9A9BA0";    //papelera
   //BBT Style guide colors (remapeados a tokens SmartTEAM donde aplica)
   Colors.easternBlue = Colors.stCyan; //antes bbt blue #089BAB, hoy movimiento
-  Colors.neonCarrot = Colors.stCoral; //categoría luces/color (lamparita)
+  Colors.neonCarrot = Colors.stCoral; //categoría luces + sonido
   Colors.fountainBlue = "#62BCC7"; //lighter blue
-  Colors.seance = Colors.stViolet; //antes dark purple #881199, hoy sonido/marca
+  Colors.seance = Colors.stCoral; //legacy alias → coral (luces/notas)
   Colors.bbtDarkGray = "#535353";
   Colors.iron = "#CACACA";
   //FinchBlox
   Colors.blockPaletteMotion = Colors.stCyanTint;
   Colors.blockPaletteColor = Colors.stCoralTint;
-  Colors.blockPaletteSound = Colors.stVioletTint;
+  Colors.blockPaletteSound = Colors.stCoralTint;
   Colors.blockPaletteControl = Colors.stAmberTint;
   Colors.flagGreen = Colors.stGreen;
   Colors.fbDarkGreen = Colors.stGreenDark;
@@ -81,7 +81,7 @@ Colors.setCommon = function() {
   Colors.levelBN = "#E8E8E8";
   Colors.fbYellowBorder = Colors.stAmberDark; //borde de control (bloques amarillos)
   Colors.fbBlueBorder = Colors.stCyanDark;
-  Colors.fbPurpleBorder = Colors.stVioletDark;
+  Colors.fbPurpleBorder = Colors.stCoralDark; //borde de sonido (mismo coral que luces)
   Colors.fbOrangeBorder = Colors.stCoralDark; //borde de luces/color (bloques coral)
   Colors.darkTeal = "#114F53";
   if (FinchBlox) {
@@ -106,13 +106,15 @@ Colors.setCategory = function() {
     "inactive": Colors.inactiveGray,
     "motion_1": Colors.easternBlue,
     "color_1": Colors.neonCarrot,
-    "sound_1": Colors.seance,
+    "sound_1": Colors.neonCarrot,
     "motion_2": Colors.easternBlue,
     "color_2": Colors.neonCarrot,
-    "sound_2": Colors.seance,
+    "sound_2": Colors.neonCarrot,
+    "screen_2": Colors.stViolet,
     "motion_3": Colors.easternBlue,
     "color_3": Colors.neonCarrot,
-    "sound_3": Colors.seance,
+    "sound_3": Colors.neonCarrot,
+    "screen_3": Colors.stViolet,
     "control_3": Colors.stAmber,
     "sensor_3": Colors.stGreen,
     "start": Colors.stAmber //pseudo-categoría del bloque de inicio (amarillo, play verde)
@@ -121,13 +123,15 @@ Colors.setCategory = function() {
   Colors.blockPalette = {
     "motion_1": Colors.blockPaletteMotion,
     "color_1": Colors.blockPaletteColor,
-    "sound_1": Colors.blockPaletteSound,
+    "sound_1": Colors.blockPaletteColor,
     "motion_2": Colors.blockPaletteMotion,
     "color_2": Colors.blockPaletteColor,
-    "sound_2": Colors.blockPaletteSound,
+    "sound_2": Colors.blockPaletteColor,
+    "screen_2": Colors.stVioletTint,
     "motion_3": Colors.blockPaletteMotion,
     "color_3": Colors.blockPaletteColor,
-    "sound_3": Colors.blockPaletteSound,
+    "sound_3": Colors.blockPaletteColor,
+    "screen_3": Colors.stVioletTint,
     "control_3": Colors.blockPaletteControl,
     "sensor_3": Colors.stGreenTint
   };
@@ -135,13 +139,15 @@ Colors.setCategory = function() {
   Colors.blockOutline = {
     "motion_1": Colors.fbBlueBorder,
     "color_1": Colors.fbOrangeBorder,
-    "sound_1": Colors.fbPurpleBorder,
+    "sound_1": Colors.fbOrangeBorder,
     "motion_2": Colors.fbBlueBorder,
     "color_2": Colors.fbOrangeBorder,
-    "sound_2": Colors.fbPurpleBorder,
+    "sound_2": Colors.fbOrangeBorder,
+    "screen_2": Colors.stVioletDark,
     "motion_3": Colors.fbBlueBorder,
     "color_3": Colors.fbOrangeBorder,
-    "sound_3": Colors.fbPurpleBorder,
+    "sound_3": Colors.fbOrangeBorder,
+    "screen_3": Colors.stVioletDark,
     "control_3": Colors.fbYellowBorder,
     "sensor_3": Colors.stGreenDark,
     "start": Colors.stAmberDark,

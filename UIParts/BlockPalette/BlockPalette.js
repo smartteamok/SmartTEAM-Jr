@@ -195,21 +195,30 @@ BlockPalette.createCategories = function() {
   const catCount = BlockList.catCount();
 
   if (FinchBlox) {
-    let currentY = 0;
-    let currentX = BlockPalette.catW / 2 - 1.5 * CategoryBN.width - CategoryBN.hMargin;
+    // Agrupa pestañas por nivel y centra cada fila (L1/L2/L3 pueden tener distinta cantidad)
+    const byLevel = {};
     for (let i = 0; i < catCount; i++) {
-      const currentCat = new Category(currentX, currentY, BlockList.getCatName(i), BlockList.getCatId(i));
-      BlockPalette.categories.push(currentCat);
-      if (i == 2) {
-        currentX = BlockPalette.catW / 2 - 1.5 * CategoryBN.width - CategoryBN.hMargin;
-      } else if (i == 5) {
-        //currentX = BlockPalette.catW/2 - 2.5*CategoryBN.width - 2*CategoryBN.hMargin;
-        currentX = BlockPalette.catW / 2 - 2 * CategoryBN.width - 1.5 * CategoryBN.hMargin;
-      } else {
+      const id = BlockList.getCatId(i);
+      const level = parseInt(id.split("_").pop(), 10);
+      if (isNaN(level)) {
+        continue;
+      }
+      if (byLevel[level] == null) {
+        byLevel[level] = [];
+      }
+      byLevel[level].push(i);
+    }
+    Object.keys(byLevel).forEach(function(levelKey) {
+      const indices = byLevel[levelKey];
+      const n = indices.length;
+      let currentX = BlockPalette.catW / 2 - (n * CategoryBN.width + (n - 1) * CategoryBN.hMargin) / 2;
+      for (let j = 0; j < n; j++) {
+        const i = indices[j];
+        const currentCat = new Category(currentX, 0, BlockList.getCatName(i), BlockList.getCatId(i));
+        BlockPalette.categories.push(currentCat);
         currentX += CategoryBN.width + CategoryBN.hMargin;
       }
-    }
-
+    });
   } else {
     const numberOfRows = Math.ceil(catCount / 2);
 
