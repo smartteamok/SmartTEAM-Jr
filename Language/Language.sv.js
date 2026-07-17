@@ -176,7 +176,7 @@ Language.sv = {
 "Name_error_invalid_characters":"Dessa tecken kan inte finnas i filens namn: \n",
 "Name_error_already_exists":"\" finns redan. Ge ett annat namn.",
 "Permission_denied":"Tillstånd är inte givet",
-"Grant_permission":"Ge tillstånd till BirdBlox i inställningar",
+"Grant_permission":"Ge tillstånd till SmartTEAM Jr i inställningar",
 "Dismiss":"Avvisa",
 "Name":"Namn",
 "Enter_file_name":"Skriv in filnamn",

@@ -188,7 +188,7 @@ Language.en = {
 "Name_error_invalid_characters":"The following characters cannot be included in file names: \n",
 "Name_error_already_exists":"\" already exists.  Enter a different name.",
 "Permission_denied":"Permission denied",
-"Grant_permission":"Grant recording permission to BirdBlox in Settings",
+"Grant_permission":"Grant recording permission to SmartTEAM Jr in Settings",
 "Dismiss":"Dismiss",
 "Name":"Name",
 "Enter_file_name":"Enter file name",

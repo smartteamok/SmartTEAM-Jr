@@ -176,7 +176,7 @@ Language.fi = {
 "Name_error_invalid_characters":"Tiedoston nimessä ei voi olla seruaavia merkkejä: \n",
 "Name_error_already_exists":"\" on jo olemassa. Anna uusi nimi.",
 "Permission_denied":"Lupaa ei ole annettu",
-"Grant_permission":"Anna BirdBloxille lupa käyttää mikrofonia asetuksissa",
+"Grant_permission":"Anna SmartTEAM Jr:lle lupa käyttää mikrofonia asetuksissa",
 "Dismiss":"Hylkää",
 "Name":"Nimi",
 "Enter_file_name":"Syötä tiedoston nimi.",

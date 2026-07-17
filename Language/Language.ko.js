@@ -182,7 +182,7 @@ Language.ko = {
 "Name_error_invalid_characters":"파일 이름에는 다음 문자를 사용할 수 없습니다. \n ",
 "Name_error_already_exists":"\"이미 존재하는 이름입니다. 다른 이름을 입력하세요.",
 "Permission_denied":"권한 허용 불가",
-"Grant_permission":"설정에서 BirdBlox에 대한 마이크 권한을 허용해주세요.",
+"Grant_permission":"설정에서 SmartTEAM Jr에 대한 마이크 권한을 허용해주세요.",
 "Dismiss":"취소",
 "Name":"파일 이름",
 "Enter_file_name":"파일 이름을 입력하세요.",

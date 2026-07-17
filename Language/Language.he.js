@@ -177,7 +177,7 @@ Language.he = {
   "Name_error_invalid_characters":"אין להכניס סימנים אלו בשמות הקבצים :  \n",
   "Name_error_already_exists":"\" כבר קיים. כתוב שם שונה",
   "Permission_denied":"ההרשאה נדחתה",
-  "Grant_permission":"אישור הקלטה מיוחד לבירדבלוקס בהגדרות ",
+  "Grant_permission":"אישור הקלטה מיוחד ל-SmartTEAM Jr בהגדרות ",
   "Dismiss":"לבטל",
   "Name":"שם",
   "Enter_file_name":"כתוב שם לקובץ",

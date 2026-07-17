@@ -180,7 +180,7 @@ Language.es = {
 "Name_error_invalid_characters":"Los siguientes caracteres no pueden ser utilizados en los nombres de los archivos: \n",
 "Name_error_already_exists":"\" ya existe. Entre un nombre diferente",
 "Permission_denied":"Permiso denegado",
-"Grant_permission":"Permiso especial de grabacion en la configuracion del BirdBlox",
+"Grant_permission":"Permiso especial de grabacion en la configuracion de SmartTEAM Jr",
 "Dismiss":"Descartar",
 "Name":"Nombre",
 "Enter_file_name":"Ingresar el nombre del archivo",

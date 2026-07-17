@@ -177,7 +177,7 @@ Language.nl = {
 "Name_error_invalid_characters":"De volgende lettertekens mogen niet gebruikt worden in bestandsnamen: \n",
 "Name_error_already_exists":"\" bestaat al. Voer een andere naam in.",
 "Permission_denied":"Geen toestemming",
-"Grant_permission":"Geef toestemming tot opnames aan BirdBlox in Instellingen",
+"Grant_permission":"Geef toestemming tot opnames aan SmartTEAM Jr in Instellingen",
 "Dismiss":"Ontslaan",
 "Name":"Naam",
 "Enter_file_name":"Voor een bestandsnaam in",

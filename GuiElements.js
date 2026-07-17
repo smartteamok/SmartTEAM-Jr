@@ -133,6 +133,9 @@ GuiElements.setGuiConstants = function() {
  * Some classes rely on constants from each other, so the order they execute in is important.
  */
 GuiElements.setConstants = function() {
+  if (typeof AppName !== "undefined") {
+    document.title = AppName;
+  }
   /* If a class is static and does not build a part of the UI,
   then its main function is used to initialize its constants. */
   VectorPaths();

@@ -177,7 +177,7 @@ Language.de = {
 "Name_error_invalid_characters":"Die folgenden Zeichen können nicht in Dateinamen verwendet werden: \n",
 "Name_error_already_exists":"\" ist schon vergeben. Bitte gib einen anderen Namen ein.",
 "Permission_denied":"Zugriff verweigert",
-"Grant_permission":"Gewähre Birdblox in den Einstellungen Zugriff auf dein Mikrofon, um Aufnahmen zu machen.",
+"Grant_permission":"Gewähre SmartTEAM Jr in den Einstellungen Zugriff auf dein Mikrofon, um Aufnahmen zu machen.",
 "Dismiss":"Ausblenden",
 "Name":"Name",
 "Enter_file_name":"Gib einen Dateinamen ein",

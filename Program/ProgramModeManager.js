@@ -170,7 +170,7 @@ ProgramModeManager.onProgramDone = function(reason) {
 ProgramModeManager.onProgramFault = function(errCode) {
   ProgramModeManager.clearHighlights();
   ProgramModeManager.remoteRunning = false;
-  DialogManager.showAlertDialog("SmartTEAM",
+  DialogManager.showAlertDialog(AppName,
     "El programa se detuvo por un error (código " + errCode + ")", "OK");
 };
 
@@ -228,7 +228,7 @@ ProgramModeManager.reportErrors = function(errors) {
   }
   console.log("[ProgramMode] errores de compilación: " + text);
   if (errors.length > 0 && !ProgramModeManager.debugWithoutBackend()) {
-    DialogManager.showAlertDialog("SmartTEAM",
+    DialogManager.showAlertDialog(AppName,
       ProgramModeManager.errorText(errors[0].code), "OK");
   }
 };

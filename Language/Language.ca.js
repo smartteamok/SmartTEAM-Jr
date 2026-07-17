@@ -177,7 +177,7 @@ Language.ca = {
 "Name_error_invalid_characters":"Aquests caràcters no poden formar part d’un nom d'arxiu: \n",
 "Name_error_already_exists":"\" ja existeix. Introdueix un nom diferent.",
 "Permission_denied":"Permís denegat",
-"Grant_permission":"Atorga permisos a BirdBlox des de Configuració",
+"Grant_permission":"Atorga permisos a SmartTEAM Jr des de Configuració",
 "Dismiss":"Descarta",
 "Name":"Nom",
 "Enter_file_name":"Introdueix el nom de l'arxiu",

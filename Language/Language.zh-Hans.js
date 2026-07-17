@@ -177,7 +177,7 @@ Language.zhs = {
 "Name_error_invalid_characters":"文件名中不能包含以下字符：\n",
 "Name_error_already_exists":"\“已经存在。请输入其他名称。",
 "Permission_denied":"没有权限",
-"Grant_permission":"在“设置”中为BirdBlox授予录制权限",
+"Grant_permission":"在“设置”中为SmartTEAM Jr授予录制权限",
 "Dismiss":"撤",
 "Name":"名称",
 "Enter_file_name":"输入文件名",
