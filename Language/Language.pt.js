@@ -177,7 +177,7 @@ Language.pt = {
 "Name_error_invalid_characters":"Os seguintes caracteres não podem ser incluídos nos nomes de arquivos: \n",
 "Name_error_already_exists":"\" já existe. Digite um nome diferente.",
 "Permission_denied":"Permissão negada",
-"Grant_permission":"Conceda permissão de gravação para o BirdBlox em Configurações",
+"Grant_permission":"Conceda permissão de gravação para o SmartTEAM Jr em Configurações",
 "Dismiss":"Dispensar",
 "Name":"Nome",
 "Enter_file_name":"Digite nome do arquivo",

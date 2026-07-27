@@ -1,4 +1,5 @@
 var FinchBlox = true;
+var AppName = "SmartTEAM Jr";
 var FrontendVersion = 393;
 
 
@@ -1563,7 +1564,7 @@ Language.ar = {
   "Name_error_invalid_characters":"هذه الحروف لا يمكن أن يتضمنها اسم الملف \n",
   "Name_error_already_exists":"\" هذا الاسم موجود بالفعل، من فضلك أدخل اسم مختلف",
   "Permission_denied":"إذن الدخول مرفوض",
-  "Grant_permission":"من إذن تسجيل لبرنامج بيردبوكس في الإعدادات",
+  "Grant_permission":"من إذن تسجيل لبرنامج SmartTEAM Jr في الإعدادات",
   "Dismiss":"إخفاء",
   "Name":"الاسم",
   "Enter_file_name":"أدخل اسم الملف",
@@ -1780,7 +1781,7 @@ Language.ca = {
 "Name_error_invalid_characters":"Aquests caràcters no poden formar part d’un nom d'arxiu: \n",
 "Name_error_already_exists":"\" ja existeix. Introdueix un nom diferent.",
 "Permission_denied":"Permís denegat",
-"Grant_permission":"Atorga permisos a BirdBlox des de Configuració",
+"Grant_permission":"Atorga permisos a SmartTEAM Jr des de Configuració",
 "Dismiss":"Descarta",
 "Name":"Nom",
 "Enter_file_name":"Introdueix el nom de l'arxiu",
@@ -2012,7 +2013,7 @@ Language.da = {
 "Name_error_invalid_characters":"Følgende tegn kan ikke inkluderes i filnavnet: \n",
 "Name_error_already_exists":"\" eksisterer allerede. Indtast et andet navn.",
 "Permission_denied":"Adgang nægtet",
-"Grant_permission":"Tillad Birdblox at bruge din mikrofon under Indstillinger",
+"Grant_permission":"Tillad SmartTEAM Jr at bruge din mikrofon under Indstillinger",
 "Dismiss":"Afbryd",
 "Name":"Navn",
 "Enter_file_name":"Indtast filnavn",
@@ -2229,7 +2230,7 @@ Language.de = {
 "Name_error_invalid_characters":"Die folgenden Zeichen können nicht in Dateinamen verwendet werden: \n",
 "Name_error_already_exists":"\" ist schon vergeben. Bitte gib einen anderen Namen ein.",
 "Permission_denied":"Zugriff verweigert",
-"Grant_permission":"Gewähre Birdblox in den Einstellungen Zugriff auf dein Mikrofon, um Aufnahmen zu machen.",
+"Grant_permission":"Gewähre SmartTEAM Jr in den Einstellungen Zugriff auf dein Mikrofon, um Aufnahmen zu machen.",
 "Dismiss":"Ausblenden",
 "Name":"Name",
 "Enter_file_name":"Gib einen Dateinamen ein",
@@ -2464,7 +2465,7 @@ Language.en = {
 "Name_error_invalid_characters":"The following characters cannot be included in file names: \n",
 "Name_error_already_exists":"\" already exists.  Enter a different name.",
 "Permission_denied":"Permission denied",
-"Grant_permission":"Grant recording permission to BirdBlox in Settings",
+"Grant_permission":"Grant recording permission to SmartTEAM Jr in Settings",
 "Dismiss":"Dismiss",
 "Name":"Name",
 "Enter_file_name":"Enter file name",
@@ -2707,7 +2708,7 @@ Language.es = {
 "Name_error_invalid_characters":"Los siguientes caracteres no pueden ser utilizados en los nombres de los archivos: \n",
 "Name_error_already_exists":"\" ya existe. Entre un nombre diferente",
 "Permission_denied":"Permiso denegado",
-"Grant_permission":"Permiso especial de grabacion en la configuracion del BirdBlox",
+"Grant_permission":"Permiso especial de grabacion en la configuracion de SmartTEAM Jr",
 "Dismiss":"Descartar",
 "Name":"Nombre",
 "Enter_file_name":"Ingresar el nombre del archivo",
@@ -2939,7 +2940,7 @@ Language.fi = {
 "Name_error_invalid_characters":"Tiedoston nimessä ei voi olla seruaavia merkkejä: \n",
 "Name_error_already_exists":"\" on jo olemassa. Anna uusi nimi.",
 "Permission_denied":"Lupaa ei ole annettu",
-"Grant_permission":"Anna BirdBloxille lupa käyttää mikrofonia asetuksissa",
+"Grant_permission":"Anna SmartTEAM Jr:lle lupa käyttää mikrofonia asetuksissa",
 "Dismiss":"Hylkää",
 "Name":"Nimi",
 "Enter_file_name":"Syötä tiedoston nimi.",
@@ -3156,7 +3157,7 @@ Language.fr = {
 "Name_error_invalid_characters":"Les caractères suivants ne peuvent pas être inclus dans les noms de fichiers: \n",
 "Name_error_already_exists":"\" existe déjà. Entrez un nom différent.",
 "Permission_denied":"Permission refusée",
-"Grant_permission":"Accorder une autorisation d'enregistrement à BirdBlox dans les Paramètres",
+"Grant_permission":"Accorder une autorisation d'enregistrement à SmartTEAM Jr dans les Paramètres",
 "Dismiss":"Rejeter",
 "Name":"Nom",
 "Enter_file_name":"Entrez le nom du fichier",
@@ -3389,7 +3390,7 @@ Language.he = {
   "Name_error_invalid_characters":"אין להכניס סימנים אלו בשמות הקבצים :  \n",
   "Name_error_already_exists":"\" כבר קיים. כתוב שם שונה",
   "Permission_denied":"ההרשאה נדחתה",
-  "Grant_permission":"אישור הקלטה מיוחד לבירדבלוקס בהגדרות ",
+  "Grant_permission":"אישור הקלטה מיוחד ל-SmartTEAM Jr בהגדרות ",
   "Dismiss":"לבטל",
   "Name":"שם",
   "Enter_file_name":"כתוב שם לקובץ",
@@ -3627,7 +3628,7 @@ Language.ko = {
 "Name_error_invalid_characters":"파일 이름에는 다음 문자를 사용할 수 없습니다. \n ",
 "Name_error_already_exists":"\"이미 존재하는 이름입니다. 다른 이름을 입력하세요.",
 "Permission_denied":"권한 허용 불가",
-"Grant_permission":"설정에서 BirdBlox에 대한 마이크 권한을 허용해주세요.",
+"Grant_permission":"설정에서 SmartTEAM Jr에 대한 마이크 권한을 허용해주세요.",
 "Dismiss":"취소",
 "Name":"파일 이름",
 "Enter_file_name":"파일 이름을 입력하세요.",
@@ -3855,7 +3856,7 @@ Language.nl = {
 "Name_error_invalid_characters":"De volgende lettertekens mogen niet gebruikt worden in bestandsnamen: \n",
 "Name_error_already_exists":"\" bestaat al. Voer een andere naam in.",
 "Permission_denied":"Geen toestemming",
-"Grant_permission":"Geef toestemming tot opnames aan BirdBlox in Instellingen",
+"Grant_permission":"Geef toestemming tot opnames aan SmartTEAM Jr in Instellingen",
 "Dismiss":"Ontslaan",
 "Name":"Naam",
 "Enter_file_name":"Voor een bestandsnaam in",
@@ -4088,7 +4089,7 @@ Language.pt = {
 "Name_error_invalid_characters":"Os seguintes caracteres não podem ser incluídos nos nomes de arquivos: \n",
 "Name_error_already_exists":"\" já existe. Digite um nome diferente.",
 "Permission_denied":"Permissão negada",
-"Grant_permission":"Conceda permissão de gravação para o BirdBlox em Configurações",
+"Grant_permission":"Conceda permissão de gravação para o SmartTEAM Jr em Configurações",
 "Dismiss":"Dispensar",
 "Name":"Nome",
 "Enter_file_name":"Digite nome do arquivo",
@@ -4320,7 +4321,7 @@ Language.sv = {
 "Name_error_invalid_characters":"Dessa tecken kan inte finnas i filens namn: \n",
 "Name_error_already_exists":"\" finns redan. Ge ett annat namn.",
 "Permission_denied":"Tillstånd är inte givet",
-"Grant_permission":"Ge tillstånd till BirdBlox i inställningar",
+"Grant_permission":"Ge tillstånd till SmartTEAM Jr i inställningar",
 "Dismiss":"Avvisa",
 "Name":"Namn",
 "Enter_file_name":"Skriv in filnamn",
@@ -4537,7 +4538,7 @@ Language.zhs = {
 "Name_error_invalid_characters":"文件名中不能包含以下字符：\n",
 "Name_error_already_exists":"\“已经存在。请输入其他名称。",
 "Permission_denied":"没有权限",
-"Grant_permission":"在“设置”中为BirdBlox授予录制权限",
+"Grant_permission":"在“设置”中为SmartTEAM Jr授予录制权限",
 "Dismiss":"撤",
 "Name":"名称",
 "Enter_file_name":"输入文件名",
@@ -4770,7 +4771,7 @@ Language.zht = {
 "Name_error_invalid_characters":"文件名中不能包含以下字符：\n",
 "Name_error_already_exists":"\“已經存在。請輸入其他名稱。",
 "Permission_denied":"沒有權限",
-"Grant_permission":"在“設置”中為BirdBlox授予錄製權限",
+"Grant_permission":"在“設置”中為SmartTEAM Jr授予錄製權限",
 "Dismiss":"撤",
 "Name":"名稱",
 "Enter_file_name":"輸入文件名",
@@ -6510,6 +6511,9 @@ GuiElements.setGuiConstants = function() {
  * Some classes rely on constants from each other, so the order they execute in is important.
  */
 GuiElements.setConstants = function() {
+  if (typeof AppName !== "undefined") {
+    document.title = AppName;
+  }
   /* If a class is static and does not build a part of the UI,
   then its main function is used to initialize its constants. */
   VectorPaths();
@@ -21784,7 +21788,7 @@ ProgramModeManager.onProgramDone = function(reason) {
 ProgramModeManager.onProgramFault = function(errCode) {
   ProgramModeManager.clearHighlights();
   ProgramModeManager.remoteRunning = false;
-  DialogManager.showAlertDialog("SmartTEAM",
+  DialogManager.showAlertDialog(AppName,
     "El programa se detuvo por un error (código " + errCode + ")", "OK");
 };
 
@@ -21842,7 +21846,7 @@ ProgramModeManager.reportErrors = function(errors) {
   }
   console.log("[ProgramMode] errores de compilación: " + text);
   if (errors.length > 0 && !ProgramModeManager.debugWithoutBackend()) {
-    DialogManager.showAlertDialog("SmartTEAM",
+    DialogManager.showAlertDialog(AppName,
       ProgramModeManager.errorText(errors[0].code), "OK");
   }
 };

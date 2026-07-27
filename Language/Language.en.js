@@ -135,6 +135,15 @@ Language.en = {
 "Sound":"Sound",
 "Tablet":"Tablet",
 "Control":"Control",
+"Motion_1":"Motion",
+"Color_1":"Lights & Sound",
+"Motion_2":"Motion",
+"Color_2":"Lights & Sound",
+"Screen_2":"Screen",
+"Motion_3":"Motion",
+"Color_3":"Lights & Sound",
+"Screen_3":"Screen",
+"Control_3":"Control",
 "Variables":"Variables",
 "Zoom_in":"Zoom in",
 "Zoom_out":"Zoom out",
@@ -179,7 +188,7 @@ Language.en = {
 "Name_error_invalid_characters":"The following characters cannot be included in file names: \n",
 "Name_error_already_exists":"\" already exists.  Enter a different name.",
 "Permission_denied":"Permission denied",
-"Grant_permission":"Grant recording permission to BirdBlox in Settings",
+"Grant_permission":"Grant recording permission to SmartTEAM Jr in Settings",
 "Dismiss":"Dismiss",
 "Name":"Name",
 "Enter_file_name":"Enter file name",
@@ -237,5 +246,7 @@ Language.en = {
 "V2_required":"V2 micro:bit required",
 "Temperature":"Temperature",
 "Add_Comment":"Add Comment",
-"Add_Comment_Here":"add comment here..."
+"Add_Comment_Here":"add comment here...",
+"LedMatrix_Clear":"Clear",
+"LedMatrix_Invert":"Invert"
 }

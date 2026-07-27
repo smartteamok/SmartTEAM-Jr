@@ -176,7 +176,7 @@ Language.ar = {
   "Name_error_invalid_characters":"هذه الحروف لا يمكن أن يتضمنها اسم الملف \n",
   "Name_error_already_exists":"\" هذا الاسم موجود بالفعل، من فضلك أدخل اسم مختلف",
   "Permission_denied":"إذن الدخول مرفوض",
-  "Grant_permission":"من إذن تسجيل لبرنامج بيردبوكس في الإعدادات",
+  "Grant_permission":"من إذن تسجيل لبرنامج SmartTEAM Jr في الإعدادات",
   "Dismiss":"إخفاء",
   "Name":"الاسم",
   "Enter_file_name":"أدخل اسم الملف",

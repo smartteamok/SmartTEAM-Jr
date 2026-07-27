@@ -133,6 +133,9 @@ GuiElements.setGuiConstants = function() {
  * Some classes rely on constants from each other, so the order they execute in is important.
  */
 GuiElements.setConstants = function() {
+  if (typeof AppName !== "undefined") {
+    document.title = AppName;
+  }
   /* If a class is static and does not build a part of the UI,
   then its main function is used to initialize its constants. */
   VectorPaths();
@@ -189,6 +192,7 @@ GuiElements.setConstants = function() {
   InputWidget.Label.setConstants();
   InputWidget.Slider.setConstants();
   InputWidget.Piano.setConstants();
+  InputWidget.LedMatrix.setConstants();
 
   ConnectMultipleDialog.setConstants();
   RobotConnectionList.setConstants();
@@ -778,21 +782,30 @@ GuiElements.draw.tab = function(x, y, width, height, color, r, isDown) {
   return tab; //Return the finished button shape.
 };
 
-GuiElements.draw.ledArray = function(parentGroup, arrayString, dim) {
+/**
+ * Draws a 5x5 LED matrix preview.
+ * @param {Element} parentGroup
+ * @param {string} arrayString - 25 chars of 0/1
+ * @param {number} dim - cell size
+ * @param {string} [offColor] - defaults to Colors.fbGray
+ * @param {string} [onColor] - defaults to Colors.bbtDarkGray
+ */
+GuiElements.draw.ledArray = function(parentGroup, arrayString, dim, offColor, onColor) {
   let arrayImage = {};
   const values = arrayString.split("");
   let group = GuiElements.create.group(0, 0, parentGroup);
-  //const dim = 4;//25;
-  const r = dim / 4; //1;//8;
-  const margin = dim / 2; //dim/4; //1;//5;
+  const r = dim / 4;
+  const margin = dim / 2;
   const startX = 0;
+  const colorOff = offColor != null ? offColor : Colors.fbGray;
+  const colorOn = onColor != null ? onColor : Colors.bbtDarkGray;
   let y = 0;
   for (let i = 0; i < 5; i++) {
     let x = startX;
     for (let j = 0; j < 5; j++) {
-      let color = Colors.fbGray; //Colors.iron;
+      let color = colorOff;
       if (values[5 * i + j] == "1") {
-        color = Colors.bbtDarkGray;
+        color = colorOn;
       }
       let rect = GuiElements.draw.rect(x, y, dim, dim, color, r, r);
       group.appendChild(rect);

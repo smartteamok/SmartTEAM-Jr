@@ -176,7 +176,7 @@ Language.da = {
 "Name_error_invalid_characters":"Følgende tegn kan ikke inkluderes i filnavnet: \n",
 "Name_error_already_exists":"\" eksisterer allerede. Indtast et andet navn.",
 "Permission_denied":"Adgang nægtet",
-"Grant_permission":"Tillad Birdblox at bruge din mikrofon under Indstillinger",
+"Grant_permission":"Tillad SmartTEAM Jr at bruge din mikrofon under Indstillinger",
 "Dismiss":"Afbryd",
 "Name":"Navn",
 "Enter_file_name":"Indtast filnavn",

@@ -66,6 +66,23 @@ BlockButton.prototype.draw = function() {
  */
 BlockButton.prototype.updateAlign = function(x, y) {
   DebugOptions.validateNumbers(x, y);
+  if (FinchBlox && this.parent.width > 0) {
+    // Match the visible body (loops use topWidth; normal blocks use width).
+    const bodyW = (this.parent.hasBlockSlot1 && this.parent.topWidth > 0)
+      ? this.parent.topWidth
+      : this.parent.width;
+    const targetW = bodyW;
+    if (Math.abs(this.width - targetW) > 0.5) {
+      this.width = targetW;
+      this.draw();
+      if (this.values.length > 0) {
+        const first = this.widgets[0];
+        const vi = (first != null && first.index != null) ? first.index : 0;
+        this.updateValue(this.values[vi], vi);
+      }
+    }
+    x = (bodyW - this.width) / 2;
+  }
   this.move(x, y);
   //Hide the button while the block is in the blockPalette
   if (this.parent.stack === null || this.parent.stack.isDisplayStack) {
@@ -104,33 +121,63 @@ BlockButton.prototype.move = function(x, y) {
  */
 BlockButton.prototype.updateValue = function(newValue, index) { //, displayString) {
   this.values[index] = newValue;
-  let text = [];
-  for (let i = 0; i < this.widgets.length; i++) {
-    text[i] = "";
-    if (typeof this.values[i] == 'object' && this.values[i].r != null) {
-      const s = 255 / 100;
-      const color = Colors.rgbToHex(this.values[i].r * s, this.values[i].g * s, this.values[i].b * s);
-      //console.log("new button color: " + color);
-      //GuiElements.update.color(this.button.bgRect, color);
 
-      if (this.widgets.length == 1) {
+  // Keep an open LedMatrix editor in sync when a sibling preset slider writes the same index.
+  for (let s = 0; s < this.widgets.length; s++) {
+    const w = this.widgets[s];
+    if (w.type == "ledMatrix" && w.index == index && w.syncFromValue != null) {
+      w.syncFromValue(newValue);
+    }
+  }
+
+  let text = [];
+  let visualCount = 0;
+  for (let c = 0; c < this.widgets.length; c++) {
+    if (this.widgets[c].type != "ledMatrix") {
+      visualCount++;
+    }
+  }
+  let visualI = 0;
+
+  for (let i = 0; i < this.widgets.length; i++) {
+    if (this.widgets[i].type == "ledMatrix") {
+      continue;
+    }
+    let lineText = "";
+    const vi = this.widgets[i].index != null ? this.widgets[i].index : i;
+    const val = this.values[vi];
+    if (typeof val == 'object' && val != null && val.r != null) {
+      const s = 255 / 100;
+      const color = Colors.rgbToHex(val.r * s, val.g * s, val.b * s);
+
+      if (visualCount == 1) {
         this.button.updateBgColor(color);
       } else {
         if (this.colorLabel != null) {
           this.colorLabel.remove();
         }
         const clW = this.button.width;
-        const clH = this.button.height / this.widgets.length;
+        const clH = this.button.height / visualCount;
         const clX = 0;
-        const clY = i * clH;
+        const clY = visualI * clH;
         const clR = this.cornerRadius;
         this.colorLabel = GuiElements.draw.tab(clX, clY, clW, clH, color, clR);
         this.button.group.appendChild(this.colorLabel);
         TouchReceiver.addListenersBN(this.colorLabel, this.button);
 
         for (let j = 0; j < this.widgets.length; j++) {
-          if (j != i && (j == 0 || j == this.widgets.length - 1)) {
-            const bgY = j * clH;
+          if (this.widgets[j].type == "ledMatrix") {
+            continue;
+          }
+          const jVi = this.widgets[j].index != null ? this.widgets[j].index : j;
+          let jVisual = 0;
+          for (let k = 0; k < j; k++) {
+            if (this.widgets[k].type != "ledMatrix") {
+              jVisual++;
+            }
+          }
+          if (jVi != vi && (jVisual == 0 || jVisual == visualCount - 1)) {
+            const bgY = jVisual * clH;
             const bg = GuiElements.draw.tab(clX, bgY, clW, clH, Colors.white, clR, true);
             this.button.group.appendChild(bg);
             TouchReceiver.addListenersBN(bg, this.button);
@@ -142,35 +189,43 @@ BlockButton.prototype.updateValue = function(newValue, index) { //, displayStrin
         this.button.group.appendChild(this.button.bgRect);
       }
     } else if (this.widgets[i].type == "piano") {
-      text[i] = InputWidget.Piano.noteStrings[this.values[i]];
+      lineText = InputWidget.Piano.noteStrings[val];
     } else if (this.widgets[i].type == "ledArray") {
       if (this.ledArrayImage != null) {
         this.ledArrayImage.group.remove();
       }
-      let image = GuiElements.draw.ledArray(this.button.group, this.values[i], 1.8);
+      // Fixed all-red 5x5 edit affordance; current pattern already shows on the block icon.
+      const onC = InputWidget.LedMatrix != null ? InputWidget.LedMatrix.onColor : "#E83B66";
+      const editIcon = "1111111111111111111111111";
+      let image = GuiElements.draw.ledArray(this.button.group, editIcon, 1.8, onC, onC);
       const iX = this.button.width / 2 - image.width / 2;
-      //const iY = this.button.height/2 - image.width/2;
-      const iY = (i + 1) * this.button.height / (this.widgets.length + 1) - image.width / 2;
+      const iY = (visualI + 1) * this.button.height / (visualCount + 1) - image.width / 2;
       GuiElements.move.group(image.group, iX, iY);
+      const kids = image.group.childNodes;
+      for (let k = 0; k < kids.length; k++) {
+        TouchReceiver.addListenersBN(kids[k], this.button);
+      }
       this.ledArrayImage = image;
     } else {
-      text[i] = this.values[i].toString() + this.displaySuffixes[i];
+      lineText = val.toString() + this.displaySuffixes[i];
     }
 
     if (this.widgets[i].type == "time") {
       if (this.timeIcon != null) {
         this.timeIcon.remove();
       }
-      const textM = text[i] + "...."
-      text[i] = text[i] + "    ";
+      const textM = lineText + "...."
+      lineText = lineText + "    ";
       const textW = GuiElements.measure.stringWidth(textM, this.font);
       const tiH = 11;
       const tiPath = VectorPaths.faClock;
       const tiW = VectorIcon.computeWidth(tiPath, tiH);
       const tiX = this.button.width / 2 + textW / 2 - tiW;
-      const tiY = (i + 1) * this.button.height / (this.widgets.length + 1) - tiH / 2 + 0.75;
+      const tiY = (visualI + 1) * this.button.height / (visualCount + 1) - tiH / 2 + 0.75;
       this.timeIcon = new VectorIcon(tiX, tiY, tiPath, Colors.bbtDarkGray, tiH, this.button.group);
     }
+    text.push(lineText);
+    visualI++;
   }
   this.button.addMultiText(text, this.font, this.textColor);
   this.parent.updateValues();
@@ -218,8 +273,21 @@ BlockButton.prototype.addSlider = function(type, startingValue, options) {
   }
 
   const sliderColor = Colors.categoryColors[this.parent.category];
-  const slider = new InputWidget.Slider(type, options, startingValue, sliderColor, suffix, this.widgets.length);
+  const slider = new InputWidget.Slider(type, options, startingValue, sliderColor, suffix, this.values.length);
   this.addWidget(slider, suffix, startingValue);
+}
+
+/**
+ * Adds a 5x5 LED matrix editor that shares an existing value slot (usually index 0 with ledArray).
+ * Does not push a new value or grow the button height.
+ * @param {number} [valueIndex=0]
+ */
+BlockButton.prototype.addLedMatrix = function(valueIndex) {
+  if (valueIndex == null) {
+    valueIndex = 0;
+  }
+  this.widgets.push(new InputWidget.LedMatrix(valueIndex));
+  this.displaySuffixes.push("");
 }
 
 /**
@@ -227,7 +295,7 @@ BlockButton.prototype.addSlider = function(type, startingValue, options) {
  * @param {string} startingValue - the initial value
  */
 BlockButton.prototype.addPiano = function(startingValue) {
-  this.addWidget(new InputWidget.Piano(this.widgets.length), "", startingValue);
+  this.addWidget(new InputWidget.Piano(this.values.length), "", startingValue);
 }
 
 /**
@@ -240,9 +308,15 @@ BlockButton.prototype.addWidget = function(widget, suffix, startingValue) {
   this.widgets.push(widget);
   this.displaySuffixes.push(suffix);
   this.values.push(startingValue);
-  this.height = this.buttonMargin + this.lineHeight * this.widgets.length;
+  let visualN = 0;
+  for (let i = 0; i < this.widgets.length; i++) {
+    if (this.widgets[i].type != "ledMatrix") {
+      visualN++;
+    }
+  }
+  this.height = this.buttonMargin + this.lineHeight * Math.max(visualN, 1);
   this.draw();
-  const index = this.widgets.length - 1;
+  const index = widget.index != null ? widget.index : (this.values.length - 1);
   this.updateValue(this.values[index], index);
 }
 

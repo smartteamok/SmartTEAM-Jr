@@ -177,7 +177,7 @@ Language.fr = {
 "Name_error_invalid_characters":"Les caractères suivants ne peuvent pas être inclus dans les noms de fichiers: \n",
 "Name_error_already_exists":"\" existe déjà. Entrez un nom différent.",
 "Permission_denied":"Permission refusée",
-"Grant_permission":"Accorder une autorisation d'enregistrement à BirdBlox dans les Paramètres",
+"Grant_permission":"Accorder une autorisation d'enregistrement à SmartTEAM Jr dans les Paramètres",
 "Dismiss":"Rejeter",
 "Name":"Nom",
 "Enter_file_name":"Entrez le nom du fichier",

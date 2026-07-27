@@ -15,7 +15,13 @@ function B_FBMotion(x, y, direction, level) {
   CommandBlock.call(this, x, y, "motion_" + level);
 
   const icon = VectorPaths[B_FBMotion.iconPaths[direction]];
-  let blockIcon = new BlockIcon(this, icon, Colors.white, "moveFinch", 27);
+  // Turns are taller/thinner art; scale up so visual weight matches forward/back
+  let iconH = 27;
+  if (direction === "left" || direction === "right") {
+    const targetW = VectorIcon.computeWidth(VectorPaths.stForward, 27);
+    iconH = Math.min(52, targetW * icon.height / icon.width) * 0.95;
+  }
+  let blockIcon = new BlockIcon(this, icon, Colors.white, "moveFinch", iconH);
   blockIcon.isEndOfLine = true;
   this.addPart(blockIcon);
 }
@@ -176,10 +182,10 @@ B_FBMotion.prototype.updateValues = function() {
   }
 }
 B_FBMotion.iconPaths = {
-  "forward": "mjForward",
-  "right": "mjTurnRight",
-  "backward": "mjBack",
-  "left": "mjTurnLeft"
+  "forward": "stForward",
+  "right": "stTurnRight",
+  "backward": "stBack",
+  "left": "stTurnLeft"
 }
 
 //****  Level 1 Blocks ****//

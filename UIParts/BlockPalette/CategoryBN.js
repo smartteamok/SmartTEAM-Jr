@@ -140,7 +140,13 @@ CategoryBN.prototype.addListeners = function() {
   if (!FinchBlox) {
     TouchReceiver.addListenersCat(this.colorRect, cat);
   }
-  TouchReceiver.addListenersCat(this.label, cat);
+  if (this.icon != null && this.icon.pathEs != null) {
+    for (let i = 0; i < this.icon.pathEs.length; i++) {
+      TouchReceiver.addListenersCat(this.icon.pathEs[i], cat);
+    }
+  } else if (this.label != null) {
+    TouchReceiver.addListenersCat(this.label, cat);
+  }
 };
 
 /**
