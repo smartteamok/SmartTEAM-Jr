@@ -42,6 +42,51 @@ function BlockMoveManager(block, x, y) {
 }
 
 /**
+ * Number of programs the active tab would send to the board, ignoring one stack
+ * (the one being dragged, which is already registered in the tab).
+ *
+ * Counts every top-level stack, not just the ones with a hat: a hatless stack
+ * still compiles to an "start" handler (ProgramCompiler.compileStack), so it
+ * occupies a VM context like any other. Counting only hats would let the editor
+ * accept 8 hats plus loose blocks and then fail at send time with
+ * E_TOO_MANY_STACKS — the confusing failure this limit exists to prevent.
+ *
+ * Palette blocks live in DisplayStacks, which never register with a tab, so
+ * they cannot inflate this count.
+ * @param {BlockStack} [excludeStack] - stack to leave out of the count.
+ * @return {number}
+ */
+BlockMoveManager.countPrograms = function(excludeStack) {
+  const tab = TabManager.activeTab;
+  if (tab == null) {
+    return 0;
+  }
+  let count = 0;
+  for (let i = 0; i < tab.stackList.length; i++) {
+    const stack = tab.stackList[i];
+    if (stack !== excludeStack && !stack.isDisplayStack) {
+      count++;
+    }
+  }
+  return count;
+};
+
+/**
+ * Whether landing this stack as its own top-level stack would exceed the number
+ * of programs the board can run concurrently. The limit is
+ * ProgramCompiler.MAX_HANDLERS, which derives from STX.MAX_CONTEXTS in the
+ * firmware ISA — so the editor, the compiler and the VM all move together.
+ * @param {BlockStack} stack - the stack about to land.
+ * @return {boolean}
+ */
+BlockMoveManager.wouldExceedProgramLimit = function(stack) {
+  if (!FinchBlox || typeof ProgramCompiler === "undefined") {
+    return false;
+  }
+  return BlockMoveManager.countPrograms(stack) >= ProgramCompiler.MAX_HANDLERS;
+};
+
+/**
  * Updates the position of the currently moving BlockStack.
  * Also highlights the slot that fits it best (if any).
  * @param {number} x - The x coord of the user's finger.
@@ -116,12 +161,28 @@ BlockMoveManager.prototype.end = function() {
       // Snap is onto the Block/Slot that fits it best.
       fit.bestFit.snap(move.stack.firstBlock);
       Sound.playSnap();
+      SaveManager.markEdited();
+    } else if (BlockMoveManager.wouldExceedProgramLimit(move.stack)) {
+      // Landing here would make this a new top-level stack, i.e. one more
+      // program than the board can run. Refuse instead of accepting it and
+      // failing later at send time.
+      if (move.startedFromPalette) {
+        // Never existed on the canvas: drop it as if it went back to the palette.
+        move.stack.remove();
+      } else {
+        // Came off an existing stack, so it holds the child's blocks. Delete
+        // through UndoManager so the gesture stays recoverable.
+        UndoManager.deleteStack(move.stack);
+        SaveManager.markEdited();
+      }
+      console.log("[blocks] limite de " + ProgramCompiler.MAX_HANDLERS +
+        " programas alcanzado; no se creo un stack nuevo");
     } else {
       // If it is not going to be snapped or deleted, simply drop it onto the current tab.
       move.stack.land();
       move.stack.updateDim(); // Fix! this line of code might not be needed.
+      SaveManager.markEdited();
     }
-    SaveManager.markEdited();
   }
   Highlighter.hide(); // Hide any existing highlight.
   BlockPalette.hideTrash();

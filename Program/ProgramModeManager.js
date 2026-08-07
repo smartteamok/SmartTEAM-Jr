@@ -1,32 +1,32 @@
 "use strict";
 
 /**
- * ProgramModeManager orquesta la ejecución remota de FinchBlox/SmartTEAM:
- * compila el programa a bytecode STX1, lo transfiere a la micro:bit por BLE
- * y la placa lo ejecuta con su VM. La app recibe notificaciones push
- * (bloque en ejecución / fin / error) vía CallbackManager.robot.program*.
+ * ProgramModeManager orchestrates remote execution for FinchBlox/SmartTEAM: it
+ * compiles the program to STX1 bytecode, transfers it to the micro:bit over BLE, and
+ * the board runs it on its VM. The app receives pushed notifications
+ * (running block / finished / error) through CallbackManager.robot.program*.
  *
- * Dos modos, mismo flujo (Play unificado en TitleBar.flagBn):
- *   - Vivo (default): transferencia VOLÁTIL (RAM, cero desgaste de flash)
- *     + RUN. Para probar mientras se arma el programa.
- *   - Programa/descarga: transferencia PERSISTENTE (flash con wear-leveling)
- *     + RUN. La placa lo sigue corriendo standalone tras reset.
- *   - Stop: CodeManager.stop → Device.stopAll → CMD_STOP en la placa.
- *   - Play con un programa ya corriendo = reiniciar (la transferencia nueva
- *     detiene la anterior en el firmware).
+ * Two modes, one flow (the unified Play in TitleBar.flagBn):
+ *   - Live (default): VOLATILE transfer (RAM, no flash wear)
+ *     + RUN. For trying things out while the program is being built.
+ *   - Program/download: PERSISTENT transfer (flash, with wear-levelling) + RUN. The
+ *     board keeps running it standalone after a reset.
+ *   - Stop: CodeManager.stop → Device.stopAll → CMD_STOP on the board.
+ *   - Play with a program already running = restart it (the new transfer stops the
+ *     previous one in the firmware).
  *
- * El toggle vivo/programa (TitleBar.liveCellBn/progCellBn) persiste en
+ * The live/program toggle (TitleBar.liveCellBn/progCellBn) persists in
  * SettingsManager.programMode.
  */
 function ProgramModeManager() {}
 
-/** Placa conectada (STX.BOARD_*); lo informa el backend al conectar */
+/** The connected board (STX.BOARD_*), reported by the backend on connect. */
 ProgramModeManager.boardId = 0;
-/** true mientras la placa ejecuta un programa que mandamos nosotros */
+/** True while the board is running a program we sent. */
 ProgramModeManager.remoteRunning = false;
-/** índice de OP_MARK → Block del canvas (de la última compilación enviada) */
+/** OP_MARK index → canvas Block, from the last compilation that was sent. */
 ProgramModeManager.markerMap = null;
-/* bloques actualmente resaltados, uno por stack: [{stack, block}] */
+/* Currently highlighted blocks, one per stack: [{stack, block}]. */
 ProgramModeManager._active = [];
 
 ProgramModeManager.isProgramMode = function() {
@@ -45,13 +45,13 @@ ProgramModeManager.setBoardId = function(boardId) {
   ProgramModeManager.boardId = boardId;
 };
 
-/** Los bloques de movimiento solo corren en placas con motores (Tiny:bit) */
+/** Movement blocks only run on boards with motors (Tiny:bit). */
 ProgramModeManager.allowMotors = function() {
   return ProgramModeManager.boardId === STX.BOARD_TINYBIT;
 };
 
 /**
- * Compila los stacks del tab activo (con marcadores de bloque).
+ * Compiles the active tab's stacks, with block markers.
  * @return {{bytes: Uint8Array|null, markerMap: Array|null, errors: Array, warnings: Array}}
  */
 ProgramModeManager.compileCurrent = function() {
@@ -85,8 +85,8 @@ ProgramModeManager.compileCurrent = function() {
 };
 
 /**
- * Play unificado: compila, transfiere (volátil en vivo, persistente en
- * descarga) y manda RUN. Si ya hay un programa corriendo, lo reemplaza.
+ * Unified Play: compiles, transfers (volatile when live, persistent on
+ * download) and sends RUN. If a program is already running, it replaces it.
  */
 ProgramModeManager.playClicked = function() {
   const result = ProgramModeManager.compileCurrent();
@@ -114,15 +114,15 @@ ProgramModeManager.playClicked = function() {
   request.addParam("mode", mode);
   const base64 = ProgramModeManager.toBase64(result.bytes);
   HtmlServer.sendRequestWithCallback(request.toString(), function() {
-    GuiElements.alert("Programa transferido (" + mode + ")");
+    GuiElements.alert("Program transferred (" + mode + ")");
     ProgramModeManager.sendRun(device);
   }, function(status, message) {
-    GuiElements.alert("Fallo de transferencia: " + status + " " + message);
+    GuiElements.alert("Transfer failed: " + status + " " + message);
     ProgramModeManager.flashSendButton();
   }, true, base64, true, true);
 };
 
-/** Manda RUN tras una transferencia exitosa */
+/** Sends RUN after a successful transfer. */
 ProgramModeManager.sendRun = function(device) {
   const request = new HttpRequestBuilder("robot/out/runProgram");
   request.addParam("type", device.getDeviceTypeId());
@@ -134,9 +134,9 @@ ProgramModeManager.sendRun = function(device) {
   }, false, null, true);
 };
 
-/* ---------------- Notificaciones push desde la placa (CallbackManager) --- */
+/* ------------- Pushed notifications from the board (CallbackManager) ------ */
 
-/** La placa está ejecutando el bloque markerMap[index]: resaltarlo */
+/** The board is running markerMap[index]: highlight it. */
 ProgramModeManager.onMarker = function(index) {
   const map = ProgramModeManager.markerMap;
   if (!ProgramModeManager.remoteRunning || map == null) {
@@ -146,7 +146,7 @@ ProgramModeManager.onMarker = function(index) {
   if (block == null || typeof block.setRemoteHighlight !== "function") {
     return;
   }
-  // un resaltado por stack: apagar el anterior del mismo stack
+  // One highlight per stack: turn off the previous one in that same stack
   const active = ProgramModeManager._active;
   for (let i = 0; i < active.length; i++) {
     if (active[i].stack === block.stack) {
@@ -160,27 +160,27 @@ ProgramModeManager.onMarker = function(index) {
   block.setRemoteHighlight(true);
 };
 
-/** El programa terminó solo en la placa */
+/** The program finished on its own on the board. */
 ProgramModeManager.onProgramDone = function(reason) {
   ProgramModeManager.clearHighlights();
   ProgramModeManager.remoteRunning = false;
 };
 
-/** La VM de la placa se detuvo por un error */
+/** The board's VM stopped because of an error. */
 ProgramModeManager.onProgramFault = function(errCode) {
   ProgramModeManager.clearHighlights();
   ProgramModeManager.remoteRunning = false;
   DialogManager.showAlertDialog(AppName,
-    "El programa se detuvo por un error (código " + errCode + ")", "OK");
+    Language.format("program_fault", errCode), "OK");
 };
 
-/** Stop (local o del botón): limpiar el estado de ejecución remota */
+/** Stop, local or from the button: clear the remote-execution state. */
 ProgramModeManager.onRemoteStopped = function() {
   ProgramModeManager.clearHighlights();
   ProgramModeManager.remoteRunning = false;
 };
 
-/** El usuario editó el canvas: el mapa de marcadores quedó viejo */
+/** The user edited the canvas, so the marker map is stale. */
 ProgramModeManager.invalidateMarkers = function() {
   ProgramModeManager.clearHighlights();
   ProgramModeManager.markerMap = null;
@@ -198,22 +198,32 @@ ProgramModeManager.clearHighlights = function() {
 
 /* ------------------------------------------------------------- helpers --- */
 
-/** Sin backend nativo ni host PWA: modo debug, loguear en consola */
+/** No native backend and no PWA host: debug mode, log to the console. */
 ProgramModeManager.debugWithoutBackend = function() {
   return HtmlServer.iosHandler == null && !window.AndroidInterface && !GuiElements.isPWA;
 };
 
-/** Textos de error de compilación para el docente/niño */
+/** Compilation error messages, for the teacher and the child. */
+/* Compiler error code -> translation key. The messages used to be a hardcoded
+ * Spanish table, invisible to Language/, so they stayed Spanish whatever language
+ * the UI was in. */
+ProgramModeManager.ERROR_KEYS = {
+  E_EMPTY: "program_error_empty",
+  E_UNSUPPORTED_BLOCK: "program_error_unsupported_block",
+  E_UNSUPPORTED_ON_BOARD: "program_error_unsupported_on_board",
+  E_TOO_MANY_STACKS: "program_error_too_many_stacks",
+  E_TOO_LARGE: "program_error_too_large",
+  E_TOO_MANY_BLOCKS: "program_error_too_many_blocks",
+  E_BAD_VALUE: "program_error_bad_value"
+};
+
 ProgramModeManager.errorText = function(code) {
-  const table = {
-    E_EMPTY: "No hay bloques para enviar",
-    E_UNSUPPORTED_BLOCK: "Hay un bloque que la placa no entiende",
-    E_UNSUPPORTED_ON_BOARD: "Los bloques de movimiento necesitan el robot conectado",
-    E_TOO_MANY_STACKS: "Hay demasiados programas a la vez",
-    E_TOO_LARGE: "El programa es demasiado grande",
-    E_TOO_MANY_BLOCKS: "El programa tiene demasiados bloques"
-  };
-  return table[code] || ("No se pudo preparar el programa (" + code + ")");
+  const key = ProgramModeManager.ERROR_KEYS[code];
+  if (key != null) {
+    return Language.getStr(key);
+  }
+  // Unknown code: still say something useful, with the code for the developer.
+  return Language.format("program_error_generic", code);
 };
 
 ProgramModeManager.reportErrors = function(errors) {
@@ -226,7 +236,7 @@ ProgramModeManager.reportErrors = function(errors) {
     }
     text += " ";
   }
-  console.log("[ProgramMode] errores de compilación: " + text);
+  console.log("[ProgramMode] compilation errors: " + text);
   if (errors.length > 0 && !ProgramModeManager.debugWithoutBackend()) {
     DialogManager.showAlertDialog(AppName,
       ProgramModeManager.errorText(errors[0].code), "OK");
@@ -234,7 +244,7 @@ ProgramModeManager.reportErrors = function(errors) {
 };
 
 ProgramModeManager.flashSendButton = function() {
-  //El Play unificado es quien envía el programa
+  // The unified Play button is what sends the program
   if (TitleBar.flagBn != null) {
     TitleBar.flagBn.flash();
   }

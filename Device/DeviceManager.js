@@ -80,8 +80,8 @@ DeviceManager.checkBattery = function() {
     worstBatteryStatus = "2" //Status 3 is full charge for finch
   }
   if (FinchBlox) {
-    //El botón "Conectar robot" SmartTEAM ya no tiene ícono de batería: el
-    //estado se refleja en el color del punto de estado (blanco = sin dato)
+    //The SmartTEAM "Connect robot" button no longer carries a battery icon: the
+    //state shows in the colour of the status dot (white = no reading yet)
     color = Colors.white;
     if (worstBatteryStatus === "2") {
       color = Colors.flagGreen;
@@ -482,7 +482,14 @@ DeviceManager.prototype.updateConnectionStatus = function(deviceId, isConnected)
   if (robot != null) {
     const wasConnected = robot.getConnected();
     robot.setConnected(isConnected);
-    if (wasConnected && !isConnected && !this.scanning) {
+    /* Auto-rescan on connection loss, so a native backend can find the robot
+     * again on its own. Skipped when the host owns the device chooser (Web
+     * Bluetooth): there, a scan is navigator.bluetooth.requestDevice, which
+     * requires a user gesture and throws without one. Starting it anyway left
+     * this.scanning stuck true — no stopDiscover ever arrived to clear it — and
+     * the next tap on connect became a no-op, so the child had to tap twice.
+     * With a host chooser, rescanning is the user's call. */
+    if (wasConnected && !isConnected && !this.scanning && !GuiElements.isPWA) {
       this.startDiscover(function() {
         return true;
       });

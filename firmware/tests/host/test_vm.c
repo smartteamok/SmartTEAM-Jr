@@ -363,6 +363,39 @@ static void test_multi_start_contexts(void) {
     CHECK(fake_trace_len == 2); /* ambos corrieron en el mismo tick */
 }
 
+static void test_full_event_table_context_assignment(void) {
+    /* A full image (STX_MAX_EVENTS ON_START handlers) must load and start
+     * exactly STX_MAX_CONTEXTS of them on the first tick: no fewer (contexts
+     * left unassigned) and no more.
+     *
+     * The test is deliberately agnostic to the constants' values. When
+     * CONTEXTS == EVENTS it verifies that NO handler is dropped, which is the
+     * regression that matters. While CONTEXTS < EVENTS it documents the silent
+     * drop stx_vm_start performs, held in check today by the editor's own cap
+     * (ProgramCompiler.MAX_HANDLERS, derived from CONTEXTS). */
+    const uint8_t expected = STX_MAX_EVENTS < STX_MAX_CONTEXTS
+                           ? STX_MAX_EVENTS : STX_MAX_CONTEXTS;
+    uint8_t code[2 * STX_MAX_EVENTS];
+    ev_t events[STX_MAX_EVENTS];
+    for (uint8_t i = 0; i < STX_MAX_EVENTS; i++) {
+        code[i * 2] = STX_OP_LED_CLEAR;
+        code[i * 2 + 1] = STX_OP_HALT;
+        events[i].type = STX_EVT_ON_START;
+        events[i].param = 0;
+        events[i].offset = (uint16_t)(i * 2);
+    }
+    uint8_t buf[128];
+    uint16_t len = build_image(buf, events, STX_MAX_EVENTS, code, sizeof(code));
+
+    fake_reset();
+    stx_vm_t vm;
+    stx_vm_init(&vm, &fake_hal);
+    CHECK(stx_vm_load(&vm, buf, len) == STX_ERR_NONE);
+    stx_vm_start(&vm);
+    stx_vm_tick(&vm);
+    CHECK(fake_trace_len == expected);
+}
+
 /* ---- Hook de notificación (v2: OP_MARK / DONE / FAULT) ---- */
 
 #define NOTIF_LOG_MAX 16
@@ -513,6 +546,7 @@ int main(void) {
     test_motors_rejected_onboard();
     test_exec_one_live();
     test_multi_start_contexts();
+    test_full_event_table_context_assignment();
     test_mark_fires_hook();
     test_mark_without_hook_is_noop();
     test_no_done_while_event_armed();

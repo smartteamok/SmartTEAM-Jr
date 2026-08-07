@@ -95,16 +95,76 @@ UndoManager.deleteTab = function() {
 /**
  * Pops an item from the stack and rebuilds it, placing it in the corner of the canvas
  */
+/**
+ * How many programs restoring this undo entry would add to the tab.
+ *
+ * An entry is a single stack, a whole tab (several stacks at once, from the trash
+ * button), or a comment. Only stacks become programs the board has to run.
+ * @param {Node} stackNode
+ * @return {number}
+ */
+UndoManager.programsIn = function(stackNode) {
+  if (stackNode == null) {
+    return 0;
+  }
+  if (stackNode.nodeName === "comment") {
+    return 0;
+  }
+  if (stackNode.nodeName === "tab") {
+    const stacksNode = XmlWriter.findSubElement(stackNode, "stacks");
+    return XmlWriter.findSubElements(stacksNode, "stack").length;
+  }
+  return 1;
+};
+
+/**
+ * Whether restoring the next undo entry would push the tab past the number of
+ * programs the board can run concurrently.
+ *
+ * Undo is the one way left to exceed that limit: dropping is refused and the
+ * palette hats are greyed out, but restoring a deleted program bypassed both and
+ * produced a canvas that only failed later, at send time.
+ * @return {boolean}
+ */
+UndoManager.wouldExceedProgramLimit = function() {
+  const UM = UndoManager;
+  if (!FinchBlox || typeof BlockMoveManager === "undefined" ||
+      typeof ProgramCompiler === "undefined" || UM.undoStack.length === 0) {
+    return false;
+  }
+  const next = UM.undoStack[UM.undoStack.length - 1];
+  const adding = UM.programsIn(next);
+  if (adding === 0) {
+    return false;
+  }
+  const current = BlockMoveManager.countPrograms(null);
+  return current + adding > ProgramCompiler.MAX_HANDLERS;
+};
+
 UndoManager.undoDelete = function() {
   const UM = UndoManager;
-  if (UM.undoStack.length === 0) return;
+  /* Refuse rather than restore something that cannot run. Saying so, and saying
+   * what to do about it, beats letting the canvas fill up and failing only when the
+   * child presses send. */
+  if (UM.wouldExceedProgramLimit()) {
+    DialogManager.showAlertDialog(AppName,
+      Language.getStr("undo_program_limit"), Language.getStr("OK"));
+    return;
+  }
+  /* The loop condition has to include the stack being non-empty, not just "no
+   * success yet". Tab.undoDelete returns false when the entry cannot be imported,
+   * and the emptiness check used to happen only once, before the loop: if every
+   * entry failed, this popped the whole history and then called undoDelete with
+   * undefined, which throws on reading .nodeName. So one unimportable entry both
+   * wiped the undo history and blew up. */
   let success = false;
-  while (!success) {
-    const stackData = UM.undoStack.pop();
-    success = success || TabManager.undoDelete(stackData);
+  while (!success && UM.undoStack.length > 0) {
+    success = TabManager.undoDelete(UM.undoStack.pop());
   }
   UM.updateButtonEnabled();
-  SaveManager.markEdited();
+  if (success) {
+    SaveManager.markEdited();
+  }
 };
 
 /**

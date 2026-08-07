@@ -1,7 +1,7 @@
 "use strict";
 
-/* Builders duck-typed que imitan los campos de instancia que los bloques
- * FinchBlox cachean vía updateValues(). Solo los campos que lee el compilador. */
+/* Duck-typed builders that imitate the instance fields FinchBlox blocks cache
+ * through updateValues(). Only the fields the compiler reads. */
 
 function chain() {
   const blocks = Array.prototype.slice.call(arguments);

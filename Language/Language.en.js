@@ -248,5 +248,30 @@ Language.en = {
 "Add_Comment":"Add Comment",
 "Add_Comment_Here":"add comment here...",
 "LedMatrix_Clear":"Clear",
-"LedMatrix_Invert":"Invert"
+"LedMatrix_Invert":"Invert",
+
+  // SmartTEAM: program mode, VM faults and BLE diagnostics
+  "program_error_empty":"There are no blocks to send",
+  "program_error_unsupported_block":"There is a block the board does not understand",
+  "program_error_unsupported_on_board":"The movement blocks need the robot connected",
+  "program_error_too_many_stacks":"Too many programs at once",
+  "program_error_too_large":"The program is too big",
+  "program_error_too_many_blocks":"The program has too many blocks",
+  "program_error_bad_value":"A block has a value that is out of range",
+  "program_error_generic":"The program could not be prepared ({0})",
+  "program_fault":"The program stopped because of an error (code {0})",
+  "ble_insecure_context":"Web Bluetooth needs a secure context: open the app over https:// or http://localhost, not file:// or a network IP. Current origin: {0}",
+  "ble_no_web_bluetooth":"This browser does not expose Web Bluetooth (Safari and Firefox do not support it). Use Chrome or Edge on desktop.",
+  "ble_cannot_search":"The board cannot be searched for.",
+  "ble_no_os_permission":"The browser has no access to the system Bluetooth. On macOS: System Settings \u2192 Privacy & Security \u2192 Bluetooth, and enable the browser.",
+  "ble_no_named_board":"No board with a known name showed up ({0}).\nIf your board is named differently, search without a filter and pick it from the list.",
+  "ble_show_all_devices":"Show all devices",
+  "ble_discover_failed":"Searching for the board failed: {0}",
+  "ble_connect_failed":"The connection failed at step [{0}]:\n{1}",
+  "ble_no_distance_sensor":"The drive-until-obstacle block does not work yet: the board firmware does not report the ultrasonic distance. The other sensor blocks do work.",
+  "host_request_failed":"Something went wrong handling {0}: {1}",
+  "host_storage_full":"The program could not be saved: the browser storage is full or blocked.",
+  "host_internal_error":"Internal error ({0}): {1}\nSee the console for the full trace.",
+  "undo_program_limit":"There is no room for another program. Delete one to bring this one back.",
+  "file_corrupt":"This program could not be opened: the file is damaged. An empty one was opened instead."
 }

@@ -1,4 +1,35 @@
+/* SmartTEAM — animated favicon cycler
+   Cycles the browser tab favicon through the 5 SmartTEAM brand colors every 5s.
+   Usage: drop this file + the favicon-*.png set into your app, then add:
+     <script src="smartteam-favicon-cycle.js"></script>
+   Optionally set window.SMARTTEAM_FAVICON_BASE to the folder path first if the
+   PNGs live somewhere other than alongside this script. */
+(function () {
+  var base = window.SMARTTEAM_FAVICON_BASE || '.';
+  var colors = ['violet', 'cyan', 'amber', 'green', 'coral'];
+  var i = 0;
+
+  var link = document.querySelector("link[rel~='icon']");
+  if (!link) {
+    link = document.createElement('link');
+    link.rel = 'icon';
+    document.head.appendChild(link);
+  }
+
+  function setIcon(name) {
+    link.type = 'image/png';
+    link.href = base + '/favicon-' + name + '-64.png?v=' + Date.now();
+  }
+
+  setIcon(colors[i]);
+  setInterval(function () {
+    i = (i + 1) % colors.length;
+    setIcon(colors[i]);
+  }, 5000);
+})();
+
 var FinchBlox = true;
+/** User-facing product name (tab title, dialogs, permission strings). */
 var AppName = "SmartTEAM Jr";
 var FrontendVersion = 393;
 
@@ -1316,6 +1347,20 @@ List.prototype.delete = function() {
 function Language() {};
 
 Language.lang = "en"; //The current language. English by default.
+
+/**
+ * ==== FORCE A LANGUAGE FOR TESTING ====
+ *
+ * Set this to a code from Language.langs ("es", "en", "pt", "fr", ...) to pin the
+ * UI to that language and ignore both the browser and any previous choice. Leave
+ * it null for normal behaviour (follow the browser).
+ *
+ *   Language.FORCE = "en";   // check the English strings
+ *   Language.FORCE = null;   // back to following the browser
+ *
+ * One line, no rebuild: the editor loads this file directly.
+ */
+Language.FORCE = null;
 Language.langs = ["ar", "ca", "da", "de", "en", "es", "fi", "fr", "he", "ko", "nl", "pt", "sv", "zhs", "zht"];
 //Language.rtlLangs = [];
 Language.rtlLangs = ["ar", "he"];
@@ -1369,14 +1414,123 @@ Language.setLanguage = function(lang) {
     }
 }
 /**
+ * Normalises a locale tag ("es-AR", "pt_BR", "zh-Hans") to a supported code, or
+ * null when there is no match. Shares its mapping with setLanguage, which takes
+ * the language reported by a native backend.
+ * @param {string} tag
+ * @return {string|null}
+ */
+Language.normalize = function(tag) {
+  if (tag == null) {
+    return null;
+  }
+  var normalized = String(tag).replace("_", "-");
+  var code = normalized.substring(0, 2).toLowerCase();
+  if (code === "zh") {
+    return normalized.toLowerCase().indexOf("hant") >= 0 ||
+      normalized.toLowerCase().indexOf("-tw") >= 0 ? "zht" : "zhs";
+  }
+  return Language.langs.indexOf(code) !== -1 ? code : null;
+};
+
+/**
+ * Picks the language to use and stores it in Language.lang. Precedence:
+ *
+ *   1. Language.FORCE          — the testing override
+ *   2. sessionStorage          — a language the user picked in this session
+ *   3. navigator.language(s)   — what the browser reports
+ *   4. English
+ *
+ * Needed because this fork runs as a plain web page: the original frontend was
+ * told the system language by its native backend (CallbackManager.tablet
+ * .getLanguage), and with no backend to do that the UI silently stayed English.
+ * @return {string} the code that was applied
+ */
+Language.applyPreferred = function() {
+  var forced = Language.normalize(Language.FORCE);
+  if (forced != null) {
+    Language.lang = forced;
+    return Language.lang;
+  }
+  var stored = null;
+  try {
+    stored = sessionStorage.getItem("language");
+  } catch (e) {
+    // sessionStorage can throw on a locked-down origin; fall through.
+  }
+  var fromStorage = Language.normalize(stored);
+  if (fromStorage != null) {
+    Language.lang = fromStorage;
+    return Language.lang;
+  }
+  var candidates = [];
+  if (typeof navigator !== "undefined") {
+    if (navigator.languages != null) {
+      candidates.push.apply(candidates, navigator.languages);
+    }
+    if (navigator.language != null) {
+      candidates.push(navigator.language);
+    }
+  }
+  for (var i = 0; i < candidates.length; i++) {
+    var match = Language.normalize(candidates[i]);
+    if (match != null) {
+      Language.lang = match;
+      return Language.lang;
+    }
+  }
+  Language.lang = "en";
+  return Language.lang;
+};
+
+/**
+ * getStr plus positional substitution, for messages that embed a value.
+ * Placeholders are {0}, {1}, ... — keeping the value out of the translated text
+ * so translators do not have to rebuild the sentence around it.
+ * @param {string} str - dictionary key
+ * @param {...*} args - values for {0}, {1}, ...
+ * @return {string}
+ */
+Language.format = function(str) {
+  var args = Array.prototype.slice.call(arguments, 1);
+  return String(Language.getStr(str)).replace(/\{(\d+)\}/g, function(match, i) {
+    return args[i] != null ? String(args[i]) : match;
+  });
+};
+
+/**
  * Get the translation for the given key.
  * @param {string} str - The language dictionary key.
  * @return {string} - The text entry for the given key in the current language.
  */
+/**
+ * Reads a key out of a dictionary, or null if it does not have one of its own.
+ *
+ * The own-property check matters: plain index access inherits from
+ * Object.prototype, so a key named "constructor" or "toString" would return a
+ * function instead of a missing translation. The eval this replaced had the same
+ * hole, plus it broke on any key containing a character that is not valid in an
+ * identifier (a dash, for instance) and put an eval on the hot path of every
+ * string the UI draws.
+ * @param {object} dictionary
+ * @param {string} key
+ * @return {string|null}
+ */
+Language.lookup = function(dictionary, key) {
+  if (dictionary == null || key == null) {
+    return null;
+  }
+  if (!Object.prototype.hasOwnProperty.call(dictionary, key)) {
+    return null;
+  }
+  var value = dictionary[key];
+  return typeof value === "string" ? value : null;
+};
+
 Language.getStr = function(str) {
-    var translatedStr = eval("Language." + Language.lang + "." + str);
+    var translatedStr = Language.lookup(Language[Language.lang], str);
     if (translatedStr == null && !DebugOptions.enabled) {
-      translatedStr = eval("Language.en." + str);
+      translatedStr = Language.lookup(Language.en, str);
     }
     if (translatedStr != null) {
         return translatedStr;
@@ -2421,6 +2575,15 @@ Language.en = {
 "Sound":"Sound",
 "Tablet":"Tablet",
 "Control":"Control",
+"Motion_1":"Motion",
+"Color_1":"Lights & Sound",
+"Motion_2":"Motion",
+"Color_2":"Lights & Sound",
+"Screen_2":"Screen",
+"Motion_3":"Motion",
+"Color_3":"Lights & Sound",
+"Screen_3":"Screen",
+"Control_3":"Control",
 "Variables":"Variables",
 "Zoom_in":"Zoom in",
 "Zoom_out":"Zoom out",
@@ -2523,7 +2686,34 @@ Language.en = {
 "V2_required":"V2 micro:bit required",
 "Temperature":"Temperature",
 "Add_Comment":"Add Comment",
-"Add_Comment_Here":"add comment here..."
+"Add_Comment_Here":"add comment here...",
+"LedMatrix_Clear":"Clear",
+"LedMatrix_Invert":"Invert",
+
+  // SmartTEAM: program mode, VM faults and BLE diagnostics
+  "program_error_empty":"There are no blocks to send",
+  "program_error_unsupported_block":"There is a block the board does not understand",
+  "program_error_unsupported_on_board":"The movement blocks need the robot connected",
+  "program_error_too_many_stacks":"Too many programs at once",
+  "program_error_too_large":"The program is too big",
+  "program_error_too_many_blocks":"The program has too many blocks",
+  "program_error_bad_value":"A block has a value that is out of range",
+  "program_error_generic":"The program could not be prepared ({0})",
+  "program_fault":"The program stopped because of an error (code {0})",
+  "ble_insecure_context":"Web Bluetooth needs a secure context: open the app over https:// or http://localhost, not file:// or a network IP. Current origin: {0}",
+  "ble_no_web_bluetooth":"This browser does not expose Web Bluetooth (Safari and Firefox do not support it). Use Chrome or Edge on desktop.",
+  "ble_cannot_search":"The board cannot be searched for.",
+  "ble_no_os_permission":"The browser has no access to the system Bluetooth. On macOS: System Settings \u2192 Privacy & Security \u2192 Bluetooth, and enable the browser.",
+  "ble_no_named_board":"No board with a known name showed up ({0}).\nIf your board is named differently, search without a filter and pick it from the list.",
+  "ble_show_all_devices":"Show all devices",
+  "ble_discover_failed":"Searching for the board failed: {0}",
+  "ble_connect_failed":"The connection failed at step [{0}]:\n{1}",
+  "ble_no_distance_sensor":"The drive-until-obstacle block does not work yet: the board firmware does not report the ultrasonic distance. The other sensor blocks do work.",
+  "host_request_failed":"Something went wrong handling {0}: {1}",
+  "host_storage_full":"The program could not be saved: the browser storage is full or blocked.",
+  "host_internal_error":"Internal error ({0}): {1}\nSee the console for the full trace.",
+  "undo_program_limit":"There is no room for another program. Delete one to bring this one back.",
+  "file_corrupt":"This program could not be opened: the file is damaged. An empty one was opened instead."
 }
 
 //Spanish Translation
@@ -2759,7 +2949,49 @@ Language.es = {
 "Upside_Down":"Boca abajo",
 "logo":"Logo",
 "V2_required":"V2 micro:bit requerida",
-"Temperature":"Temperatura"
+"Temperature":"Temperatura",
+"LedMatrix_Clear":"Borrar",
+"LedMatrix_Invert":"Invertir",
+
+  // SmartTEAM: modo programa, faults de la VM y diagnostico BLE (+ claves que faltaban)
+  "program_error_empty":"No hay bloques para enviar",
+  "program_error_unsupported_block":"Hay un bloque que la placa no entiende",
+  "program_error_unsupported_on_board":"Los bloques de movimiento necesitan el robot conectado",
+  "program_error_too_many_stacks":"Hay demasiados programas a la vez",
+  "program_error_too_large":"El programa es demasiado grande",
+  "program_error_too_many_blocks":"El programa tiene demasiados bloques",
+  "program_error_bad_value":"Hay un bloque con un valor fuera de rango",
+  "program_error_generic":"No se pudo preparar el programa ({0})",
+  "program_fault":"El programa se detuvo por un error (c\u00f3digo {0})",
+  "ble_insecure_context":"Web Bluetooth requiere contexto seguro: abr\u00ed la app por https:// o http://localhost, no con file:// ni por IP de red. Origen actual: {0}",
+  "ble_no_web_bluetooth":"Este navegador no expone Web Bluetooth (Safari y Firefox no lo soportan). Us\u00e1 Chrome o Edge en desktop.",
+  "ble_cannot_search":"No se puede buscar la placa.",
+  "ble_no_os_permission":"El navegador no tiene acceso al Bluetooth del sistema. En macOS: Configuraci\u00f3n del Sistema \u2192 Privacidad y seguridad \u2192 Bluetooth, y activ\u00e1 el navegador.",
+  "ble_no_named_board":"No apareci\u00f3 ninguna placa con nombre conocido ({0}).\nSi tu placa se llama distinto, buscala sin filtro y elegila de la lista.",
+  "ble_show_all_devices":"Mostrar todos los dispositivos",
+  "ble_discover_failed":"Fall\u00f3 la b\u00fasqueda de la placa: {0}",
+  "ble_connect_failed":"La conexi\u00f3n fall\u00f3 en el paso [{0}]:\n{1}",
+  "ble_no_distance_sensor":"El bloque de avanzar hasta obst\u00e1culo todav\u00eda no funciona: el firmware de la placa no informa la distancia del ultras\u00f3nico. Los dem\u00e1s bloques de sensor s\u00ed funcionan.",
+  "Add_Comment":"Agregar comentario",
+  "Add_Comment_Here":"escrib\u00ed el comentario aqu\u00ed...",
+  "Battery":"Bater\u00eda",
+  "Color_1":"Luces y sonido",
+  "Color_2":"Luces y sonido",
+  "Color_3":"Luces y sonido",
+  "Control_3":"Control",
+  "Motion_1":"Movimiento",
+  "Motion_2":"Movimiento",
+  "Motion_3":"Movimiento",
+  "Screen_2":"Pantalla",
+  "Screen_3":"Pantalla",
+  "any_key":"cualquier tecla",
+  "block_when_key_pressed":"cuando se presiona la tecla (Slot 1)",
+  "space":"espacio",
+  "host_request_failed":"Algo fall\u00f3 al procesar {0}: {1}",
+  "host_storage_full":"No se pudo guardar el programa: el almacenamiento del navegador est\u00e1 lleno o bloqueado.",
+  "host_internal_error":"Error interno ({0}): {1}\nMir\u00e1 la consola para la traza completa.",
+  "undo_program_limit":"No hay lugar para otro programa. Borr\u00e1 uno para poder recuperar este.",
+  "file_corrupt":"No se pudo abrir este programa: el archivo est\u00e1 da\u00f1ado. Se abri\u00f3 uno vac\u00edo."
 }
 
 //Finnish Translation
@@ -5421,8 +5653,8 @@ DeviceManager.checkBattery = function() {
     worstBatteryStatus = "2" //Status 3 is full charge for finch
   }
   if (FinchBlox) {
-    //El botón "Conectar robot" SmartTEAM ya no tiene ícono de batería: el
-    //estado se refleja en el color del punto de estado (blanco = sin dato)
+    //The SmartTEAM "Connect robot" button no longer carries a battery icon: the
+    //state shows in the colour of the status dot (white = no reading yet)
     color = Colors.white;
     if (worstBatteryStatus === "2") {
       color = Colors.flagGreen;
@@ -5823,7 +6055,14 @@ DeviceManager.prototype.updateConnectionStatus = function(deviceId, isConnected)
   if (robot != null) {
     var wasConnected = robot.getConnected();
     robot.setConnected(isConnected);
-    if (wasConnected && !isConnected && !this.scanning) {
+    /* Auto-rescan on connection loss, so a native backend can find the robot
+     * again on its own. Skipped when the host owns the device chooser (Web
+     * Bluetooth): there, a scan is navigator.bluetooth.requestDevice, which
+     * requires a user gesture and throws without one. Starting it anyway left
+     * this.scanning stuck true — no stopDiscover ever arrived to clear it — and
+     * the next tap on connect became a no-op, so the child had to tap twice.
+     * With a host chooser, rescanning is the user's call. */
+    if (wasConnected && !isConnected && !this.scanning && !GuiElements.isPWA) {
       this.startDiscover(function() {
         return true;
       });
@@ -6430,8 +6669,8 @@ window.onresize = function() {
       if (FinchBlox) {
         if (!FBPopup.isEditingText) { //prevent iOS9 from resizing while editing text
           //The screen FinchBlox is designed for is about 800 wide by 600 tall.
-          //Se limita por alto para que en pantallas apaisadas la UI no se
-          //agrande tanto que aplaste el lienzo de programación.
+          //Capped by height so that on landscape screens the UI does not grow
+          //so much that it squashes the programming canvas.
           GuiElements.zoomMultiple = Math.min(window.innerWidth / 800, window.innerHeight / 600);
           GuiElements.updateZoom();
         }
@@ -6452,11 +6691,9 @@ window.onresize = function() {
 };
 
 GuiElements.setLanguage = function() {
-  //Check the session storage for a user selected language
-  var userSelectedLang = sessionStorage.getItem("language");
-  if (userSelectedLang != undefined && userSelectedLang != null) {
-    Language.lang = userSelectedLang;
-  }
+  // Force override > language picked this session > browser > English.
+  // See Language.FORCE in Language/Language.js to pin a language for testing.
+  Language.applyPreferred();
 
   var lnk = document.createElement('link');
   lnk.type = 'text/css';
@@ -6487,8 +6724,8 @@ GuiElements.setGuiConstants = function() {
   GuiElements.computedZoom = GuiElements.defaultZoomMultiple; //The computed default zoom amount for the device
   GuiElements.zoomMultiple = 1; //GuiElements.zoomFactor = zoomMultiple * computedZoom
   if (FinchBlox) {
-    //FinchBlox designed for a 800w x 600h screen. Se limita por alto para que
-    //en pantallas apaisadas el lienzo de programación no quede aplastado.
+    //FinchBlox designed for a 800w x 600h screen. Capped by height so the
+    //programming canvas is not squashed on landscape screens.
     GuiElements.zoomMultiple = Math.min(window.innerWidth / 800, window.innerHeight / 600);
   }
   GuiElements.zoomFactor = GuiElements.defaultZoomMultiple;
@@ -6570,6 +6807,7 @@ GuiElements.setConstants = function() {
   InputWidget.Label.setConstants();
   InputWidget.Slider.setConstants();
   InputWidget.Piano.setConstants();
+  InputWidget.LedMatrix.setConstants();
 
   ConnectMultipleDialog.setConstants();
   RobotConnectionList.setConstants();
@@ -7159,21 +7397,30 @@ GuiElements.draw.tab = function(x, y, width, height, color, r, isDown) {
   return tab; //Return the finished button shape.
 };
 
-GuiElements.draw.ledArray = function(parentGroup, arrayString, dim) {
+/**
+ * Draws a 5x5 LED matrix preview.
+ * @param {Element} parentGroup
+ * @param {string} arrayString - 25 chars of 0/1
+ * @param {number} dim - cell size
+ * @param {string} [offColor] - defaults to Colors.fbGray
+ * @param {string} [onColor] - defaults to Colors.bbtDarkGray
+ */
+GuiElements.draw.ledArray = function(parentGroup, arrayString, dim, offColor, onColor) {
   var arrayImage = {};
   var values = arrayString.split("");
   var group = GuiElements.create.group(0, 0, parentGroup);
-  //var dim = 4;//25;
-  var r = dim / 4; //1;//8;
-  var margin = dim / 2; //dim/4; //1;//5;
+  var r = dim / 4;
+  var margin = dim / 2;
   var startX = 0;
+  var colorOff = offColor != null ? offColor : Colors.fbGray;
+  var colorOn = onColor != null ? onColor : Colors.bbtDarkGray;
   var y = 0;
   for (var i = 0; i < 5; i++) {
     var x = startX;
     for (var j = 0; j < 5; j++) {
-      var color = Colors.fbGray; //Colors.iron;
+      var color = colorOff;
       if (values[5 * i + j] == "1") {
-        color = Colors.bbtDarkGray;
+        color = colorOn;
       }
       var rect = GuiElements.draw.rect(x, y, dim, dim, color, r, r);
       group.appendChild(rect);
@@ -7987,15 +8234,17 @@ function BlockList() {
   // List only includes categories that will appear in the BlockPalette in order.
   // Category names should be capitalized in the way they should be displayed on screen.
   if (FinchBlox) {
+    // L1: movimiento + (luz/sonido)
     cat.push("Motion_1");
     cat.push("Color_1");
-    cat.push("Sound_1");
+    // L2: movimiento + (luz/sonido) + pantallas
     cat.push("Motion_2");
     cat.push("Color_2");
-    cat.push("Sound_2");
+    cat.push("Screen_2");
+    // L3: movimiento + (luz/sonido) + pantallas + control
     cat.push("Motion_3");
     cat.push("Color_3");
-    cat.push("Sound_3");
+    cat.push("Screen_3");
     cat.push("Control_3");
   } else {
     cat.push("Robots");
@@ -8054,16 +8303,7 @@ BlockList.populateCat_motion_1 = function(category) {
   category.centerBlocks();
 }
 BlockList.populateCat_color_1 = function(category) {
-  category.addBlockByName("B_FBBeakRed");
-  category.addBlockByName("B_FBTailRed");
-  category.addBlockByName("B_FBBeakGreen");
-  category.addBlockByName("B_FBTailGreen");
-  category.addBlockByName("B_FBBeakBlue");
-  category.addBlockByName("B_FBTailBlue");
-  category.trimBottom();
-  category.centerBlocks();
-}
-BlockList.populateCat_sound_1 = function(category) {
+  category.addBlockByName("B_FBLightL1");
   category.addBlockByName("B_FBC");
   category.addBlockByName("B_FBD");
   category.addBlockByName("B_FBF");
@@ -8081,14 +8321,13 @@ BlockList.populateCat_motion_2 = function(category) {
   category.centerBlocks();
 }
 BlockList.populateCat_color_2 = function(category) {
-  category.addBlockByName("B_FBBeakL2");
-  category.addBlockByName("B_FBTailL2");
-  category.addBlockByName("B_FBLedArrayL2");
+  category.addBlockByName("B_FBLightL2");
+  category.addBlockByName("B_FBSoundL2");
   category.trimBottom();
   category.centerBlocks();
 }
-BlockList.populateCat_sound_2 = function(category) {
-  category.addBlockByName("B_FBSoundL2");
+BlockList.populateCat_screen_2 = function(category) {
+  category.addBlockByName("B_FBLedArrayL2");
   category.trimBottom();
   category.centerBlocks();
 }
@@ -8103,14 +8342,13 @@ BlockList.populateCat_motion_3 = function(category) {
   category.centerBlocks();
 }
 BlockList.populateCat_color_3 = function(category) {
-  category.addBlockByName("B_FBBeakL3");
-  category.addBlockByName("B_FBTailL3");
-  category.addBlockByName("B_FBLedArrayL3");
+  category.addBlockByName("B_FBLightL3");
+  category.addBlockByName("B_FBSoundL3");
   category.trimBottom();
   category.centerBlocks();
 }
-BlockList.populateCat_sound_3 = function(category) {
-  category.addBlockByName("B_FBSoundL3");
+BlockList.populateCat_screen_3 = function(category) {
+  category.addBlockByName("B_FBLedArrayL3");
   category.trimBottom();
   category.centerBlocks();
 }
@@ -8466,20 +8704,20 @@ Colors.setCommon = function() {
   Colors.variablesDkOrange = "#FF5B00";
   Colors.inactiveGray = "#a3a3a3";
   //SmartTEAM Design System tokens
-  Colors.stViovar = "#796EB0";     //violet-500: marca / sonido / nivel
+  Colors.stViovar = "#796EB0";     //violet-500: marca / pantallas (matriz)
   Colors.stVioletLight = "#9287B2"; //violet-400: barra superior (violeta claro)
-  Colors.stVioletDark = "#6457A0"; //violet-600
-  Colors.stVioletTint = "#ECE9F4"; //violet-100
+  Colors.stVioletDark = "#6457A0"; //violet-600: borde pantallas
+  Colors.stVioletTint = "#ECE9F4"; //violet-100: palette pantallas
   Colors.stCyan = "#35BFE9";       //cyan-500: movimiento
   Colors.stCyanDark = "#1FA9D6";   //cyan-600
   Colors.stCyanTint = "#E1F5FC";   //cyan-100
-  Colors.stAmber = "#FFB800";      //amber-500: luces/color, undo
+  Colors.stAmber = "#FFB800";      //amber-500: control (espera/repetir), undo
   Colors.stAmberDark = "#F0A500";  //amber-600
   Colors.stAmberTint = "#FFF3D6";  //amber-100
   Colors.stGreen = "#59BB6A";      //green-500: play, sensores, conectado
   Colors.stGreenDark = "#45A156";  //green-600
   Colors.stGreenTint = "#E4F4E7";  //green-100
-  Colors.stCoral = "#EF506D";      //coral-500: stop, control, desconectado
+  Colors.stCoral = "#EF506D";      //coral-500: luces + notas
   Colors.stCoralDark = "#DA3656";  //coral-600
   Colors.stCoralTint = "#FDE4E9";  //coral-100
   Colors.stPaper = "#F3F7FD";      //fondo del lienzo
@@ -8487,15 +8725,15 @@ Colors.setCommon = function() {
   Colors.stGray400 = "#9A9BA0";    //papelera
   //BBT Style guide colors (remapeados a tokens SmartTEAM donde aplica)
   Colors.easternBlue = Colors.stCyan; //antes bbt blue #089BAB, hoy movimiento
-  Colors.neonCarrot = Colors.stCoral; //categoría luces/color (lamparita)
+  Colors.neonCarrot = Colors.stCoral; //categoría luces + sonido
   Colors.fountainBlue = "#62BCC7"; //lighter blue
-  Colors.seance = Colors.stViolet; //antes dark purple #881199, hoy sonido/marca
+  Colors.seance = Colors.stCoral; //legacy alias → coral (luces/notas)
   Colors.bbtDarkGray = "#535353";
   Colors.iron = "#CACACA";
   //FinchBlox
   Colors.blockPaletteMotion = Colors.stCyanTint;
   Colors.blockPaletteColor = Colors.stCoralTint;
-  Colors.blockPaletteSound = Colors.stVioletTint;
+  Colors.blockPaletteSound = Colors.stCoralTint;
   Colors.blockPaletteControl = Colors.stAmberTint;
   Colors.flagGreen = Colors.stGreen;
   Colors.fbDarkGreen = Colors.stGreenDark;
@@ -8507,7 +8745,7 @@ Colors.setCommon = function() {
   Colors.levelBN = "#E8E8E8";
   Colors.fbYellowBorder = Colors.stAmberDark; //borde de control (bloques amarillos)
   Colors.fbBlueBorder = Colors.stCyanDark;
-  Colors.fbPurpleBorder = Colors.stVioletDark;
+  Colors.fbPurpleBorder = Colors.stCoralDark; //borde de sonido (mismo coral que luces)
   Colors.fbOrangeBorder = Colors.stCoralDark; //borde de luces/color (bloques coral)
   Colors.darkTeal = "#114F53";
   if (FinchBlox) {
@@ -8532,13 +8770,15 @@ Colors.setCategory = function() {
     "inactive": Colors.inactiveGray,
     "motion_1": Colors.easternBlue,
     "color_1": Colors.neonCarrot,
-    "sound_1": Colors.seance,
+    "sound_1": Colors.neonCarrot,
     "motion_2": Colors.easternBlue,
     "color_2": Colors.neonCarrot,
-    "sound_2": Colors.seance,
+    "sound_2": Colors.neonCarrot,
+    "screen_2": Colors.stViolet,
     "motion_3": Colors.easternBlue,
     "color_3": Colors.neonCarrot,
-    "sound_3": Colors.seance,
+    "sound_3": Colors.neonCarrot,
+    "screen_3": Colors.stViolet,
     "control_3": Colors.stAmber,
     "sensor_3": Colors.stGreen,
     "start": Colors.stAmber //pseudo-categoría del bloque de inicio (amarillo, play verde)
@@ -8547,13 +8787,15 @@ Colors.setCategory = function() {
   Colors.blockPalette = {
     "motion_1": Colors.blockPaletteMotion,
     "color_1": Colors.blockPaletteColor,
-    "sound_1": Colors.blockPaletteSound,
+    "sound_1": Colors.blockPaletteColor,
     "motion_2": Colors.blockPaletteMotion,
     "color_2": Colors.blockPaletteColor,
-    "sound_2": Colors.blockPaletteSound,
+    "sound_2": Colors.blockPaletteColor,
+    "screen_2": Colors.stVioletTint,
     "motion_3": Colors.blockPaletteMotion,
     "color_3": Colors.blockPaletteColor,
-    "sound_3": Colors.blockPaletteSound,
+    "sound_3": Colors.blockPaletteColor,
+    "screen_3": Colors.stVioletTint,
     "control_3": Colors.blockPaletteControl,
     "sensor_3": Colors.stGreenTint
   };
@@ -8561,13 +8803,15 @@ Colors.setCategory = function() {
   Colors.blockOutline = {
     "motion_1": Colors.fbBlueBorder,
     "color_1": Colors.fbOrangeBorder,
-    "sound_1": Colors.fbPurpleBorder,
+    "sound_1": Colors.fbOrangeBorder,
     "motion_2": Colors.fbBlueBorder,
     "color_2": Colors.fbOrangeBorder,
-    "sound_2": Colors.fbPurpleBorder,
+    "sound_2": Colors.fbOrangeBorder,
+    "screen_2": Colors.stVioletDark,
     "motion_3": Colors.fbBlueBorder,
     "color_3": Colors.fbOrangeBorder,
-    "sound_3": Colors.fbPurpleBorder,
+    "sound_3": Colors.fbOrangeBorder,
+    "screen_3": Colors.stVioletDark,
     "control_3": Colors.fbYellowBorder,
     "sensor_3": Colors.stGreenDark,
     "start": Colors.stAmberDark,
@@ -9113,17 +9357,80 @@ function VectorPaths(){
 	VP.undoDelete.height = 113.045;
 	VP.undoDelete.path = "m 28.262,0 -6.28125,6.2793 -21.98047,0 0,12.56054 87.92383,0 0,-12.56054 -21.98047,0 -6.28125,-6.2793 -31.40039,0 z m -21.98242,25.12109 0,75.36329 c 0,6.90831 5.65224,12.56054 12.56055,12.56054 l 50.24218,0 c 6.90832,0 12.56055,-5.65223 12.56055,-12.56054 l 0,-75.36329 -75.36328,0 z m 35.52344,12.25586 0,13.23243 c 32.63892,-0.75632 39.13249,32.15793 17.60156,42.08984 8.4063,-6.82329 9.65417,-28.23254 -17.60156,-27.66406 l 0,13.51953 -25.80078,-21.14063 25.80078,-20.03711 z";
 
+
+  // SmartTEAM block icons (motion + light)
+  VP.stForward={};
+  VP.stForward.path="M15.82,49.38l200.94,18.66c13.75,1.28,25.63-9.55,25.63-23.36v-21.19c0-18.69,20.79-29.87,36.39-19.57l210.7,139.16c14.04,9.27,14.04,29.88,0,39.15l-210.7,139.16c-15.6,10.3-36.39-.88-36.39-19.57v-21.19c0-13.81-11.87-24.64-25.63-23.36l-200.94,18.66c-8.61.41-15.82-6.46-15.82-15.09V64.47c0-8.62,7.2-15.49,15.82-15.09Z";
+  VP.stForward.width=500.0;
+  VP.stForward.height=325.32;
+  VP.stBack={};
+  VP.stBack.path="M485.05,274.81l-201.08-17.18c-13.76-1.18-25.55,9.77-25.45,23.62l.16,21.25c.14,18.74-20.56,30.12-36.24,19.91L10.68,184.45c-14.11-9.19-14.27-29.85-.3-39.26L220.01,4.03c15.52-10.45,36.39.61,36.54,19.35l.16,21.25c.11,13.85,12.06,24.61,25.81,23.23l200.8-20.24c8.61-.47,15.86,6.36,15.93,15.01l1.5,196.94c.07,8.64-7.09,15.59-15.7,15.25Z";
+  VP.stBack.width=500.75;
+  VP.stBack.height=326.23;
+  VP.stTurnLeft={};
+  VP.stTurnLeft.path="M21.25,305.07C17.11,338.42,4.56,439.44.09,475.47c-.86,6.9,4.8,12.83,11.74,12.26,53.36-4.35,249.83-36.74,277.07-277.62.69-6.12,6.15-10.55,12.27-9.79l30.23,3.76c8.72,1.08,15.12-8.02,11.14-15.86L250.12,6.01c-3.52-6.94-12.93-8.11-18.05-2.26L99.75,155.12c-5.79,6.63-1.82,17.03,6.91,18.12l49.35,6.13c5.5.68,9.64,5.32,9.63,10.86-.07,29.9-10.51,117.78-132.36,105.32-5.94-.61-11.3,3.6-12.03,9.52Z";
+  VP.stTurnLeft.width=343.74;
+  VP.stTurnLeft.height=487.77;
+  VP.stTurnRight={};
+  VP.stTurnRight.path="M21.33,183.32C17.17,149.86,4.58,48.49.09,12.34-.77,5.41,4.9-.53,11.86.04c53.54,4.37,250.68,36.87,278.02,278.58.69,6.14,6.18,10.59,12.31,9.82l30.34-3.77c8.75-1.09,15.17,8.04,11.18,15.91l-92.73,182.83c-3.53,6.96-12.98,8.14-18.12,2.27l-132.77-151.88c-5.81-6.65-1.83-17.09,6.93-18.18l49.52-6.15c5.52-.69,9.68-5.34,9.66-10.9-.07-30-10.55-118.19-132.81-105.68-5.96.61-11.34-3.61-12.07-9.55Z";
+  VP.stTurnRight.width=344.92;
+  VP.stTurnRight.height=489.44;
+  VP.stLightFill={};
+  VP.stLightFill.path="M129.21,278.85c38.16,78.25,143.06,128.69,240.33,46.55,2.12-1.79,4.12-3.77,5.9-5.9,98.14-118.12,4.45-255.37-111.92-255.37-60.11,0-111.92,35.52-135.61,86.7l.03.02-24.89,2.82c-1.81-.28-18.57,1.23-20.39,1.41-13.89,1.38-24.75,13.11-24.75,27.36v62.05c0,15.3,12.49,27.65,27.78,27.5l43.52,6.85";
+  VP.stLightFill.width=496.05;
+  VP.stLightFill.height=430.6;
+  VP.stLightOutline={};
+  VP.stLightOutline.width=496.05;
+  VP.stLightOutline.height=430.6;
+  VP.stLightOutline.transform="scale(1.002081,0.977304)";
+  VP.stLightOutline.parts=[
+    {path:"M265.81,349.5c-8.99,0-17.17-1.03-24.33-2.54-38.03-8.03-71.5-34.45-89.88-70.85l-33.99-5.35c-6.63.07-13.16-2.6-18.19-7.59-5.04-4.98-7.81-11.64-7.81-18.72v-51.14c0-13.61,10.2-24.88,23.72-26.22.14-.01,13.29-1.06,17.02-1.19l18.18-2.06c21.07-43.65,65.68-71.74,114.24-71.74s96.59,29.71,118.16,75.68c21.55,45.92,13.14,97.25-23.07,140.84-1.54,1.85-3.33,3.64-5.32,5.33-32.72,27.62-63.82,35.55-88.72,35.55ZM118.14,263.44l36.48,5.69c1.19.19,2.21.94,2.74,2.03,17.2,35.27,49.21,60.91,85.64,68.6,25.39,5.36,64.53,4.25,106.77-31.43,1.67-1.41,3.15-2.9,4.41-4.42,34.31-41.29,42.36-89.77,22.07-133-20.05-42.73-64.86-71.45-111.5-71.45s-88.75,27.09-108.3,69.04c-.47,1.31-1.63,2.27-3.04,2.42l-20.52,2.32c-.33.03-.66.03-.97-.02-1.64.06-13.22.92-15.88,1.19-9.74.97-17.08,9.09-17.08,18.9v51.14c0,5.11,2,9.9,5.63,13.49,3.63,3.59,8.51,5.75,13.55,5.5Z",strokeWidth:20},
+    {path:"M104.17,235.37l2.27-8.37,109.98,29.81c2.32.63,3.5-1.03,3.81-1.55.31-.52,1.19-2.36-.48-4.08l-4.66-4.82c-2.67-2.76-3.86-6.54-3.24-10.31.61-3.79,2.91-6.98,6.31-8.76l10.67-5.6c1.64-.87,1.95-2.34,1.82-3.01,0-.62-.18-2.13-1.79-2.99l-9.9-5.3c-3.51-1.88-5.87-5.36-6.3-9.32-.43-3.94,1.11-7.87,4.14-10.46,1.89-1.62,1.09-3.55.81-4.11-.29-.56-1.4-2.34-3.8-1.76l-107.49,25.49-2-8.44,107.48-25.49c5.52-1.31,10.95,1.21,13.53,6.26,2.57,5.05,1.41,10.94-2.89,14.63-.86.74-1.27,1.79-1.16,2.95.13,1.13.77,2.08,1.77,2.62l9.9,5.3c3.93,2.1,6.37,6.18,6.37,10.63v.05c-.02,4.48-2.49,8.55-6.45,10.63l-10.68,5.61c-.96.5-1.6,1.4-1.78,2.46-.17,1.06.16,2.13.91,2.91l4.66,4.81c3.82,3.95,4.51,9.78,1.72,14.52-2.8,4.73-8.24,6.94-13.54,5.5l-109.98-29.81Z M27.63,249.99v-62.58c0-2.67,3.04-4.83,6.79-4.83,3.75,0,6.79,2.16,6.79,4.83v62.58c0,2.61,2.98,4.73,6.65,4.73s6.65-2.13,6.65-4.73v-71.16c0-2.67,3.04-4.83,6.79-4.83s6.79,2.16,6.79,4.83v71.16c0,7.94-9.07,14.4-20.22,14.4-11.15,0-20.22-6.46-20.22-14.4Z M3,249.99v-64.77c0-7.94,9.07-14.4,20.22-14.4,4.22,0,17.98,1.19,17.98,16.6,0,2.67-3.04,4.83-6.79,4.83-3.75,0-6.79-2.16-6.79-4.83,0-6.94-3.21-6.94-4.41-6.94-3.67,0-6.65,2.13-6.65,4.74v64.77c0,2.67-3.04,4.83-6.79,4.83-3.75,0-6.79-2.16-6.79-4.83Z",strokeWidth:6},
+    {path:"M371.66,83.05c0-1.08.33-2.17,1.02-3.1l23.37-31.75c1.72-2.34,5.01-2.83,7.34-1.12,2.34,1.71,2.84,5,1.12,7.34l-23.37,31.75c-1.72,2.34-5.01,2.83-7.34,1.12-1.4-1.03-2.14-2.62-2.14-4.23Z M430.97,141.48c0-1.88,1.01-3.7,2.78-4.64l34.81-18.53c2.56-1.36,5.74-.39,7.1,2.17,1.35,2.56.39,5.74-2.17,7.1l-34.81,18.53c-2.56,1.36-5.74.39-7.1-2.17-.42-.79-.62-1.64-.62-2.46Z M420.47,303.42c0-.83.2-1.67.62-2.46,1.36-2.56,4.54-3.52,7.1-2.17l34.81,18.53c2.56,1.36,3.54,4.52,2.17,7.1-1.36,2.56-4.54,3.52-7.1,2.17l-34.81-18.53c-1.77-.94-2.78-2.76-2.78-4.64Z M371.66,363.7c0-1.61.74-3.2,2.14-4.23,2.33-1.72,5.62-1.22,7.34,1.12l23.37,31.75c1.71,2.34,1.22,5.62-1.12,7.34-2.33,1.72-5.62,1.22-7.34-1.12l-23.37-31.75c-.69-.93-1.02-2.03-1.02-3.1Z M311.56,392.32c0-2.3,1.53-4.41,3.86-5.05,2.8-.77,5.68.87,6.46,3.67l10.47,38.02c.78,2.77-.87,5.68-3.67,6.45-2.8.77-5.68-.87-6.46-3.67l-10.47-38.02c-.13-.46-.19-.93-.19-1.4Z M311.56,48.27c0-.46.06-.93.19-1.4l10.47-38.01c.77-2.8,3.66-4.44,6.46-3.67,2.8.77,4.43,3.7,3.67,6.45l-10.47,38.01c-.77,2.8-3.66,4.44-6.46,3.67-2.33-.64-3.86-2.76-3.86-5.05Z M440.09,219.57s0-.04,0-.07c.04-2.9,2.42-5.22,5.32-5.18l39.43.54c2.88.04,5.18,2.38,5.18,5.25,0,.02,0,.04,0,.07-.04,2.9-2.42,5.22-5.32,5.18l-39.43-.54c-2.88-.04-5.18-2.38-5.18-5.25Z",strokeWidth:10}
+  ];
+  VP.stLightOutline.path="M265.81,349.5c-8.99,0-17.17-1.03-24.33-2.54-38.03-8.03-71.5-34.45-89.88-70.85l-33.99-5.35c-6.63.07-13.16-2.6-18.19-7.59-5.04-4.98-7.81-11.64-7.81-18.72v-51.14c0-13.61,10.2-24.88,23.72-26.22.14-.01,13.29-1.06,17.02-1.19l18.18-2.06c21.07-43.65,65.68-71.74,114.24-71.74s96.59,29.71,118.16,75.68c21.55,45.92,13.14,97.25-23.07,140.84-1.54,1.85-3.33,3.64-5.32,5.33-32.72,27.62-63.82,35.55-88.72,35.55ZM118.14,263.44l36.48,5.69c1.19.19,2.21.94,2.74,2.03,17.2,35.27,49.21,60.91,85.64,68.6,25.39,5.36,64.53,4.25,106.77-31.43,1.67-1.41,3.15-2.9,4.41-4.42,34.31-41.29,42.36-89.77,22.07-133-20.05-42.73-64.86-71.45-111.5-71.45s-88.75,27.09-108.3,69.04c-.47,1.31-1.63,2.27-3.04,2.42l-20.52,2.32c-.33.03-.66.03-.97-.02-1.64.06-13.22.92-15.88,1.19-9.74.97-17.08,9.09-17.08,18.9v51.14c0,5.11,2,9.9,5.63,13.49,3.63,3.59,8.51,5.75,13.55,5.5Z";
+  VP.stLightOutline.strokeWidth=20;
+  VP.stLightOff={};
+  VP.stLightOff.path="M151.84,257.57c44.85,91.96,168.11,151.23,282.42,54.7,2.49-2.11,4.85-4.43,6.93-6.93C556.51,166.53,446.41,5.25,309.67,5.25c-70.63,0-131.52,41.73-159.35,101.88l.04.02-29.25,3.32c-2.13-.33-21.82,1.45-23.97,1.66-16.33,1.62-29.08,15.4-29.08,32.16v72.91c0,17.98,14.67,32.49,32.64,32.32l51.14,8.05 M311.17,366.96c-12.82,0-24.48-1.47-34.69-3.62-54.22-11.44-101.93-49.11-128.13-101.01l-48.46-7.63c-9.45.1-18.77-3.71-25.94-10.82-7.18-7.11-11.14-16.59-11.14-26.69v-72.91c0-19.4,14.54-35.47,33.81-37.38.19-.02,18.95-1.52,24.27-1.7l25.92-2.93C176.84,40.04,240.45,0,309.67,0s137.7,42.35,168.46,107.9c30.72,65.46,18.73,138.65-32.9,200.79-2.19,2.64-4.74,5.19-7.58,7.6-46.64,39.38-90.98,50.68-126.48,50.68ZM100.64,244.27l52.01,8.11c1.7.27,3.15,1.34,3.9,2.89,24.52,50.28,70.16,86.83,122.09,97.8,36.2,7.64,91.99,6.06,152.22-44.8,2.37-2.01,4.49-4.13,6.29-6.3,48.92-58.87,60.38-127.98,31.47-189.61-28.59-60.92-92.47-101.86-158.95-101.86s-126.52,38.62-154.39,98.42c-.67,1.87-2.33,3.23-4.34,3.46l-29.25,3.31c-.47.04-.94.04-1.39-.03-2.34.09-18.84,1.31-22.64,1.69-13.88,1.38-24.35,12.96-24.35,26.94v72.91c0,7.28,2.85,14.11,8.02,19.24,5.17,5.12,12.14,8.19,19.31,7.83Z M91.53,204.22l3.23-11.91,156.52,42.42c3.29.9,4.98-1.46,5.42-2.2.44-.74,1.69-3.36-.69-5.8l-6.63-6.86c-3.8-3.93-5.49-9.3-4.61-14.67.87-5.39,4.14-9.93,8.98-12.47l15.19-7.97c2.34-1.23,2.78-3.33,2.59-4.28,0-.88-.25-3.03-2.55-4.25l-14.09-7.54c-5-2.67-8.35-7.63-8.97-13.27-.61-5.61,1.58-11.2,5.88-14.89,2.68-2.3,1.56-5.06,1.16-5.86-.41-.79-1.99-3.32-5.41-2.51l-152.97,36.27-2.84-12.01,152.97-36.27c7.85-1.86,15.59,1.72,19.26,8.91,3.65,7.19,2.01,15.57-4.12,20.82-1.23,1.05-1.81,2.55-1.66,4.19.18,1.6,1.1,2.96,2.53,3.73l14.09,7.54c5.6,2.99,9.07,8.79,9.07,15.13v.06c-.02,6.38-3.54,12.17-9.19,15.13l-15.19,7.98c-1.36.71-2.28,1.99-2.53,3.51-.24,1.51.23,3.03,1.3,4.14l6.63,6.85c5.44,5.63,6.42,13.93,2.44,20.66-3.98,6.73-11.72,9.88-19.27,7.83l-156.51-42.42Z M22.4,220.75v-79.9c0-3.41,2.76-6.17,6.17-6.17,3.41,0,6.17,2.76,6.17,6.17v79.9c0,3.33,2.71,6.04,6.05,6.04s6.05-2.71,6.05-6.04v-90.84c0-3.41,2.76-6.17,6.17-6.17s6.17,2.76,6.17,6.17v90.84c0,10.13-8.25,18.38-18.39,18.38-10.14,0-18.39-8.24-18.39-18.38Z M0,220.75v-82.69c0-10.14,8.25-18.39,18.39-18.39,3.84,0,16.35,1.53,16.35,21.19,0,3.41-2.76,6.17-6.17,6.17-3.41,0-6.17-2.76-6.17-6.17,0-8.86-2.91-8.86-4.01-8.86-3.34,0-6.05,2.71-6.05,6.05v82.69c0,3.41-2.76,6.17-6.17,6.17C2.76,226.92,0,224.16,0,220.75Z M324.22,152.5c0-1.02.24-1.93.75-2.8.51-.87,1.14-1.63,1.96-2.26.78-.66,1.6-.96,2.47-.96s1.66.27,2.38.84l45.29,29.34,44-29.13c.3-.15.66-.33,1.08-.51.45-.24.78-.36,1.08-.36.99,0,1.9.36,2.71.99.78.63,1.41,1.41,1.93,2.38.51.9.75,1.81.75,2.68,0,.72-.15,1.44-.42,2.17-.3.72-.72,1.23-1.29,1.5l-41.41,26.96,41.2,27.18c.72.42,1.2.96,1.5,1.63.27.66.42,1.32.42,2.05,0,.87-.21,1.75-.63,2.71-.45.9-1.05,1.72-1.84,2.35-.78.66-1.78.99-2.92.99-.57,0-1.29-.3-2.17-.87l-44.21-29.31-45.08,29.55c-.3.27-.66.48-1.08.63s-.87.21-1.29.21c-.87,0-1.69-.3-2.47-.84-.81-.6-1.44-1.35-1.96-2.29-.51-.93-.75-1.93-.75-2.89,0-.6.15-1.26.42-1.96.3-.72.72-1.23,1.29-1.53l42.28-27.6-42.28-27.18c-.57-.42-.99-.96-1.29-1.63-.27-.66-.42-1.32-.42-2.05Z";
+  VP.stLightOff.width=494.84;
+  VP.stLightOff.height=366.96;
+
+  VP.stScreen={};
+  VP.stScreen.width=420.69;
+  VP.stScreen.height=394.98;
+  VP.stScreen.parts=[
+    {path:"M20.40,0.00H400.29A20.40,20.40 0 0 1 420.69,20.40V374.58A20.40,20.40 0 0 1 400.29,394.98H20.40A20.40,20.40 0 0 1 0.00,374.58V20.40A20.40,20.40 0 0 1 20.40,0.00z",color:"#54545A"},
+    {path:"M28.35,30.71h56.99v56.99h-56.99z M180.31,30.71h56.99v56.99h-56.99z M332.27,30.71h56.99v56.99h-56.99z M28.35,100.26h56.99v56.99h-56.99z M180.31,100.26h56.99v56.99h-56.99z M332.27,100.26h56.99v56.99h-56.99z M28.35,169.81h56.99v56.99h-56.99z M104.33,169.81h56.99v56.99h-56.99z M180.31,169.81h56.99v56.99h-56.99z M256.29,169.81h56.99v56.99h-56.99z M332.27,169.81h56.99v56.99h-56.99z M104.33,239.36h56.99v56.99h-56.99z M180.31,239.36h56.99v56.99h-56.99z M256.29,239.36h56.99v56.99h-56.99z",color:"#FFFFFF"},
+    {path:"M104.33,30.71h56.99v56.99h-56.99z M256.29,30.71h56.99v56.99h-56.99z M104.33,100.26h56.99v56.99h-56.99z M256.29,100.26h56.99v56.99h-56.99z M28.35,239.36h56.99v56.99h-56.99z M332.27,239.36h56.99v56.99h-56.99z M28.35,308.91h56.99v56.99h-56.99z M104.33,308.91h56.99v56.99h-56.99z M180.31,308.91h56.99v56.99h-56.99z M256.29,308.91h56.99v56.99h-56.99z M332.27,308.91h56.99v56.99h-56.99z",color:"#E83B66"}
+  ];
+  VP.stScreen.path="M20.40,0.00H400.29A20.40,20.40 0 0 1 420.69,20.40V374.58A20.40,20.40 0 0 1 400.29,394.98H20.40A20.40,20.40 0 0 1 0.00,374.58V20.40A20.40,20.40 0 0 1 20.40,0.00z";
+
+  VP.stScreenBase={};
+  VP.stScreenBase.width=420.69;
+  VP.stScreenBase.height=394.98;
+  VP.stScreenBase.parts=[
+    {path:"M20.40,0.00H400.29A20.40,20.40 0 0 1 420.69,20.40V374.58A20.40,20.40 0 0 1 400.29,394.98H20.40A20.40,20.40 0 0 1 0.00,374.58V20.40A20.40,20.40 0 0 1 20.40,0.00z",color:"#54545A"},
+    {path:"M28.35,30.71h56.99v56.99h-56.99z M104.33,30.71h56.99v56.99h-56.99z M180.31,30.71h56.99v56.99h-56.99z M256.29,30.71h56.99v56.99h-56.99z M332.27,30.71h56.99v56.99h-56.99z M28.35,100.26h56.99v56.99h-56.99z M104.33,100.26h56.99v56.99h-56.99z M180.31,100.26h56.99v56.99h-56.99z M256.29,100.26h56.99v56.99h-56.99z M332.27,100.26h56.99v56.99h-56.99z M28.35,169.81h56.99v56.99h-56.99z M104.33,169.81h56.99v56.99h-56.99z M180.31,169.81h56.99v56.99h-56.99z M256.29,169.81h56.99v56.99h-56.99z M332.27,169.81h56.99v56.99h-56.99z M28.35,239.36h56.99v56.99h-56.99z M104.33,239.36h56.99v56.99h-56.99z M180.31,239.36h56.99v56.99h-56.99z M256.29,239.36h56.99v56.99h-56.99z M332.27,239.36h56.99v56.99h-56.99z M28.35,308.91h56.99v56.99h-56.99z M104.33,308.91h56.99v56.99h-56.99z M180.31,308.91h56.99v56.99h-56.99z M256.29,308.91h56.99v56.99h-56.99z M332.27,308.91h56.99v56.99h-56.99z",color:"#FFFFFF"}
+  ];
+  VP.stScreenBase.path="M20.40,0.00H400.29A20.40,20.40 0 0 1 420.69,20.40V374.58A20.40,20.40 0 0 1 400.29,394.98H20.40A20.40,20.40 0 0 1 0.00,374.58V20.40A20.40,20.40 0 0 1 20.40,0.00z";
+  // Geometry for dynamic ON LEDs overlaid on stScreenBase
+  VP.stScreenLed={};
+  VP.stScreenLed.originX=28.35;
+  VP.stScreenLed.originY=30.71;
+  VP.stScreenLed.stepX=75.98;
+  VP.stScreenLed.stepY=69.55;
+  VP.stScreenLed.cell=56.99;
+
   //In FinchBlox, each category has an icon rather than displaying a text name.
   VP.categoryIcons = {
     "motion_1": VP.faArrowsAlt,
-		"color_1": VP.faLightbulb,
-		"sound_1": VP.faMusic,
+		"color_1": VP.stLightOutline,
 		"motion_2": VP.faArrowsAlt,
-		"color_2": VP.faLightbulb,
-		"sound_2": VP.faMusic,
+		"color_2": VP.stLightOutline,
+		"screen_2": VP.stScreen,
 		"motion_3": VP.faArrowsAlt,
-		"color_3": VP.faLightbulb,
-		"sound_3": VP.faMusic,
+		"color_3": VP.stLightOutline,
+		"screen_3": VP.stScreen,
 		"control_3": VP.faHandPointRight,
 		"sensor_3": VP.language
   };
@@ -9190,7 +9497,7 @@ BlockGraphics.SetCommand = function() {
   // Minimum dimensions
   if (FinchBlox) {
     BlockGraphics.command.height = 60; //76;
-    BlockGraphics.command.width = 50; //76;
+    BlockGraphics.command.width = 64; // shared body width so parameter ovals match
     BlockGraphics.command.cornerRadius = 8; //10;
     BlockGraphics.command.vMargin = 10; // The margin above and below the content (BlockParts) of the Block
     BlockGraphics.command.hMargin = 10; //20;//25; // The margin to the left and right of the content
@@ -11132,6 +11439,13 @@ TouchReceiver.touchmove = function(e) {
       /* If the user drags a Block that is in a DisplayStack,
        the DisplayStack copies to a new BlockStack, which can be dragged. */
       if (TR.targetType === "displayStack") {
+        // A dimmed palette block cannot be dragged: the tab already holds as many
+        // programs as the board can run. Refusing here, rather than letting the
+        // block be picked up and vanish on release, is what makes the limit
+        // readable. See BlockPalette.updateProgramLimit.
+        if (TR.target.stack.dimmed) {
+          return;
+        }
         var x = TR.target.stack.getAbsX();
         var y = TR.target.stack.getAbsY();
         // The first block of the duplicated BlockStack is the new target.
@@ -12219,8 +12533,8 @@ BlockPalette.setGraphics = function() {
 
   // Dimensions for the region with CategoryBNs
   if (FinchBlox) {
-    //Bandeja flotante SmartTEAM: separada de los bordes, tinte por categoría
-    //y muesca cóncava en el borde superior donde encastran las pestañas
+    //SmartTEAM floating tray: inset from the edges, tinted per category,
+    //with a concave notch along the top edge where the category tabs slot in
     BlockPalette.inset = 14;
     BlockPalette.cornerRadius = 26;
     BlockPalette.notchDepth = 34; //cuánto BAJA el borde superior en el centro
@@ -12233,7 +12547,7 @@ BlockPalette.setGraphics = function() {
     BlockPalette.catW = 300;
     BlockPalette.catX = GuiElements.width / 2 - BlockPalette.catW / 2;
     BlockPalette.catH = 56; //alto de las pestañas
-    //El borde inferior de la pestaña apoya en el piso de la muesca
+    //The tab's bottom edge rests on the floor of the notch
     BlockPalette.catY = BlockPalette.y + BlockPalette.notchDepth - BlockPalette.catH;
     BlockPalette.blockMargin = 20; // The horizontal spacing between Blocks
     BlockPalette.trashHeight = BlockPalette.height * 0.6;
@@ -12310,7 +12624,7 @@ BlockPalette.createCatBg = function() {
 BlockPalette.createPalBg = function() {
   var BP = BlockPalette;
   if (FinchBlox) {
-    //Bandeja flotante con esquinas redondeadas y muesca para las pestañas
+    //Floating tray with rounded corners and a notch for the tabs
     BP.palRect = GuiElements.create.path(GuiElements.layers.paletteBG);
     BP.palRect.setAttributeNS(null, "fill", BP.bg);
     BP.palRect.setAttributeNS(null, "d", BP.trayPathD());
@@ -12321,9 +12635,9 @@ BlockPalette.createPalBg = function() {
 };
 
 /**
- * Contorno de la bandeja FinchBlox: rectángulo redondeado con muesca cóncava
- * en el borde superior donde encastran las pestañas de categoría. Comandos
- * absolutos, simétrico.
+ * Outline of the FinchBlox tray: a rounded rectangle with a concave notch
+ * along the top edge where the category tabs slot in. Absolute commands,
+ * symmetric.
  * @return {string} - atributo "d" del path
  */
 BlockPalette.trayPathD = function() {
@@ -12336,7 +12650,7 @@ BlockPalette.trayPathD = function() {
   var sh = BP.notchShoulder;
   var cx = BP.width / 2;
 
-  //La muesca se adapta a la cantidad de pestañas visibles del nivel actual
+  //The notch adapts to how many tabs the current level shows
   var tabCount = 3;
   if (BP.categories != null && BP.categories.length > 0 && typeof LevelManager !== "undefined") {
     var visible = 0;
@@ -12380,21 +12694,30 @@ BlockPalette.createCategories = function() {
   var catCount = BlockList.catCount();
 
   if (FinchBlox) {
-    var currentY = 0;
-    var currentX = BlockPalette.catW / 2 - 1.5 * CategoryBN.width - CategoryBN.hMargin;
+    // Groups tabs by level and centres each row (L1/L2/L3 may hold different counts)
+    var byLevel = {};
     for (var i = 0; i < catCount; i++) {
-      var currentCat = new Category(currentX, currentY, BlockList.getCatName(i), BlockList.getCatId(i));
-      BlockPalette.categories.push(currentCat);
-      if (i == 2) {
-        currentX = BlockPalette.catW / 2 - 1.5 * CategoryBN.width - CategoryBN.hMargin;
-      } else if (i == 5) {
-        //currentX = BlockPalette.catW/2 - 2.5*CategoryBN.width - 2*CategoryBN.hMargin;
-        currentX = BlockPalette.catW / 2 - 2 * CategoryBN.width - 1.5 * CategoryBN.hMargin;
-      } else {
+      var id = BlockList.getCatId(i);
+      var level = parseInt(id.split("_").pop(), 10);
+      if (isNaN(level)) {
+        continue;
+      }
+      if (byLevel[level] == null) {
+        byLevel[level] = [];
+      }
+      byLevel[level].push(i);
+    }
+    Object.keys(byLevel).forEach(function(levelKey) {
+      var indices = byLevel[levelKey];
+      var n = indices.length;
+      var currentX = BlockPalette.catW / 2 - (n * CategoryBN.width + (n - 1) * CategoryBN.hMargin) / 2;
+      for (var j = 0; j < n; j++) {
+        var i = indices[j];
+        var currentCat = new Category(currentX, 0, BlockList.getCatName(i), BlockList.getCatId(i));
+        BlockPalette.categories.push(currentCat);
         currentX += CategoryBN.width + CategoryBN.hMargin;
       }
-    }
-
+    });
   } else {
     var numberOfRows = Math.ceil(catCount / 2);
 
@@ -12464,7 +12787,7 @@ BlockPalette.showTrash = function() {
     BP.trash = GuiElements.create.group(0, 0);
     var trashBg;
     if (FinchBlox) {
-      //Usa el tinte de la categoría activa para fundirse con la bandeja
+      //Uses the active category's tint so it blends into the tray
       var bgColor = BP.bg;
       if (BP.selectedCat != null && Colors.blockPalette[BP.selectedCat.id] != null) {
         bgColor = Colors.blockPalette[BP.selectedCat.id];
@@ -12536,6 +12859,36 @@ BlockPalette.passRecursively = function(functionName) {
 };
 
 /**
+ * Greys out the hat blocks in the palette when the tab already holds as many
+ * programs as the board can run, and restores them when it does not.
+ *
+ * The limit itself is enforced on drop (BlockMoveManager), but enforcement alone
+ * is not feedback: the extra hat used to disappear when released, with no way for
+ * a child to tell that from the app losing their block. Greying makes the ceiling
+ * visible before they try.
+ *
+ * Only hats are greyed. Command blocks stay draggable so a child can keep
+ * building inside the programs they already have.
+ */
+BlockPalette.updateProgramLimit = function() {
+  if (!FinchBlox || BlockPalette.categories == null ||
+      typeof BlockMoveManager === "undefined") {
+    return;
+  }
+  var atLimit = BlockMoveManager.wouldExceedProgramLimit(null);
+  BlockPalette.categories.forEach(function(category) {
+    if (category.displayStacks == null) {
+      return;
+    }
+    category.displayStacks.forEach(function(stack) {
+      if (stack.firstBlock != null && stack.firstBlock.hasHat) {
+        stack.setDimmed(atLimit);
+      }
+    });
+  });
+};
+
+/**
  * Reloads all categories.  Called when a new file is opened.
  */
 BlockPalette.refresh = function() {
@@ -12551,7 +12904,7 @@ BlockPalette.setLevel = function() {
   BlockPalette.categories.forEach(function(category) {
     category.button.setHidden();
   })
-  //La muesca de la bandeja se adapta a la cantidad de pestañas del nivel
+  //The tray's notch adapts to the number of tabs in the level
   BlockPalette.palRect.setAttributeNS(null, "d", BlockPalette.trayPathD());
   //  switch (LevelMenu.currentLevel){
   switch (LevelManager.currentLevel) {
@@ -12790,6 +13143,30 @@ DisplayStack.prototype.remove = function() {
   this.group.remove();
 };
 
+/** Opacity used for a palette block that cannot be dragged right now. */
+DisplayStack.dimmedOpacity = 0.35;
+
+/**
+ * Greys out this palette block and marks it undraggable, or restores it.
+ *
+ * Used for the hat blocks once the board's program limit is reached. Without it
+ * the extra hat could still be picked up and simply vanished when dropped, which
+ * for a pre-reader reads as the app losing their block rather than as a limit.
+ * TouchReceiver checks `dimmed` to refuse the drag before it starts.
+ * @param {boolean} dimmed
+ */
+DisplayStack.prototype.setDimmed = function(dimmed) {
+  if (this.dimmed === dimmed) {
+    return;
+  }
+  this.dimmed = dimmed;
+  if (dimmed) {
+    this.group.setAttributeNS(null, "opacity", DisplayStack.dimmedOpacity);
+  } else {
+    this.group.removeAttributeNS(null, "opacity");
+  }
+};
+
 /**
  * @param deviceClass
  */
@@ -12972,7 +13349,13 @@ CategoryBN.prototype.addListeners = function() {
   if (!FinchBlox) {
     TouchReceiver.addListenersCat(this.colorRect, cat);
   }
-  TouchReceiver.addListenersCat(this.label, cat);
+  if (this.icon != null && this.icon.pathEs != null) {
+    for (var i = 0; i < this.icon.pathEs.length; i++) {
+      TouchReceiver.addListenersCat(this.icon.pathEs[i], cat);
+    }
+  } else if (this.label != null) {
+    TouchReceiver.addListenersCat(this.label, cat);
+  }
 };
 
 /**
@@ -15876,7 +16259,18 @@ InputPad.prototype.show = function(slotShape, updateFn, finishFn, data, color, b
     this.bubbleOverlay = new BubbleOverlay(type, IP.background, IP.margin, this.group, this, layer);
 
   }
-  this.bubbleOverlay.display(coords.x1, coords.x2, coords.y1, coords.y2, this.width, this.height);
+  var centerPad = false;
+  for (var i = 0; i < this.widgets.length; i++) {
+    if (this.widgets[i].type == "ledMatrix") {
+      centerPad = true;
+      break;
+    }
+  }
+  if (centerPad && this.bubbleOverlay.displayCentered != null) {
+    this.bubbleOverlay.displayCentered(this.width, this.height);
+  } else {
+    this.bubbleOverlay.display(coords.x1, coords.x2, coords.y1, coords.y2, this.width, this.height);
+  }
   this.showWidgets(this.bubbleOverlay);
 };
 
@@ -16852,7 +17246,8 @@ InputWidget.Slider.prototype.addOption = function(x, y, option, tickH, tickW, is
 
   switch (this.type) {
     case "ledArray":
-      var image = GuiElements.draw.ledArray(this.group, option, 2.2);
+      var image = GuiElements.draw.ledArray(this.group, option, 2.2,
+        FinchBlox ? "#FFFFFF" : null, FinchBlox ? "#E83B66" : null);
       var iX = x - image.width / 2 + tickW / 2;
       var iY = y - image.width - S.optionMargin;
       GuiElements.move.group(image.group, iX, iY);
@@ -17129,7 +17524,8 @@ InputWidget.Slider.prototype.updateLabel = function() {
   }
   if (this.imageG != null) {
     this.imageG.remove();
-    var image = GuiElements.draw.ledArray(this.group, this.value, 4);
+    var image = GuiElements.draw.ledArray(this.group, this.value, 4,
+      FinchBlox ? "#FFFFFF" : null, FinchBlox ? "#E83B66" : null);
     var iX = this.width - S.hMargin - this.sideSpaceR - image.width / 2;
     var iY = this.height / 2 - image.width / 2;
     GuiElements.move.group(image.group, iX, iY);
@@ -17372,6 +17768,213 @@ InputWidget.Piano.prototype.updatePressed = function(num) {
   GuiElements.update.stroke(newPressed.icon.pathE, Colors.fbPurpleBorder, 1);
 
 }
+
+/**
+ * FinchBlox 5x5 LED matrix editor for screen blocks.
+ * Shares a value index with the ledArray preset slider (typically 0).
+ * @param {number} index - Index into BlockButton.values / InputPad data
+ * @constructor
+ */
+InputWidget.LedMatrix = function(index) {
+  this.index = index;
+  this.type = "ledMatrix";
+  this.cells = [];
+  this.pattern = InputWidget.LedMatrix.emptyPattern();
+  this.livePreviewTimer = null;
+};
+
+InputWidget.LedMatrix.prototype = Object.create(InputWidget.prototype);
+InputWidget.LedMatrix.prototype.constructor = InputWidget.LedMatrix;
+
+InputWidget.LedMatrix.SIZE = 5;
+InputWidget.LedMatrix.LIVE_PREVIEW_MS = 150;
+
+InputWidget.LedMatrix.emptyPattern = function() {
+  return "0000000000000000000000000";
+};
+
+InputWidget.LedMatrix.normalize = function(str) {
+  if (str == null || typeof str !== "string") {
+    return InputWidget.LedMatrix.emptyPattern();
+  }
+  var out = "";
+  for (var i = 0; i < InputWidget.LedMatrix.SIZE * InputWidget.LedMatrix.SIZE; i++) {
+    out += (str.charAt(i) === "1") ? "1" : "0";
+  }
+  return out;
+};
+
+InputWidget.LedMatrix.setConstants = function() {
+  var M = InputWidget.LedMatrix;
+  M.padWidth = InputPad.width;
+  M.margin = 6;
+  M.toolbarH = 28;
+  M.bnGap = 6;
+  M.cellGap = 4;
+  M.framePad = 6;
+  M.maxCellSize = 30;
+  M.onColor = "#E83B66";
+  M.offColor = "#FFFFFF";
+  M.frameColor = "#54545A";
+  M.bnColor = Colors.categoryColors["screen_2"] || Colors.fbPurple;
+  M.bnTextColor = Colors.white;
+  M.font = Font.uiFont(12).bold();
+
+  // Keep the grid compact so slider + matrix fit in the viewport.
+  var maxInner = Math.min(
+    M.padWidth - 2 * M.margin - 2 * M.framePad,
+    M.maxCellSize * M.SIZE + M.cellGap * (M.SIZE - 1)
+  );
+  M.cellSize = (maxInner - (M.SIZE - 1) * M.cellGap) / M.SIZE;
+  M.gridSize = M.SIZE * M.cellSize + (M.SIZE - 1) * M.cellGap;
+  M.frameW = M.gridSize + 2 * M.framePad;
+  M.frameX = (M.padWidth - M.frameW) / 2;
+  M.height = M.toolbarH + M.margin + M.frameW + M.margin;
+  M.width = M.padWidth;
+};
+
+/**
+ * @inheritDoc
+ */
+InputWidget.LedMatrix.prototype.show = function(x, y, parentGroup, overlay, slotShape, updateFn, finishFn, data) {
+  InputWidget.prototype.show.call(this, x, y, parentGroup, overlay, slotShape, updateFn, finishFn, data);
+  this.group = GuiElements.create.group(x, y, parentGroup);
+  this.pattern = InputWidget.LedMatrix.normalize(data[this.index]);
+  this.makeChrome();
+  this.makeGrid();
+  this.paintCells();
+};
+
+/**
+ * @inheritDoc
+ */
+InputWidget.LedMatrix.prototype.updateDim = function() {
+  var M = InputWidget.LedMatrix;
+  this.width = M.width;
+  this.height = M.height;
+};
+
+InputWidget.LedMatrix.prototype.fixedHeight = function() {
+  return true;
+};
+
+InputWidget.LedMatrix.prototype.close = function() {
+  if (this.livePreviewTimer != null) {
+    clearTimeout(this.livePreviewTimer);
+    this.livePreviewTimer = null;
+  }
+};
+
+/**
+ * Refresh cells when a sibling preset slider writes the shared value.
+ * @param {string} newValue
+ */
+InputWidget.LedMatrix.prototype.syncFromValue = function(newValue) {
+  if (this.group == null) {
+    return;
+  }
+  this.pattern = InputWidget.LedMatrix.normalize(newValue);
+  this.paintCells();
+};
+
+InputWidget.LedMatrix.prototype.makeChrome = function() {
+  var M = InputWidget.LedMatrix;
+  var bnW = (M.padWidth - 2 * M.margin - M.bnGap) / 2;
+  var clearBn = new Button(M.margin, 0, bnW, M.toolbarH, this.group, M.bnColor, 8, 8);
+  clearBn.addText(Language.getStr("LedMatrix_Clear"), M.font, M.bnTextColor);
+  clearBn.setCallbackFunction(function() {
+    this.setPattern(InputWidget.LedMatrix.emptyPattern());
+  }.bind(this));
+  clearBn.markAsOverlayPart(this.overlay);
+
+  var invertBn = new Button(M.margin + bnW + M.bnGap, 0, bnW, M.toolbarH, this.group, M.bnColor, 8, 8);
+  invertBn.addText(Language.getStr("LedMatrix_Invert"), M.font, M.bnTextColor);
+  invertBn.setCallbackFunction(function() {
+    this.setPattern(this.invertString(this.pattern));
+  }.bind(this));
+  invertBn.markAsOverlayPart(this.overlay);
+
+  var frameY = M.toolbarH + M.margin;
+  var frame = GuiElements.draw.rect(M.frameX, frameY, M.frameW,
+    M.gridSize + 2 * M.framePad, M.frameColor, 8, 8);
+  this.group.appendChild(frame);
+};
+
+InputWidget.LedMatrix.prototype.makeGrid = function() {
+  var M = InputWidget.LedMatrix;
+  this.cells = [];
+  var originX = M.frameX + M.framePad;
+  var originY = M.toolbarH + M.margin + M.framePad;
+  var corner = Math.max(2, M.cellSize / 8);
+  for (var row = 0; row < M.SIZE; row++) {
+    for (var col = 0; col < M.SIZE; col++) {
+      var i = row * M.SIZE + col;
+      var x = originX + col * (M.cellSize + M.cellGap);
+      var y = originY + row * (M.cellSize + M.cellGap);
+      var button = new Button(x, y, M.cellSize, M.cellSize, this.group, M.offColor, corner, corner);
+      button.setCallbackFunction(function() {
+        this.toggleAt(i);
+      }.bind(this));
+      button.setUnToggleFunction(function() {});
+      button.markAsOverlayPart(this.overlay);
+      this.cells[i] = button;
+    }
+  }
+};
+
+InputWidget.LedMatrix.prototype.paintCells = function() {
+  var M = InputWidget.LedMatrix;
+  for (var i = 0; i < this.cells.length; i++) {
+    var on = this.pattern.charAt(i) === "1";
+    this.cells[i].updateBgColor(on ? M.onColor : M.offColor);
+  }
+};
+
+InputWidget.LedMatrix.prototype.invertString = function(str) {
+  var out = "";
+  for (var i = 0; i < str.length; i++) {
+    out += (str.charAt(i) === "1") ? "0" : "1";
+  }
+  return out;
+};
+
+InputWidget.LedMatrix.prototype.toggleAt = function(i) {
+  var chars = this.pattern.split("");
+  chars[i] = (chars[i] === "1") ? "0" : "1";
+  this.setPattern(chars.join(""));
+};
+
+InputWidget.LedMatrix.prototype.setPattern = function(str) {
+  this.pattern = InputWidget.LedMatrix.normalize(str);
+  this.paintCells();
+  if (this.updateFn != null) {
+    this.updateFn(this.pattern, this.index);
+  }
+  this.scheduleLivePreview(this.pattern);
+};
+
+InputWidget.LedMatrix.prototype.scheduleLivePreview = function(str) {
+  if (this.livePreviewTimer != null) {
+    clearTimeout(this.livePreviewTimer);
+  }
+  this.livePreviewTimer = setTimeout(function() {
+    this.livePreviewTimer = null;
+    this.sendLivePreview(str);
+  }.bind(this), InputWidget.LedMatrix.LIVE_PREVIEW_MS);
+};
+
+InputWidget.LedMatrix.prototype.sendLivePreview = function(str) {
+  var device = DeviceFinch.getManager().getDevice(0);
+  if (device == null) {
+    return;
+  }
+  var status = {
+    finished: false,
+    error: false,
+    result: null
+  };
+  device.setLedArray(status, str);
+};
 
 /**
  * An InputSystem used for selecting a Sound from a list.  Provides buttons to preview sounds before selecting them.
@@ -17898,6 +18501,24 @@ FBBubbleOverlay.prototype.display = function(x1, x2, y1, y2, innerWidth, innerHe
   // Move the elements using the results
   GuiElements.move.group(this.group, this.x, this.y);
   GuiElements.update.triangleFromPoint(this.triangle, triX, triY, BO.triangleW, triH, true);
+  GuiElements.update.rect(this.bgRect, 0, 0, width, height);
+  this.show();
+}
+
+/**
+ * Center the bubble in the viewport (no pointer triangle).
+ * Used for tall editors like the LED matrix so they don't clip off-screen.
+ */
+FBBubbleOverlay.prototype.displayCentered = function(innerWidth, innerHeight) {
+  DebugOptions.validateNumbers(innerWidth, innerHeight);
+  var height = innerHeight + 2 * this.margin;
+  var width = this.width || innerWidth + 2 * this.margin;
+
+  GuiElements.move.group(this.innerGroup, this.margin, this.margin);
+  this.x = (GuiElements.width - width) / 2;
+  this.y = Math.max(this.margin, (GuiElements.height - height) / 2);
+  GuiElements.move.group(this.group, this.x, this.y);
+  this.triangle.setAttributeNS(null, "d", "");
   GuiElements.update.rect(this.bgRect, 0, 0, width, height);
   this.show();
 }
@@ -19731,6 +20352,7 @@ function VectorIcon(x, y, pathId, color, height, parent, mirror, rotation) {
 	this.mirror = mirror;
   this.rotation = rotation;
 	this.pathE = null;
+	this.pathEs = null;
 	this.draw();
 }
 
@@ -19743,6 +20365,55 @@ function VectorIcon(x, y, pathId, color, height, parent, mirror, rotation) {
 VectorIcon.computeWidth = function(pathId, height) {
 	var scale = height / pathId.height;
 	return scale * pathId.width;
+};
+
+/**
+ * Apply fill/stroke/transform styling from a VectorPaths entry (or part).
+ * @param {Element} pathE
+ * @param {object} style - may include strokeWidth, strokeMiterlimit, transform
+ * @param {string} color
+ */
+VectorIcon.stylePath = function(pathE, style, color) {
+	var fill = style.color != null ? style.color : color;
+	pathE.setAttributeNS(null, "fill", fill);
+	if (style.strokeWidth != null) {
+		pathE.setAttributeNS(null, "stroke", fill);
+		pathE.setAttributeNS(null, "stroke-width", style.strokeWidth);
+		pathE.setAttributeNS(null, "stroke-miterlimit",
+			style.strokeMiterlimit != null ? style.strokeMiterlimit : 10);
+		pathE.setAttributeNS(null, "stroke-linejoin", "miter");
+	}
+	if (style.transform != null) {
+		pathE.setAttributeNS(null, "transform", style.transform);
+	}
+};
+
+/**
+ * Create one or more path elements for a VectorPaths entry.
+ * Supports pathId.parts = [{path, strokeWidth}, ...] for multi-stroke icons.
+ * @param {object} pathId
+ * @param {string} color
+ * @return {Element[]}
+ */
+VectorIcon.prototype.createPathElements = function(pathId, color) {
+	var parts = pathId.parts != null
+		? pathId.parts
+		: [{ path: pathId.path, strokeWidth: pathId.strokeWidth, strokeMiterlimit: pathId.strokeMiterlimit }];
+	var elements = [];
+	for (var i = 0; i < parts.length; i++) {
+		var part = parts[i];
+		var pathE = GuiElements.create.path(this.group);
+		pathE.setAttributeNS(null, "d", part.path);
+		VectorIcon.stylePath(pathE, {
+			color: part.color,
+			strokeWidth: part.strokeWidth != null ? part.strokeWidth : pathId.strokeWidth,
+			strokeMiterlimit: part.strokeMiterlimit != null ? part.strokeMiterlimit : pathId.strokeMiterlimit,
+			transform: pathId.transform
+		}, color);
+		this.group.appendChild(pathE);
+		elements.push(pathE);
+	}
+	return elements;
 };
 
 /**
@@ -19763,16 +20434,65 @@ VectorIcon.prototype.draw = function() {
 
 	this.group = GuiElements.create.group(this.x, this.y, this.parent);
   this.setTransform();
-	this.pathE = GuiElements.create.path(this.group);
-	this.pathE.setAttributeNS(null, "d", this.pathId.path);
-	this.pathE.setAttributeNS(null, "fill", this.color);
-  if (this.pathId.transform != null) {
-    this.pathE.setAttributeNS(null, "transform", this.pathId.transform);
+	this.pathEs = this.createPathElements(this.pathId, this.color);
+	this.pathE = this.pathEs[0];
+};
+
+/* Diagnostic instrumentation, meant to be removed once the layout bug it exposes
+ * is fixed.
+ *
+ * A non-finite coordinate here yields transform="translate(NaN,...)", which the
+ * browser rejects outright: the icon silently fails to position and the console
+ * shows only `<g> attribute transform: Expected number`, naming neither the icon
+ * nor the computation that produced it. setTransform is the one choke point every
+ * path goes through (constructor via draw, update, move), so checking here
+ * catches all of them and the attached stack points at the real caller. */
+VectorIcon.BAD_TRANSFORM_LOG_LIMIT = 5;
+VectorIcon.badTransformCount = 0;
+
+/** Best-effort name of a VectorPaths entry, for a readable diagnostic. */
+VectorIcon.pathName = function(pathId) {
+  if (pathId == null) {
+    return "(no pathId)";
   }
-	this.group.appendChild(this.pathE);
+  if (typeof VectorPaths !== "undefined") {
+    var keys = Object.keys(VectorPaths);
+    for (var i = 0; i < keys.length; i++) {
+      if (VectorPaths[keys[i]] === pathId) {
+        return keys[i];
+      }
+    }
+  }
+  return "(unknown, " + pathId.width + "x" + pathId.height + ")";
+};
+
+VectorIcon.prototype.warnIfNotFinite = function() {
+  if (VectorIcon.badTransformCount >= VectorIcon.BAD_TRANSFORM_LOG_LIMIT) {
+    return;
+  }
+  // Only the fields that actually get interpolated into the transform string.
+  var fields = ["x", "y", "scaleX", "scaleY"];
+  if (this.rotation != null) {
+    fields.push("width", "height", "rotation");
+  }
+  var bad = fields.filter(function(f) { return !isFinite(this[f]); }, this);
+  if (bad.length === 0) {
+    return;
+  }
+  VectorIcon.badTransformCount++;
+  // Not JSON.stringify: it turns NaN and Infinity into null, hiding the very
+  // value we are after.
+  var values = fields.map(function(f) {
+    return f + "=" + String(this[f]);
+  }, this).join(" ");
+  console.error("[VectorIcon] non-finite transform values (" +
+    bad.join(", ") + ") on icon '" + VectorIcon.pathName(this.pathId) +
+    "': " + values + "\ncaller stack:",
+    new Error("invalid transform").stack);
 };
 
 VectorIcon.prototype.setTransform = function() {
+  this.warnIfNotFinite();
   if (this.rotation != null) {
     this.group.setAttributeNS(null, "transform", "rotate(" + this.rotation + ", " + (this.x+(this.width/2)) + ", " + (this.y+(this.height/2)) + ") translate(" + this.x + "," + this.y + ") scale(" + this.scaleX + ", " + this.scaleY + ")");
   } else {
@@ -19804,7 +20524,18 @@ VectorIcon.prototype.setRotation = function(rotation) {
  */
 VectorIcon.prototype.setColor = function(color) {
 	this.color = color;
-	this.pathE.setAttributeNS(null, "fill", this.color);
+	var els = this.pathEs != null ? this.pathEs : [this.pathE];
+	var parts = this.pathId.parts;
+	for (var i = 0; i < els.length; i++) {
+		// Parts with a fixed color keep it; others follow the icon color.
+		var fill = (parts != null && parts[i] != null && parts[i].color != null)
+			? parts[i].color
+			: color;
+		els[i].setAttributeNS(null, "fill", fill);
+		if (els[i].getAttribute("stroke") != null) {
+			els[i].setAttributeNS(null, "stroke", fill);
+		}
+	}
 };
 
 /**
@@ -19822,7 +20553,10 @@ VectorIcon.prototype.move = function(x, y) {
 
 /* Deletes the icon and removes the path from its parent group. */
 VectorIcon.prototype.remove = function() {
-	this.pathE.remove();
+	var els = this.pathEs != null ? this.pathEs : [this.pathE];
+	for (var i = 0; i < els.length; i++) {
+		els[i].remove();
+	}
 };
 
 /**
@@ -19834,13 +20568,8 @@ VectorIcon.prototype.addSecondPath = function(pathId, color){
   this.pathId2 = pathId;
   this.color2 = color;
 
-  this.pathE2 = GuiElements.create.path(this.group);
-	this.pathE2.setAttributeNS(null, "d", this.pathId2.path);
-	this.pathE2.setAttributeNS(null, "fill", this.color2);
-  if (this.pathId2.transform != null) {
-    this.pathE2.setAttributeNS(null, "transform", this.pathId2.transform);
-  }
-	this.group.appendChild(this.pathE2);
+	this.pathE2s = this.createPathElements(pathId, color);
+	this.pathE2 = this.pathE2s[0];
 }
 
 /**
@@ -20415,7 +21144,7 @@ CodeManager.stop = function() {
   Sound.stopAllSounds() // Stops all sounds and tones
   BlockPalette.passRecursively("passRecursively", "stop"); //Stop any block running in the block palette
   if (FinchBlox && typeof ProgramModeManager !== "undefined") {
-    // El stopAll llegó a la placa como CMD_STOP: limpiar la ejecución remota
+    // stopAll reached the board as CMD_STOP: clear the remote-execution state
     ProgramModeManager.onRemoteStopped();
   }
   // Note: Tones are not allowed to be async, so they
@@ -20729,12 +21458,12 @@ CodeManager.checkBroadcastRunning = function(message) {
 
 /**
  * Recursively passes on the message that the flag button was tapped.
- * En FinchBlox con modo programa activo, la bandera corre el programa ya
- * transferido a la placa en vez de ejecutar los bloques en vivo.
+ * In FinchBlox with program mode on, the flag runs the program already transferred
+ * to the board instead of executing the blocks live.
  */
 CodeManager.eventFlagClicked = function() {
   if (FinchBlox && ProgramModeManager.isProgramMode()) {
-    ProgramModeManager.flagClicked();
+    ProgramModeManager.playClicked();
     return;
   }
   TabManager.eventFlagClicked();
@@ -21069,52 +21798,191 @@ if (typeof module !== "undefined" && module.exports) {
 
 
 /**
- * ProgramCompiler compila el árbol vivo de bloques FinchBlox a una
- * representación intermedia (IR) JSON, independiente del bytecode.
- * Es puro: no toca GuiElements/TabManager/DeviceFinch, así que puede
- * testearse en Node con fixtures duck-typed. Quien junta los stacks del
- * editor (TabManager.activeTab.stackList) es ProgramModeManager.
+ * Sensor scale conversion between the editor and the micro:bit.
+ *
+ * The editor comes from the Finch robot, whose sensors reported 0-100, and its
+ * thresholds are written on that scale (ProgramCompiler.DARK_THRESHOLD = 5 means
+ * "5% light"). The micro:bit reports on different native scales and nothing
+ * converted between them, so the thresholds did not mean what they say:
+ *
+ *   - light: readLightLevel() returns 0-255, so a threshold of 5 compared
+ *     against 5/255 ≈ 2% instead of 5%. "Start when dark" demanded near-total
+ *     darkness.
+ *   - sound: levelSPL returns decibels, not 0-100.
+ *
+ * The conversion lives here and is applied at both edges, the same way
+ * BytecodeAssembler.scale100 already does for RGB values:
+ *
+ *   board  → editor   toPercent()    (live reads, webble/backend.js)
+ *   editor → board    fromPercent()  (compiled thresholds, BytecodeAssembler)
+ *
+ * That keeps the editor's thresholds expressed as percentages, which is their
+ * semantics, while the board always sends and receives its native scale.
+ */
+function MicrobitSensors() {}
+
+/* Light: MicroBitDisplay::readLightLevel() returns 0-255. */
+MicrobitSensors.LIGHT_MAX = 255;
+
+/* Sound: uBit.audio.levelSPL->getValue() returns dB SPL, not a 0-100 level. The
+ * floor and ceiling map the useful range onto a percentage.
+ *
+ * CAUTION: these two numbers are the only part of this file NOT derived from the
+ * code. They come from the typical range of CODAL's LevelDetectorSPL (~52 dB
+ * floor) and from a clap near the microphone sitting around 100 dB. They need
+ * confirming against a real board: webble/backend.js logs the raw value of every
+ * read for exactly that. If a clap does not reach 50% or silence does not land
+ * near 0%, adjust them here and everything downstream follows. */
+MicrobitSensors.SOUND_DB_FLOOR = 52;
+MicrobitSensors.SOUND_DB_CEIL = 100;
+
+/* Distance reported while the firmware does not send one.
+ *
+ * Deliberately 0 — "obstacle right there". The drive-until blocks use continuous
+ * motors (ticks 0), so reporting "path clear" would leave the robot driving
+ * indefinitely and off the table. Stopping immediately is useless but safe. */
+MicrobitSensors.DISTANCE_UNAVAILABLE = 0;
+
+/**
+ * Board's native scale → the editor's 0-100 percentage.
+ * @param {string} kind - "light" | "sound"
+ * @param {number} raw - byte as GET_SENSORS sends it
+ * @return {number} integer 0-100
+ */
+MicrobitSensors.toPercent = function(kind, raw) {
+  var value = Number(raw);
+  if (!isFinite(value)) {
+    return 0;
+  }
+  if (kind === "light") {
+    return MicrobitSensors.clampPercent(
+      Math.round(value * 100 / MicrobitSensors.LIGHT_MAX));
+  }
+  if (kind === "sound") {
+    var span = MicrobitSensors.SOUND_DB_CEIL - MicrobitSensors.SOUND_DB_FLOOR;
+    return MicrobitSensors.clampPercent(
+      Math.round((value - MicrobitSensors.SOUND_DB_FLOOR) * 100 / span));
+  }
+  return MicrobitSensors.clampPercent(Math.round(value));
+};
+
+/**
+ * The editor's 0-100 percentage → the board's native scale. This is what travels
+ * as an event or WAIT_UNTIL parameter, because the VM compares it against the
+ * sensor's native value.
+ * @param {string} kind - "light" | "sound"
+ * @param {number} percent
+ * @return {number} byte 0-255
+ */
+MicrobitSensors.fromPercent = function(kind, percent) {
+  var value = Number(percent);
+  if (!isFinite(value)) {
+    return 0;
+  }
+  var pct = MicrobitSensors.clampPercent(value);
+  if (kind === "light") {
+    return Math.round(pct * MicrobitSensors.LIGHT_MAX / 100);
+  }
+  if (kind === "sound") {
+    var span = MicrobitSensors.SOUND_DB_CEIL - MicrobitSensors.SOUND_DB_FLOOR;
+    return Math.min(255,
+      Math.round(MicrobitSensors.SOUND_DB_FLOOR + pct * span / 100));
+  }
+  return Math.round(pct);
+};
+
+MicrobitSensors.clampPercent = function(value) {
+  return Math.max(0, Math.min(100, value));
+};
+
+/**
+ * Which scale each ISA condition uses. Anything absent is left alone:
+ * "obstacle" travels in centimetres and the buttons are booleans.
+ */
+MicrobitSensors.CONDITION_SCALE = {
+  dark: "light",
+  bright: "light",
+  loud: "sound"
+};
+
+/** Same, for event triggers (the hat blocks). */
+MicrobitSensors.TRIGGER_SCALE = {
+  dark: "light",
+  loud: "sound"
+};
+
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = MicrobitSensors;
+}
+
+
+
+/**
+ * ProgramCompiler turns the live FinchBlox block tree into a JSON intermediate
+ * representation (IR) that is independent of the bytecode.
+ * It is pure: it touches no GuiElements/TabManager/DeviceFinch, so it can be tested
+ * under Node with duck-typed fixtures. Collecting the editor's stacks
+ * (TabManager.activeTab.stackList) is ProgramModeManager's job.
  *
  * IR = { version: 1, handlers: [Handler] }
  * Handler = { trigger: "start"|"dark"|"loud", param: number, body: [Op] }
  * Op:
- *   {op:"tone", note, ms}                — bloqueante (el assembler emite TONE+WAIT)
- *   {op:"ledMatrix", pattern}            — string de 25 chars "0"/"1", row-major
+ *   {op:"tone", note, ms}                — blocking (the assembler emits TONE+WAIT)
+ *   {op:"ledMatrix", pattern}            — a 25-char "0"/"1" string, row-major
  *   {op:"ledClear"}
- *   {op:"rgb", target, r, g, b}          — target 0=beak 1=tail; valores 0-100
+ *   {op:"rgb", target, r, g, b}          — target 0=beak 1=tail; values 0-100
  *   {op:"wait", ms}
  *   {op:"motors", speedL, speedR, ticksL, ticksR}   — kit v2
  *   {op:"motorsFree", speedL, speedR}               — kit v2
  *   {op:"motorsStop"}                               — kit v2
  *   {op:"waitUntil", cond, param}        — cond: "dark"|"loud"|"obstacle"
  *   {op:"repeat", count, body:[Op]}      — count 0 = forever
- *   {op:"mark", index}                   — bloque en ejecución (options.emitMarkers)
+ *   {op:"mark", index}                   — the running block (options.emitMarkers)
  *
- * Con options.emitMarkers el resultado incluye markerMap: array índice→Block
- * (las referencias a Block viven solo en la app; NO forman parte del IR, que
- * sigue siendo puro/serializable).
+ * With options.emitMarkers the result also carries markerMap: an index→Block array
+ * (Block references live only in the app; they are NOT part of the IR, which
+ * stays pure and serialisable).
  */
 function ProgramCompiler() {}
 
-/** Umbrales idénticos al modo live (BlockDefs_control.js:558-589) */
+/* Dual-load, same as BytecodeAssembler: STX is a global in the browser (script
+ * tag) but has to be required under Node, where the tests run. */
+ProgramCompiler.STX = (function() {
+  if (typeof STX !== "undefined") {
+    return STX;
+  }
+  if (typeof require !== "undefined") {
+    return require("./STXConstants.js");
+  }
+  return null;
+})();
+
+/** Thresholds identical to live mode (BlockDefs_control.js:558-589). */
 ProgramCompiler.DARK_THRESHOLD = 5;
 ProgramCompiler.LOUD_THRESHOLD = 50;
-/** Umbral de obstáculo en cm (BlockDefs_fbMotion.js, B_FBForwardUntilObstacle) */
+/** Obstacle threshold in cm (BlockDefs_fbMotion.js, B_FBForwardUntilObstacle). */
 ProgramCompiler.OBSTACLE_THRESHOLD_CM = 20;
-/** Límites que impone la VM (ver firmware/source/vm/stx_isa.h) */
-ProgramCompiler.MAX_HANDLERS = 8;
-ProgramCompiler.MAX_START_HANDLERS = 4;
+/* Handler limit imposed by the VM. It is STX.MAX_CONTEXTS, not STX.MAX_EVENTS:
+ * the image format holds up to MAX_EVENTS (8) entries, but stx_vm_start only
+ * assigns a context to the first MAX_CONTEXTS (4) of them and drops the rest
+ * with no fault or warning (firmware/source/vm/stx_vm.c). Compiling up to
+ * MAX_EVENTS produced programs that transferred and persisted fine while their
+ * 5th..8th stacks silently never ran. Derived from the generated constants so
+ * this tracks the firmware automatically if the VM gains contexts — do not
+ * hardcode. */
+ProgramCompiler.MAX_HANDLERS = ProgramCompiler.STX.MAX_CONTEXTS;
+ProgramCompiler.MAX_START_HANDLERS = ProgramCompiler.STX.MAX_CONTEXTS;
 
-/** Máximo de marcadores por programa (OP_MARK lleva índice u8) */
+/** Maximum markers per program (OP_MARK carries a u8 index). */
 ProgramCompiler.MAX_MARKERS = 256;
 
-/* Estado de marcadores de la compilación en curso (el compilador es síncrono);
- * null = sin marcadores */
+/* Marker state for the compilation in progress (the compiler is synchronous);
+ * null = no markers. */
 ProgramCompiler._markerMap = null;
 
 /**
- * Punto de entrada.
- * @param {Array} firstBlocks - primer Block de cada stack top-level, en orden
+ * Entry point.
+ * @param {Array} firstBlocks - the first Block of each top-level stack, in order
  * @param {object} [options] - {allowMotors: boolean, emitMarkers: boolean}
  * @return {{ir: object|null, markerMap: Array|null, errors: Array, warnings: Array}}
  */
@@ -21158,8 +22026,8 @@ ProgramCompiler.compile = function(firstBlocks, options) {
 };
 
 /**
- * Compila un stack completo a un Handler. El hat (si hay) define el trigger;
- * un stack sin hat es un handler "start" directo (niveles 1-2).
+ * Compiles a whole stack into a Handler. The hat, if any, sets the trigger; a stack
+ * with no hat is a plain "start" handler (levels 1-2).
  */
 ProgramCompiler.compileStack = function(firstBlock, errors, warnings) {
   var trigger = "start";
@@ -21172,7 +22040,7 @@ ProgramCompiler.compileStack = function(firstBlock, errors, warnings) {
     param = hat.param;
     bodyStart = firstBlock.nextBlock;
   } else if (firstBlock.isStartBlock) {
-    // Hat desconocido (ej. bloque nuevo de BirdBlox): error explícito
+    // Unknown hat (a new BirdBlox block, say): report it rather than guess
     errors.push(ProgramCompiler.unsupportedError(firstBlock.blockTypeName));
     return null;
   }
@@ -21182,9 +22050,9 @@ ProgramCompiler.compileStack = function(firstBlock, errors, warnings) {
 };
 
 /**
- * Sigue la cadena nextBlock y concatena la IR de cada bloque.
- * @param {object|null} block - primer Block de la secuencia
- * @return {Array} lista de Ops
+ * Walks the nextBlock chain and concatenates each block's IR.
+ * @param {object|null} block - the first Block of the sequence
+ * @return {Array} a list of Ops
  */
 ProgramCompiler.compileSequence = function(block, errors, warnings) {
   var ops = [];
@@ -21222,7 +22090,7 @@ ProgramCompiler.unsupportedError = function(blockTypeName) {
   return { code: "E_UNSUPPORTED_BLOCK", blockType: blockTypeName };
 };
 
-/** Validaciones globales post-compilación */
+/** Whole-program checks, run after compiling. */
 ProgramCompiler.validate = function(handlers, options, errors, warnings) {
   var totalOps = 0;
   var startCount = 0;
@@ -21276,8 +22144,8 @@ ProgramCompiler.usesOps = function(body, opNames) {
 };
 
 /* ---------------------------------------------------------------------------
- * Tabla de hats: blockTypeName -> trigger de handler.
- * Umbrales idénticos a los del modo live.
+ * Hat table: blockTypeName -> handler trigger.
+ * Thresholds identical to live mode's.
  */
 ProgramCompiler.hats = {
   B_WhenFlagTapped: { trigger: "start", param: 0 },
@@ -21286,9 +22154,9 @@ ProgramCompiler.hats = {
 };
 
 /* ---------------------------------------------------------------------------
- * Tabla de encoders: blockTypeName -> function(block, errors, warnings) -> [Op].
- * Se construye programáticamente: un encoder compartido registrado bajo N
- * nombres. Los campos leídos son los que cada bloque cachea vía updateValues()
+ * Encoder table: blockTypeName -> function(block, errors, warnings) -> [Op].
+ * Built programmatically: one shared encoder registered under N names. The fields
+ * read are the ones each block caches through updateValues()
  * (ver BlockDefs_fbSound.js:18, BlockDefs_fbColor.js:18-23,
  * BlockDefs_fbMotion.js:92-177, BlockDefs_control.js:69/176).
  */
@@ -21303,13 +22171,13 @@ ProgramCompiler.encoders = {};
     }
   }
 
-  // Sound: nota midi + beats (cada beat = 0.1 s, igual que el modo live)
+  // Sound: midi note + beats (one beat = 0.1 s, same as live mode)
   register(["B_FBC", "B_FBD", "B_FBE", "B_FBF", "B_FBG", "B_FBA",
     "B_FBSoundL2", "B_FBSoundL3"], function(block) {
     return [{ op: "tone", note: block.midiNote, ms: block.beats * 100 }];
   });
 
-  // LED array: patrón + duración (duration en décimas de segundo) + apagar
+  // LED array: pattern + duration (in tenths of a second) + clear
   register(["B_FBLedArrayL2", "B_FBLedArrayL3"], function(block) {
     return [
       { op: "ledMatrix", pattern: block.ledStatusString },
@@ -21318,7 +22186,7 @@ ProgramCompiler.encoders = {};
     ];
   });
 
-  // Beak/Tail: color RGB (0-100) + duración + apagar
+  // Beak/Tail: an RGB colour (0-100) + duration + off
   register(["B_FBBeakRed", "B_FBBeakGreen", "B_FBBeakBlue", "B_FBBeakL2", "B_FBBeakL3",
     "B_FBTailRed", "B_FBTailGreen", "B_FBTailBlue", "B_FBTailL2", "B_FBTailL3"],
     function(block) {
@@ -21330,26 +22198,26 @@ ProgramCompiler.encoders = {};
       ];
     });
 
-  // Wait: slider en décimas de segundo
+  // Wait: the slider is in tenths of a second
   register(["B_Wait"], function(block) {
     return [{ op: "wait", ms: block.timeSelection * 100 }];
   });
 
-  // Repeat: cuerpo en blockSlot1
+  // Repeat: the body lives in blockSlot1
   register(["B_Repeat"], function(block, errors, warnings) {
     var child = block.blockSlot1 != null ? block.blockSlot1.child : null;
     var body = ProgramCompiler.compileSequence(child, errors, warnings);
     return [{ op: "repeat", count: block.countSelection, body: body }];
   });
 
-  // Forever: repeat con count 0
+  // Forever: a repeat with count 0
   register(["B_Forever"], function(block, errors, warnings) {
     var child = block.blockSlot1 != null ? block.blockSlot1.child : null;
     var body = ProgramCompiler.compileSequence(child, errors, warnings);
     return [{ op: "repeat", count: 0, body: body }];
   });
 
-  // Motion: los ticks/speeds ya vienen calculados por updateValues()
+  // Motion: ticks/speeds already come computed by updateValues()
   register(["B_FBForward", "B_FBBackward", "B_FBRight", "B_FBLeft",
     "B_FBForwardL2", "B_FBBackwardL2", "B_FBRightL2", "B_FBLeftL2",
     "B_FBForwardL3", "B_FBBackwardL3", "B_FBRightL3", "B_FBLeftL3"],
@@ -21363,7 +22231,7 @@ ProgramCompiler.encoders = {};
       }];
     });
 
-  // Avanzar hasta condición: primitivas motores + waitUntil + stop
+  // Drive until a condition: motor primitives + waitUntil + stop
   register(["B_FBForwardUntilDark"], function(block) {
     return [
       { op: "motorsFree", speedL: 50, speedR: 50 },
@@ -21387,12 +22255,12 @@ if (typeof module !== "undefined" && module.exports) {
 
 
 /**
- * BytecodeAssembler convierte la IR de ProgramCompiler en una imagen STX1
- * (Uint8Array) lista para transferir a la micro:bit. El formato lo define
- * firmware/source/vm/stx_isa.h (fuente de verdad); las constantes vienen de
- * STXConstants.js (generado). Puro y dual-load para testear en Node.
+ * BytecodeAssembler turns ProgramCompiler's IR into an STX1 image (a Uint8Array)
+ * ready to transfer to the micro:bit. The format is defined by
+ * firmware/source/vm/stx_isa.h (the source of truth); the constants come from
+ * STXConstants.js (generated). Pure and dual-load, so it can be tested under Node.
  *
- * Lanza Error con .code = "E_TOO_LARGE" si la imagen supera STX.MAX_IMAGE_SIZE.
+ * Throws an Error with .code = "E_TOO_LARGE" if the image exceeds STX.MAX_IMAGE_SIZE.
  */
 function BytecodeAssembler() {}
 
@@ -21404,6 +22272,16 @@ function BytecodeAssembler() {}
     STXRef = require("./STXConstants.js");
   }
   BytecodeAssembler.STX = STXRef;
+})();
+
+BytecodeAssembler.Sensors = (function() {
+  if (typeof MicrobitSensors !== "undefined") {
+    return MicrobitSensors;
+  }
+  if (typeof require !== "undefined") {
+    return require("./MicrobitSensors.js");
+  }
+  return null;
 })();
 
 BytecodeAssembler.TRIGGERS = {
@@ -21436,7 +22314,11 @@ BytecodeAssembler.assemble = function(ir) {
     }
     events.push({
       type: triggerFn(S),
-      param: handler.param | 0,
+      // The editor's threshold is a percentage; the VM compares against the
+      // sensor's native value, so convert it here.
+      param: BytecodeAssembler.sensorParam(
+        BytecodeAssembler.Sensors.TRIGGER_SCALE[handler.trigger],
+        handler.param | 0),
       offset: code.length
     });
     BytecodeAssembler.emitOps(handler.body, code, S);
@@ -21458,7 +22340,7 @@ BytecodeAssembler.assemble = function(ir) {
   image[5] = events.length;
   image[6] = code.length & 0xFF;
   image[7] = (code.length >> 8) & 0xFF;
-  // crc32 va en [8..11] al final
+  // the crc32 goes in [8..11], last
 
   var pos = S.HEADER_SIZE;
   for (var i = 0; i < events.length; i++) {
@@ -21480,14 +22362,15 @@ BytecodeAssembler.assemble = function(ir) {
   return image;
 };
 
-/** Emite la lista de Ops de la IR como bytes de código */
+/** Emits the IR's list of Ops as code bytes. */
 BytecodeAssembler.emitOps = function(body, code, S) {
   for (var i = 0; i < body.length; i++) {
     var op = body[i];
     switch (op.op) {
       case "tone":
-        // TONE es no bloqueante en la VM; el bloque del editor es bloqueante
-        code.push(S.OP_TONE, op.note & 0xFF);
+        // TONE is non-blocking in the VM; the editor's block is blocking
+        code.push(S.OP_TONE,
+          BytecodeAssembler.u8(op.note, "E_BAD_VALUE", "note"));
         BytecodeAssembler.pushU16(code, op.ms);
         code.push(S.OP_WAIT_MS);
         BytecodeAssembler.pushU16(code, op.ms);
@@ -21502,7 +22385,7 @@ BytecodeAssembler.emitOps = function(body, code, S) {
         code.push(S.OP_LED_CLEAR);
         break;
       case "rgb":
-        // IR trae 0-100 (rango del editor); la VM espera 0-255
+        // the IR carries 0-100 (the editor's range); the VM expects 0-255
         code.push(S.OP_RGB_SET,
           BytecodeAssembler.scale100(op.r),
           BytecodeAssembler.scale100(op.g),
@@ -21523,20 +22406,27 @@ BytecodeAssembler.emitOps = function(body, code, S) {
         if (condFn == null) {
           throw BytecodeAssembler.error("E_BAD_COND", op.cond);
         }
-        code.push(S.OP_WAIT_UNTIL, condFn(S), op.param & 0xFF);
+        code.push(S.OP_WAIT_UNTIL, condFn(S),
+          BytecodeAssembler.u8(
+            BytecodeAssembler.sensorParam(
+              BytecodeAssembler.Sensors.CONDITION_SCALE[op.cond], op.param),
+            "E_BAD_VALUE", "param"));
         break;
       }
       case "repeat":
         if (op.count === 0) {
           code.push(S.OP_LOOP_FOREVER);
         } else {
-          code.push(S.OP_LOOP_N, op.count & 0xFF);
+          // count 0 is OP_LOOP_FOREVER above, so a wrap to 0 here would turn a
+          // bounded repeat into an endless one.
+          code.push(S.OP_LOOP_N,
+            BytecodeAssembler.u8(op.count, "E_BAD_VALUE", "repeat"));
         }
         BytecodeAssembler.emitOps(op.body, code, S);
         code.push(S.OP_LOOP_END);
         break;
       case "motors":
-        // Los bloques FinchBlox siempre generan ticksL === ticksR
+        // FinchBlox blocks always produce ticksL === ticksR
         code.push(S.OP_MOTORS_TICKS,
           BytecodeAssembler.i8(op.speedL),
           BytecodeAssembler.i8(op.speedR));
@@ -21566,14 +22456,27 @@ BytecodeAssembler.i8 = function(value) {
   return v & 0xFF;
 };
 
+/**
+ * Converts a sensor threshold to the board's native scale, or leaves it alone
+ * when that condition is not percentage-based ("obstacle" travels in centimetres).
+ * @param {string|undefined} scale - "light" | "sound" | undefined
+ * @param {number} value - threshold as the editor expresses it
+ */
+BytecodeAssembler.sensorParam = function(scale, value) {
+  if (scale == null) {
+    return value;
+  }
+  return BytecodeAssembler.Sensors.fromPercent(scale, value);
+};
+
 BytecodeAssembler.scale100 = function(value) {
   var v = Math.max(0, Math.min(100, Math.round(value)));
   return Math.round(v * 255 / 100);
 };
 
 /**
- * Empaqueta un patrón de 25 chars "0"/"1" (row-major) en 4 bytes.
- * Bit k del byte j = LED de índice j*8+k (LSB-first).
+ * Packs a 25-char "0"/"1" pattern (row-major) into 4 bytes.
+ * Bit k of byte j = the LED at index j*8+k (LSB-first).
  */
 BytecodeAssembler.packLedPattern = function(str25) {
   var bytes = [0, 0, 0, 0];
@@ -21585,7 +22488,7 @@ BytecodeAssembler.packLedPattern = function(str25) {
   return bytes;
 };
 
-/** CRC-32/IEEE (el mismo que zlib), sobre un Uint8Array */
+/** CRC-32/IEEE (the same one zlib uses), over a Uint8Array. */
 BytecodeAssembler.crc32 = function(bytes) {
   var table = BytecodeAssembler.crcTable;
   if (table == null) {
@@ -21606,6 +22509,22 @@ BytecodeAssembler.crc32 = function(bytes) {
   return (crc ^ 0xFFFFFFFF) >>> 0;
 };
 
+/**
+ * Asserts a value fits in one byte, instead of letting `& 0xFF` wrap it.
+ * A silent wrap changes what the program does on the board: `repeat 256` would
+ * emit OP_LOOP_N with a count byte of 0, and the VM reads count 0 as "loop
+ * forever" (stx_vm.c). Not reachable from the FinchBlox UI today — its sliders
+ * are bounded — but the assembler is the boundary where the ISA contract has to
+ * hold, whatever feeds it.
+ */
+BytecodeAssembler.u8 = function(value, code, what) {
+  var v = Math.round(value);
+  if (!(v >= 0 && v <= 0xFF)) {
+    throw BytecodeAssembler.error(code, what + " " + String(value));
+  }
+  return v;
+};
+
 BytecodeAssembler.error = function(code, detail) {
   var err = new Error(code + (detail != null ? ": " + detail : ""));
   err.code = code;
@@ -21619,32 +22538,32 @@ if (typeof module !== "undefined" && module.exports) {
 
 
 /**
- * ProgramModeManager orquesta la ejecución remota de FinchBlox/SmartTEAM:
- * compila el programa a bytecode STX1, lo transfiere a la micro:bit por BLE
- * y la placa lo ejecuta con su VM. La app recibe notificaciones push
- * (bloque en ejecución / fin / error) vía CallbackManager.robot.program*.
+ * ProgramModeManager orchestrates remote execution for FinchBlox/SmartTEAM: it
+ * compiles the program to STX1 bytecode, transfers it to the micro:bit over BLE, and
+ * the board runs it on its VM. The app receives pushed notifications
+ * (running block / finished / error) through CallbackManager.robot.program*.
  *
- * Dos modos, mismo flujo (Play unificado en TitleBar.flagBn):
- *   - Vivo (default): transferencia VOLÁTIL (RAM, cero desgaste de flash)
- *     + RUN. Para probar mientras se arma el programa.
- *   - Programa/descarga: transferencia PERSISTENTE (flash con wear-leveling)
- *     + RUN. La placa lo sigue corriendo standalone tras reset.
- *   - Stop: CodeManager.stop → Device.stopAll → CMD_STOP en la placa.
- *   - Play con un programa ya corriendo = reiniciar (la transferencia nueva
- *     detiene la anterior en el firmware).
+ * Two modes, one flow (the unified Play in TitleBar.flagBn):
+ *   - Live (default): VOLATILE transfer (RAM, no flash wear)
+ *     + RUN. For trying things out while the program is being built.
+ *   - Program/download: PERSISTENT transfer (flash, with wear-levelling) + RUN. The
+ *     board keeps running it standalone after a reset.
+ *   - Stop: CodeManager.stop → Device.stopAll → CMD_STOP on the board.
+ *   - Play with a program already running = restart it (the new transfer stops the
+ *     previous one in the firmware).
  *
- * El toggle vivo/programa (TitleBar.liveCellBn/progCellBn) persiste en
+ * The live/program toggle (TitleBar.liveCellBn/progCellBn) persists in
  * SettingsManager.programMode.
  */
 function ProgramModeManager() {}
 
-/** Placa conectada (STX.BOARD_*); lo informa el backend al conectar */
+/** The connected board (STX.BOARD_*), reported by the backend on connect. */
 ProgramModeManager.boardId = 0;
-/** true mientras la placa ejecuta un programa que mandamos nosotros */
+/** True while the board is running a program we sent. */
 ProgramModeManager.remoteRunning = false;
-/** índice de OP_MARK → Block del canvas (de la última compilación enviada) */
+/** OP_MARK index → canvas Block, from the last compilation that was sent. */
 ProgramModeManager.markerMap = null;
-/* bloques actualmente resaltados, uno por stack: [{stack, block}] */
+/* Currently highlighted blocks, one per stack: [{stack, block}]. */
 ProgramModeManager._active = [];
 
 ProgramModeManager.isProgramMode = function() {
@@ -21663,13 +22582,13 @@ ProgramModeManager.setBoardId = function(boardId) {
   ProgramModeManager.boardId = boardId;
 };
 
-/** Los bloques de movimiento solo corren en placas con motores (Tiny:bit) */
+/** Movement blocks only run on boards with motors (Tiny:bit). */
 ProgramModeManager.allowMotors = function() {
   return ProgramModeManager.boardId === STX.BOARD_TINYBIT;
 };
 
 /**
- * Compila los stacks del tab activo (con marcadores de bloque).
+ * Compiles the active tab's stacks, with block markers.
  * @return {{bytes: Uint8Array|null, markerMap: Array|null, errors: Array, warnings: Array}}
  */
 ProgramModeManager.compileCurrent = function() {
@@ -21703,8 +22622,8 @@ ProgramModeManager.compileCurrent = function() {
 };
 
 /**
- * Play unificado: compila, transfiere (volátil en vivo, persistente en
- * descarga) y manda RUN. Si ya hay un programa corriendo, lo reemplaza.
+ * Unified Play: compiles, transfers (volatile when live, persistent on
+ * download) and sends RUN. If a program is already running, it replaces it.
  */
 ProgramModeManager.playClicked = function() {
   var result = ProgramModeManager.compileCurrent();
@@ -21732,15 +22651,15 @@ ProgramModeManager.playClicked = function() {
   request.addParam("mode", mode);
   var base64 = ProgramModeManager.toBase64(result.bytes);
   HtmlServer.sendRequestWithCallback(request.toString(), function() {
-    GuiElements.alert("Programa transferido (" + mode + ")");
+    GuiElements.alert("Program transferred (" + mode + ")");
     ProgramModeManager.sendRun(device);
   }, function(status, message) {
-    GuiElements.alert("Fallo de transferencia: " + status + " " + message);
+    GuiElements.alert("Transfer failed: " + status + " " + message);
     ProgramModeManager.flashSendButton();
   }, true, base64, true, true);
 };
 
-/** Manda RUN tras una transferencia exitosa */
+/** Sends RUN after a successful transfer. */
 ProgramModeManager.sendRun = function(device) {
   var request = new HttpRequestBuilder("robot/out/runProgram");
   request.addParam("type", device.getDeviceTypeId());
@@ -21752,9 +22671,9 @@ ProgramModeManager.sendRun = function(device) {
   }, false, null, true);
 };
 
-/* ---------------- Notificaciones push desde la placa (CallbackManager) --- */
+/* ------------- Pushed notifications from the board (CallbackManager) ------ */
 
-/** La placa está ejecutando el bloque markerMap[index]: resaltarlo */
+/** The board is running markerMap[index]: highlight it. */
 ProgramModeManager.onMarker = function(index) {
   var map = ProgramModeManager.markerMap;
   if (!ProgramModeManager.remoteRunning || map == null) {
@@ -21764,7 +22683,7 @@ ProgramModeManager.onMarker = function(index) {
   if (block == null || typeof block.setRemoteHighlight !== "function") {
     return;
   }
-  // un resaltado por stack: apagar el anterior del mismo stack
+  // One highlight per stack: turn off the previous one in that same stack
   var active = ProgramModeManager._active;
   for (var i = 0; i < active.length; i++) {
     if (active[i].stack === block.stack) {
@@ -21778,27 +22697,27 @@ ProgramModeManager.onMarker = function(index) {
   block.setRemoteHighlight(true);
 };
 
-/** El programa terminó solo en la placa */
+/** The program finished on its own on the board. */
 ProgramModeManager.onProgramDone = function(reason) {
   ProgramModeManager.clearHighlights();
   ProgramModeManager.remoteRunning = false;
 };
 
-/** La VM de la placa se detuvo por un error */
+/** The board's VM stopped because of an error. */
 ProgramModeManager.onProgramFault = function(errCode) {
   ProgramModeManager.clearHighlights();
   ProgramModeManager.remoteRunning = false;
   DialogManager.showAlertDialog(AppName,
-    "El programa se detuvo por un error (código " + errCode + ")", "OK");
+    Language.format("program_fault", errCode), "OK");
 };
 
-/** Stop (local o del botón): limpiar el estado de ejecución remota */
+/** Stop, local or from the button: clear the remote-execution state. */
 ProgramModeManager.onRemoteStopped = function() {
   ProgramModeManager.clearHighlights();
   ProgramModeManager.remoteRunning = false;
 };
 
-/** El usuario editó el canvas: el mapa de marcadores quedó viejo */
+/** The user edited the canvas, so the marker map is stale. */
 ProgramModeManager.invalidateMarkers = function() {
   ProgramModeManager.clearHighlights();
   ProgramModeManager.markerMap = null;
@@ -21816,22 +22735,32 @@ ProgramModeManager.clearHighlights = function() {
 
 /* ------------------------------------------------------------- helpers --- */
 
-/** Sin backend nativo ni host PWA: modo debug, loguear en consola */
+/** No native backend and no PWA host: debug mode, log to the console. */
 ProgramModeManager.debugWithoutBackend = function() {
   return HtmlServer.iosHandler == null && !window.AndroidInterface && !GuiElements.isPWA;
 };
 
-/** Textos de error de compilación para el docente/niño */
+/** Compilation error messages, for the teacher and the child. */
+/* Compiler error code -> translation key. The messages used to be a hardcoded
+ * Spanish table, invisible to Language/, so they stayed Spanish whatever language
+ * the UI was in. */
+ProgramModeManager.ERROR_KEYS = {
+  E_EMPTY: "program_error_empty",
+  E_UNSUPPORTED_BLOCK: "program_error_unsupported_block",
+  E_UNSUPPORTED_ON_BOARD: "program_error_unsupported_on_board",
+  E_TOO_MANY_STACKS: "program_error_too_many_stacks",
+  E_TOO_LARGE: "program_error_too_large",
+  E_TOO_MANY_BLOCKS: "program_error_too_many_blocks",
+  E_BAD_VALUE: "program_error_bad_value"
+};
+
 ProgramModeManager.errorText = function(code) {
-  var table = {
-    E_EMPTY: "No hay bloques para enviar",
-    E_UNSUPPORTED_BLOCK: "Hay un bloque que la placa no entiende",
-    E_UNSUPPORTED_ON_BOARD: "Los bloques de movimiento necesitan el robot conectado",
-    E_TOO_MANY_STACKS: "Hay demasiados programas a la vez",
-    E_TOO_LARGE: "El programa es demasiado grande",
-    E_TOO_MANY_BLOCKS: "El programa tiene demasiados bloques"
-  };
-  return table[code] || ("No se pudo preparar el programa (" + code + ")");
+  var key = ProgramModeManager.ERROR_KEYS[code];
+  if (key != null) {
+    return Language.getStr(key);
+  }
+  // Unknown code: still say something useful, with the code for the developer.
+  return Language.format("program_error_generic", code);
 };
 
 ProgramModeManager.reportErrors = function(errors) {
@@ -21844,7 +22773,7 @@ ProgramModeManager.reportErrors = function(errors) {
     }
     text += " ";
   }
-  console.log("[ProgramMode] errores de compilación: " + text);
+  console.log("[ProgramMode] compilation errors: " + text);
   if (errors.length > 0 && !ProgramModeManager.debugWithoutBackend()) {
     DialogManager.showAlertDialog(AppName,
       ProgramModeManager.errorText(errors[0].code), "OK");
@@ -21852,7 +22781,7 @@ ProgramModeManager.reportErrors = function(errors) {
 };
 
 ProgramModeManager.flashSendButton = function() {
-  //El Play unificado es quien envía el programa
+  // The unified Play button is what sends the program
   if (TitleBar.flagBn != null) {
     TitleBar.flagBn.flash();
   }
@@ -21916,6 +22845,51 @@ function BlockMoveManager(block, x, y) {
   // Stores information used when determine which slot is closest to the moving stack.
   this.fit = {};
 }
+
+/**
+ * Number of programs the active tab would send to the board, ignoring one stack
+ * (the one being dragged, which is already registered in the tab).
+ *
+ * Counts every top-level stack, not just the ones with a hat: a hatless stack
+ * still compiles to an "start" handler (ProgramCompiler.compileStack), so it
+ * occupies a VM context like any other. Counting only hats would var the editor
+ * accept 8 hats plus loose blocks and then fail at send time with
+ * E_TOO_MANY_STACKS — the confusing failure this limit exists to prevent.
+ *
+ * Palette blocks live in DisplayStacks, which never register with a tab, so
+ * they cannot inflate this count.
+ * @param {BlockStack} [excludeStack] - stack to leave out of the count.
+ * @return {number}
+ */
+BlockMoveManager.countPrograms = function(excludeStack) {
+  var tab = TabManager.activeTab;
+  if (tab == null) {
+    return 0;
+  }
+  var count = 0;
+  for (var i = 0; i < tab.stackList.length; i++) {
+    var stack = tab.stackList[i];
+    if (stack !== excludeStack && !stack.isDisplayStack) {
+      count++;
+    }
+  }
+  return count;
+};
+
+/**
+ * Whether landing this stack as its own top-level stack would exceed the number
+ * of programs the board can run concurrently. The limit is
+ * ProgramCompiler.MAX_HANDLERS, which derives from STX.MAX_CONTEXTS in the
+ * firmware ISA — so the editor, the compiler and the VM all move together.
+ * @param {BlockStack} stack - the stack about to land.
+ * @return {boolean}
+ */
+BlockMoveManager.wouldExceedProgramLimit = function(stack) {
+  if (!FinchBlox || typeof ProgramCompiler === "undefined") {
+    return false;
+  }
+  return BlockMoveManager.countPrograms(stack) >= ProgramCompiler.MAX_HANDLERS;
+};
 
 /**
  * Updates the position of the currently moving BlockStack.
@@ -21992,12 +22966,28 @@ BlockMoveManager.prototype.end = function() {
       // Snap is onto the Block/Slot that fits it best.
       fit.bestFit.snap(move.stack.firstBlock);
       Sound.playSnap();
+      SaveManager.markEdited();
+    } else if (BlockMoveManager.wouldExceedProgramLimit(move.stack)) {
+      // Landing here would make this a new top-level stack, i.e. one more
+      // program than the board can run. Refuse instead of accepting it and
+      // failing later at send time.
+      if (move.startedFromPalette) {
+        // Never existed on the canvas: drop it as if it went back to the palette.
+        move.stack.remove();
+      } else {
+        // Came off an existing stack, so it holds the child's blocks. Delete
+        // through UndoManager so the gesture stays recoverable.
+        UndoManager.deleteStack(move.stack);
+        SaveManager.markEdited();
+      }
+      console.log("[blocks] limite de " + ProgramCompiler.MAX_HANDLERS +
+        " programas alcanzado; no se creo un stack nuevo");
     } else {
       // If it is not going to be snapped or deleted, simply drop it onto the current tab.
       move.stack.land();
       move.stack.updateDim(); // Fix! this line of code might not be needed.
+      SaveManager.markEdited();
     }
-    SaveManager.markEdited();
   }
   Highlighter.hide(); // Hide any existing highlight.
   BlockPalette.hideTrash();
@@ -22534,11 +23524,27 @@ Tab.prototype.activate = function() {
 };
 
 /**
+ * The number of top-level stacks is the number of programs the board will be
+ * asked to run, so the palette has to reflect the limit whenever it changes.
+ * addStack/removeStack are the only two places that number moves.
+ *
+ * Guarded because both run during startup and while loading a file, before the
+ * palette exists.
+ */
+Tab.programCountChanged = function() {
+  if (typeof BlockPalette !== "undefined" &&
+      typeof BlockPalette.updateProgramLimit === "function") {
+    BlockPalette.updateProgramLimit();
+  }
+};
+
+/**
  * Adds a stack to the list.  Called by stack constructor.
  * @param {BlockStack} stack
  */
 Tab.prototype.addStack = function(stack) {
   this.stackList.push(stack);
+  Tab.programCountChanged();
 };
 
 /**
@@ -22548,6 +23554,7 @@ Tab.prototype.addStack = function(stack) {
 Tab.prototype.removeStack = function(stack) {
   var index = this.stackList.indexOf(stack);
   this.stackList.splice(index, 1);
+  Tab.programCountChanged();
 };
 
 /**
@@ -22625,7 +23632,7 @@ Tab.prototype.fitBox = function(box) {
  * Adds a new start block to the tab. Used in FinchBlox.
  */
 Tab.prototype.addStartBlock = function() {
-  //Centrado verticalmente en la zona de programación (entre barra y bandeja)
+  //Centred vertically in the programming area, between the title bar and the tray
   var blockY = TitleBar.height + (BlockPalette.y - TitleBar.height) / 2 - 30;
   var stack = new BlockStack(new B_WhenFlagTapped(50, blockY), this);
 }
@@ -28153,13 +29160,22 @@ XmlWriter.downloadDoc = function(xmlDoc) {
 };
 
 /**
- * Creates a Document from an XML string
+ * Creates a Document from an XML string, or null if the string is not valid XML.
+ *
+ * DOMParser does not throw on malformed input: it hands back a document whose root
+ * is <parsererror>. Callers that did not know that treated a corrupt file as an
+ * empty-but-valid one, which is how a damaged save opened as a blank canvas with no
+ * explanation.
  * @param {string} xmlString
- * @return {Document}
+ * @return {Document|null}
  */
 XmlWriter.openDoc = function(xmlString) {
   var parser = new DOMParser();
-  return parser.parseFromString(xmlString, "text/xml");
+  var doc = parser.parseFromString(xmlString, "text/xml");
+  if (doc == null || doc.getElementsByTagName("parsererror").length > 0) {
+    return null;
+  }
+  return doc;
 };
 
 /**
@@ -28358,23 +29374,36 @@ SaveManager.backendOpen = function(fileName, data) {
  * @param {string} data - A string of XML data
  * TODO: Provide a way for loading to fail if critical tags are missing rather than opening a blank document
  */
-SaveManager.loadData = function(data) {
+SaveManager.loadData = function(data, isFallback) {
   if (data.length > 0) {
     if (data.charAt(0) === "%") {
       // The data haas an extra layer of encoding that needs to be removed
       data = decodeURIComponent(data);
     }
     var xmlDoc = XmlWriter.openDoc(data);
-    var project = XmlWriter.findElement(xmlDoc, "project");
+    var project = xmlDoc == null ? null : XmlWriter.findElement(xmlDoc, "project");
     if (project == null) {
-      // There's no project tag.  The data is seriously corrupt, so we just open an empty file
-      SaveManager.loadData(SaveManager.emptyProgData);
+      /* Corrupt: unparseable, or parseable with no <project> tag. It still opens
+       * empty — there is nothing else to show — but silence here was the problem:
+       * the child saw their file in the list, opened it, and found a blank canvas
+       * with no hint that anything had gone wrong. Saying so is the difference
+       * between "the file is damaged" and "the app lost my work". */
+      if (!isFallback) {
+        DialogManager.showAlertDialog(AppName,
+          Language.getStr("file_corrupt"), Language.getStr("OK"));
+      }
+      // isFallback guards the recursion: were emptyProgData ever malformed, this
+      // would call itself forever.
+      if (!isFallback) {
+        SaveManager.loadData(SaveManager.emptyProgData, true);
+      }
     } else {
       (DebugOptions.safeFunc(CodeManager.importXml))(project);
     }
-  } else {
-    // There's no data at all, so open an empty file
-    SaveManager.loadData(SaveManager.emptyProgData);
+  } else if (!isFallback) {
+    // There's no data at all, so open an empty file. Not an error: a new project
+    // legitimately has none.
+    SaveManager.loadData(SaveManager.emptyProgData, true);
   }
 };
 
@@ -28845,7 +29874,7 @@ SaveManager.saveAsNew = function() {
 SaveManager.markEdited = function() {
   CodeManager.updateModified();
   if (FinchBlox && typeof ProgramModeManager !== "undefined") {
-    // El canvas cambió: el mapa de marcadores de la placa quedó viejo
+    // The canvas changed, so the board's marker map is stale
     ProgramModeManager.invalidateMarkers();
   }
   if (SaveManager.fileName != null) {
@@ -28992,16 +30021,76 @@ UndoManager.deleteTab = function() {
 /**
  * Pops an item from the stack and rebuilds it, placing it in the corner of the canvas
  */
+/**
+ * How many programs restoring this undo entry would add to the tab.
+ *
+ * An entry is a single stack, a whole tab (several stacks at once, from the trash
+ * button), or a comment. Only stacks become programs the board has to run.
+ * @param {Node} stackNode
+ * @return {number}
+ */
+UndoManager.programsIn = function(stackNode) {
+  if (stackNode == null) {
+    return 0;
+  }
+  if (stackNode.nodeName === "comment") {
+    return 0;
+  }
+  if (stackNode.nodeName === "tab") {
+    var stacksNode = XmlWriter.findSubElement(stackNode, "stacks");
+    return XmlWriter.findSubElements(stacksNode, "stack").length;
+  }
+  return 1;
+};
+
+/**
+ * Whether restoring the next undo entry would push the tab past the number of
+ * programs the board can run concurrently.
+ *
+ * Undo is the one way left to exceed that limit: dropping is refused and the
+ * palette hats are greyed out, but restoring a deleted program bypassed both and
+ * produced a canvas that only failed later, at send time.
+ * @return {boolean}
+ */
+UndoManager.wouldExceedProgramLimit = function() {
+  var UM = UndoManager;
+  if (!FinchBlox || typeof BlockMoveManager === "undefined" ||
+      typeof ProgramCompiler === "undefined" || UM.undoStack.length === 0) {
+    return false;
+  }
+  var next = UM.undoStack[UM.undoStack.length - 1];
+  var adding = UM.programsIn(next);
+  if (adding === 0) {
+    return false;
+  }
+  var current = BlockMoveManager.countPrograms(null);
+  return current + adding > ProgramCompiler.MAX_HANDLERS;
+};
+
 UndoManager.undoDelete = function() {
   var UM = UndoManager;
-  if (UM.undoStack.length === 0) return;
+  /* Refuse rather than restore something that cannot run. Saying so, and saying
+   * what to do about it, beats letting the canvas fill up and failing only when the
+   * child presses send. */
+  if (UM.wouldExceedProgramLimit()) {
+    DialogManager.showAlertDialog(AppName,
+      Language.getStr("undo_program_limit"), Language.getStr("OK"));
+    return;
+  }
+  /* The loop condition has to include the stack being non-empty, not just "no
+   * success yet". Tab.undoDelete returns false when the entry cannot be imported,
+   * and the emptiness check used to happen only once, before the loop: if every
+   * entry failed, this popped the whole history and then called undoDelete with
+   * undefined, which throws on reading .nodeName. So one unimportable entry both
+   * wiped the undo history and blew up. */
   var success = false;
-  while (!success) {
-    var stackData = UM.undoStack.pop();
-    success = success || TabManager.undoDelete(stackData);
+  while (!success && UM.undoStack.length > 0) {
+    success = TabManager.undoDelete(UM.undoStack.pop());
   }
   UM.updateButtonEnabled();
-  SaveManager.markEdited();
+  if (success) {
+    SaveManager.markEdited();
+  }
 };
 
 /**
@@ -34197,12 +35286,41 @@ function BlockIcon(parent, pathId, color, altText, height, rotation) {
   this.y = 0;
   this.parent = parent;
   this.icon = new VectorIcon(0, 0, pathId, color, height, this.parent.group, false, rotation);
-  TouchReceiver.addListenersChild(this.icon.pathE, this.parent);
+  this.attachIconListeners();
   this.isSlot = false;
   this.xOffset = 0;
+  /* Initialised even though only the two-icon layouts use them: move() adds these
+   * to a coordinate whenever icon2 is set, and an undefined offset yields NaN,
+   * which makes the browser drop the whole transform and leave the icon at the
+   * group origin. That is what drew the forward-until-obstacle block wrong. */
+  this.icon2xOffset = 0;
+  this.icon2yOffset = 0;
 }
 BlockIcon.prototype = Object.create(BlockPart.prototype);
 BlockIcon.prototype.constructor = BlockIcon;
+
+/**
+ * Wire drag/tap listeners on every SVG path of the icon (multi-part icons included).
+ */
+BlockIcon.prototype.attachIconListeners = function() {
+  var els = this.icon.pathEs != null ? this.icon.pathEs : [this.icon.pathE];
+  for (var i = 0; i < els.length; i++) {
+    TouchReceiver.addListenersChild(els[i], this.parent);
+  }
+};
+
+/**
+ * Wire listeners on second-path layers (e.g. light outline parts).
+ */
+BlockIcon.prototype.attachSecondIconListeners = function() {
+  if (this.icon.pathE2 == null) {
+    return;
+  }
+  var els = this.icon.pathE2s != null ? this.icon.pathE2s : [this.icon.pathE2];
+  for (var i = 0; i < els.length; i++) {
+    TouchReceiver.addListenersChild(els[i], this.parent);
+  }
+};
 
 /**
  * @param {number} x - The x coord the icon should have relative to the Block it is in
@@ -34284,10 +35402,13 @@ BlockIcon.prototype.addSecondIcon = function(pathId, color, centerBelow, height,
     this.icon2yOffset = this.height + margin;
     this.height += height + margin;
     this.icon2 = new VectorIcon(0, 0, pathId, color, height, this.parent.group);
-    TouchReceiver.addListenersChild(this.icon2.pathE, this.parent);
+    var els2 = this.icon2.pathEs != null ? this.icon2.pathEs : [this.icon2.pathE];
+    for (var i = 0; i < els2.length; i++) {
+      TouchReceiver.addListenersChild(els2[i], this.parent);
+    }
   } else {
     this.icon.addSecondPath(pathId, color, centerBelow);
-    TouchReceiver.addListenersChild(this.icon.pathE2, this.parent);
+    this.attachSecondIconListeners();
   }
 }
 
@@ -34361,15 +35482,22 @@ BlockIcon.prototype.addObstacle = function(color) {
   var r = 1.5; //2;
   var margin = 5;
   if (w > this.width) {
+    // The bar is wider than the icon: the icon centres inside the bar's width.
     this.xOffset = 0;
     this.icon2xOffset = w / 2 - this.width / 2;
     this.width = w;
   } else {
+    // The icon is the wider one, so it needs no horizontal shift — but the offset
+    // still has to be a number. Leaving it unset is what produced translate(NaN).
+    this.icon2xOffset = 0;
     this.xOffset = this.width / 2 - w / 2;
   }
   this.xOffset -= o;
   this.icon2yOffset = h + margin;
   this.height += h + margin;
+  /* icon2 aliases icon on purpose: this layout has a single icon that needs the
+   * vertical shift move() applies to icon2, so it is reused rather than adding a
+   * separate offset for the primary icon. xOffset then only positions the bar. */
   this.icon2 = this.icon;
 
   this.obstacle = GuiElements.draw.rect((-o), 0, w + 2 * o, h, color, r, r);
@@ -34445,6 +35573,23 @@ BlockButton.prototype.draw = function() {
  */
 BlockButton.prototype.updateAlign = function(x, y) {
   DebugOptions.validateNumbers(x, y);
+  if (FinchBlox && this.parent.width > 0) {
+    // Match the visible body (loops use topWidth; normal blocks use width).
+    var bodyW = (this.parent.hasBlockSlot1 && this.parent.topWidth > 0)
+      ? this.parent.topWidth
+      : this.parent.width;
+    var targetW = bodyW;
+    if (Math.abs(this.width - targetW) > 0.5) {
+      this.width = targetW;
+      this.draw();
+      if (this.values.length > 0) {
+        var first = this.widgets[0];
+        var vi = (first != null && first.index != null) ? first.index : 0;
+        this.updateValue(this.values[vi], vi);
+      }
+    }
+    x = (bodyW - this.width) / 2;
+  }
   this.move(x, y);
   //Hide the button while the block is in the blockPalette
   if (this.parent.stack === null || this.parent.stack.isDisplayStack) {
@@ -34483,33 +35628,63 @@ BlockButton.prototype.move = function(x, y) {
  */
 BlockButton.prototype.updateValue = function(newValue, index) { //, displayString) {
   this.values[index] = newValue;
-  var text = [];
-  for (var i = 0; i < this.widgets.length; i++) {
-    text[i] = "";
-    if (typeof this.values[i] == 'object' && this.values[i].r != null) {
-      var s = 255 / 100;
-      var color = Colors.rgbToHex(this.values[i].r * s, this.values[i].g * s, this.values[i].b * s);
-      //console.log("new button color: " + color);
-      //GuiElements.update.color(this.button.bgRect, color);
 
-      if (this.widgets.length == 1) {
+  // Keep an open LedMatrix editor in sync when a sibling preset slider writes the same index.
+  for (var s = 0; s < this.widgets.length; s++) {
+    var w = this.widgets[s];
+    if (w.type == "ledMatrix" && w.index == index && w.syncFromValue != null) {
+      w.syncFromValue(newValue);
+    }
+  }
+
+  var text = [];
+  var visualCount = 0;
+  for (var c = 0; c < this.widgets.length; c++) {
+    if (this.widgets[c].type != "ledMatrix") {
+      visualCount++;
+    }
+  }
+  var visualI = 0;
+
+  for (var i = 0; i < this.widgets.length; i++) {
+    if (this.widgets[i].type == "ledMatrix") {
+      continue;
+    }
+    var lineText = "";
+    var vi = this.widgets[i].index != null ? this.widgets[i].index : i;
+    var val = this.values[vi];
+    if (typeof val == 'object' && val != null && val.r != null) {
+      var s = 255 / 100;
+      var color = Colors.rgbToHex(val.r * s, val.g * s, val.b * s);
+
+      if (visualCount == 1) {
         this.button.updateBgColor(color);
       } else {
         if (this.colorLabel != null) {
           this.colorLabel.remove();
         }
         var clW = this.button.width;
-        var clH = this.button.height / this.widgets.length;
+        var clH = this.button.height / visualCount;
         var clX = 0;
-        var clY = i * clH;
+        var clY = visualI * clH;
         var clR = this.cornerRadius;
         this.colorLabel = GuiElements.draw.tab(clX, clY, clW, clH, color, clR);
         this.button.group.appendChild(this.colorLabel);
         TouchReceiver.addListenersBN(this.colorLabel, this.button);
 
         for (var j = 0; j < this.widgets.length; j++) {
-          if (j != i && (j == 0 || j == this.widgets.length - 1)) {
-            var bgY = j * clH;
+          if (this.widgets[j].type == "ledMatrix") {
+            continue;
+          }
+          var jVi = this.widgets[j].index != null ? this.widgets[j].index : j;
+          var jVisual = 0;
+          for (var k = 0; k < j; k++) {
+            if (this.widgets[k].type != "ledMatrix") {
+              jVisual++;
+            }
+          }
+          if (jVi != vi && (jVisual == 0 || jVisual == visualCount - 1)) {
+            var bgY = jVisual * clH;
             var bg = GuiElements.draw.tab(clX, bgY, clW, clH, Colors.white, clR, true);
             this.button.group.appendChild(bg);
             TouchReceiver.addListenersBN(bg, this.button);
@@ -34521,35 +35696,43 @@ BlockButton.prototype.updateValue = function(newValue, index) { //, displayStrin
         this.button.group.appendChild(this.button.bgRect);
       }
     } else if (this.widgets[i].type == "piano") {
-      text[i] = InputWidget.Piano.noteStrings[this.values[i]];
+      lineText = InputWidget.Piano.noteStrings[val];
     } else if (this.widgets[i].type == "ledArray") {
       if (this.ledArrayImage != null) {
         this.ledArrayImage.group.remove();
       }
-      var image = GuiElements.draw.ledArray(this.button.group, this.values[i], 1.8);
+      // Fixed all-red 5x5 edit affordance; current pattern already shows on the block icon.
+      var onC = InputWidget.LedMatrix != null ? InputWidget.LedMatrix.onColor : "#E83B66";
+      var editIcon = "1111111111111111111111111";
+      var image = GuiElements.draw.ledArray(this.button.group, editIcon, 1.8, onC, onC);
       var iX = this.button.width / 2 - image.width / 2;
-      //var iY = this.button.height/2 - image.width/2;
-      var iY = (i + 1) * this.button.height / (this.widgets.length + 1) - image.width / 2;
+      var iY = (visualI + 1) * this.button.height / (visualCount + 1) - image.width / 2;
       GuiElements.move.group(image.group, iX, iY);
+      var kids = image.group.childNodes;
+      for (var k = 0; k < kids.length; k++) {
+        TouchReceiver.addListenersBN(kids[k], this.button);
+      }
       this.ledArrayImage = image;
     } else {
-      text[i] = this.values[i].toString() + this.displaySuffixes[i];
+      lineText = val.toString() + this.displaySuffixes[i];
     }
 
     if (this.widgets[i].type == "time") {
       if (this.timeIcon != null) {
         this.timeIcon.remove();
       }
-      var textM = text[i] + "...."
-      text[i] = text[i] + "    ";
+      var textM = lineText + "...."
+      lineText = lineText + "    ";
       var textW = GuiElements.measure.stringWidth(textM, this.font);
       var tiH = 11;
       var tiPath = VectorPaths.faClock;
       var tiW = VectorIcon.computeWidth(tiPath, tiH);
       var tiX = this.button.width / 2 + textW / 2 - tiW;
-      var tiY = (i + 1) * this.button.height / (this.widgets.length + 1) - tiH / 2 + 0.75;
+      var tiY = (visualI + 1) * this.button.height / (visualCount + 1) - tiH / 2 + 0.75;
       this.timeIcon = new VectorIcon(tiX, tiY, tiPath, Colors.bbtDarkGray, tiH, this.button.group);
     }
+    text.push(lineText);
+    visualI++;
   }
   this.button.addMultiText(text, this.font, this.textColor);
   this.parent.updateValues();
@@ -34597,8 +35780,21 @@ BlockButton.prototype.addSlider = function(type, startingValue, options) {
   }
 
   var sliderColor = Colors.categoryColors[this.parent.category];
-  var slider = new InputWidget.Slider(type, options, startingValue, sliderColor, suffix, this.widgets.length);
+  var slider = new InputWidget.Slider(type, options, startingValue, sliderColor, suffix, this.values.length);
   this.addWidget(slider, suffix, startingValue);
+}
+
+/**
+ * Adds a 5x5 LED matrix editor that shares an existing value slot (usually index 0 with ledArray).
+ * Does not push a new value or grow the button height.
+ * @param {number} [valueIndex=0]
+ */
+BlockButton.prototype.addLedMatrix = function(valueIndex) {
+  if (valueIndex == null) {
+    valueIndex = 0;
+  }
+  this.widgets.push(new InputWidget.LedMatrix(valueIndex));
+  this.displaySuffixes.push("");
 }
 
 /**
@@ -34606,7 +35802,7 @@ BlockButton.prototype.addSlider = function(type, startingValue, options) {
  * @param {string} startingValue - the initial value
  */
 BlockButton.prototype.addPiano = function(startingValue) {
-  this.addWidget(new InputWidget.Piano(this.widgets.length), "", startingValue);
+  this.addWidget(new InputWidget.Piano(this.values.length), "", startingValue);
 }
 
 /**
@@ -34619,9 +35815,15 @@ BlockButton.prototype.addWidget = function(widget, suffix, startingValue) {
   this.widgets.push(widget);
   this.displaySuffixes.push(suffix);
   this.values.push(startingValue);
-  this.height = this.buttonMargin + this.lineHeight * this.widgets.length;
+  var visualN = 0;
+  for (var i = 0; i < this.widgets.length; i++) {
+    if (this.widgets[i].type != "ledMatrix") {
+      visualN++;
+    }
+  }
+  this.height = this.buttonMargin + this.lineHeight * Math.max(visualN, 1);
   this.draw();
-  var index = this.widgets.length - 1;
+  var index = widget.index != null ? widget.index : (this.values.length - 1);
   this.updateValue(this.values[index], index);
 }
 
@@ -36692,66 +37894,95 @@ B_FNOrientation.prototype.constructor = B_FNOrientation;
 
 /**
  * This file contains the implementations for the blocks specific to the FinchBlox
- * color category.
+ * color category (lights + LED matrix).
  */
 
 /**
- * Block for changing the color of the LEDs on the Finch
+ * Block for changing LED color or the LED array on the Finch / SmartTEAM kit.
  * @param {number} x
  * @param {number} y
  * @param {number} level - Which difficulty level is the block for?
- * @param {boolean} beak - if true, set the beak color. Otherwise, tail.
+ * @param {string} type - "light" (both LEDs) or "LEDArray"
  */
 function B_FBColor(x, y, level, type) {
   this.level = level;
-  this.isBeak = (type == "beak");
-  this.isTail = (type == "tail");
+  this.isLight = (type == "light" || type == "beak" || type == "tail");
   this.isLEDArray = (type == "LEDArray");
   this.red = 0;
   this.green = 0;
   this.blue = 0;
   this.duration = 10;
-  //this.ledStatusString = "1111111111111111111111111";
   this.ledStatusString = "0000001010000001000101110"; //smiley face
   this.ledOffString = "0000000000000000000000000";
   this.ledArray = [];
-  CommandBlock.call(this, x, y, "color_" + level);
+  CommandBlock.call(this, x, y, (this.isLEDArray ? "screen_" : "color_") + level);
 
-  var iconPath = VectorPaths.mvFinch;
-  var iconColor = Colors.white;
-  var iconH = 40;
   if (this.isLEDArray) {
-    iconPath = VectorPaths.microbit;
-    iconColor = Colors.bbtDarkGray; //Colors.black;
-    iconH = 30;
-  }
-  this.blockIcon = new BlockIcon(this, iconPath, iconColor, "finchColor", iconH);
-  this.blockIcon.isEndOfLine = true;
-  if (this.isLEDArray) {
-    this.blockIcon.addBackgroundRect();
-  }
-  this.addPart(this.blockIcon);
-
-  if (this.isBeak || this.isTail) {
-    var icon2Path = VectorPaths.mvFinchTail;
-    if (this.isBeak) {
-      icon2Path = VectorPaths.mvFinchBeak;
-    }
-    this.blockIcon.addSecondIcon(icon2Path, Colors.iron);
-    this.ledIcon = this.blockIcon.icon.pathE2;
+    this.blockIcon = new BlockIcon(this, VectorPaths.stScreenBase, Colors.bbtDarkGray, "screen", 34);
+    this.blockIcon.isEndOfLine = true;
+    this.addPart(this.blockIcon);
+    this.ledOnGroup = null;
   } else {
-    this.ledArrayImage = GuiElements.draw.ledArray(this.blockIcon.icon.group, this.ledStatusString, 20);
+    // SmartTEAM lightbulb: recolorable fill + white outline/rays (no Finch silhouette)
+    this.blockIcon = new BlockIcon(this, VectorPaths.stLightFill, Colors.iron, "light", 32);
+    this.blockIcon.isEndOfLine = true;
+    this.blockIcon.addSecondIcon(VectorPaths.stLightOutline, Colors.white);
+    this.ledIcon = this.blockIcon.icon.pathE;
+    this.addPart(this.blockIcon);
   }
-
 }
 B_FBColor.prototype = Object.create(CommandBlock.prototype);
 B_FBColor.prototype.constructor = B_FBColor;
+
+/**
+ * Send RGB to both kit LEDs (beak then tail), sharing requestStatus across phases.
+ */
+B_FBColor.prototype.sendBothLeds = function(mem, red, green, blue, nextPhase) {
+  var device = DeviceFinch.getManager().getDevice(0);
+  if (device == null) {
+    mem.requestStatus.finished = true;
+    mem.duration = 0;
+    TitleBar.flashFinchButton();
+    return false;
+  }
+  mem.requestStatus = {};
+  mem.requestStatus.finished = false;
+  mem.requestStatus.error = false;
+  mem.requestStatus.result = null;
+  mem.ledPhase = "beak";
+  mem.ledNextPhase = nextPhase;
+  mem.ledRgb = { r: red, g: green, b: blue };
+  device.setBeak(mem.requestStatus, red, green, blue);
+  return true;
+};
+
+B_FBColor.prototype.advanceLedPhase = function(mem) {
+  if (mem.ledPhase == "beak") {
+    var device = DeviceFinch.getManager().getDevice(0);
+    if (device == null) {
+      mem.requestStatus.finished = true;
+      return "error";
+    }
+    mem.requestStatus = {};
+    mem.requestStatus.finished = false;
+    mem.requestStatus.error = false;
+    mem.requestStatus.result = null;
+    mem.ledPhase = "tail";
+    device.setTail(mem.requestStatus, "all", mem.ledRgb.r, mem.ledRgb.g, mem.ledRgb.b);
+    return "running";
+  }
+  if (mem.ledPhase == "tail") {
+    mem.ledPhase = null;
+    return mem.ledNextPhase;
+  }
+  return mem.ledNextPhase;
+};
 
 B_FBColor.prototype.startAction = function() {
   var mem = this.runMem;
   mem.timerStarted = false;
   mem.duration = 100 * this.duration;
-  mem.offSent = false; //when the block is finished executing, turn off led(s)
+  mem.offSent = false;
   mem.requestStatus = {};
   mem.requestStatus.finished = false;
   mem.requestStatus.error = false;
@@ -36759,10 +37990,10 @@ B_FBColor.prototype.startAction = function() {
 
   var device = DeviceFinch.getManager().getDevice(0);
   if (device != null) {
-    if (this.isBeak) {
-      device.setBeak(mem.requestStatus, this.red, this.green, this.blue);
-    } else if (this.isTail) {
-      device.setTail(mem.requestStatus, "all", this.red, this.green, this.blue);
+    if (this.isLight) {
+      if (!this.sendBothLeds(mem, this.red, this.green, this.blue, "lit")) {
+        return new ExecutionStatusError();
+      }
     } else if (this.isLEDArray) {
       device.setLedArray(mem.requestStatus, this.ledStatusString);
     }
@@ -36774,67 +38005,120 @@ B_FBColor.prototype.startAction = function() {
   }
 
   return new ExecutionStatusRunning();
-}
+};
 B_FBColor.prototype.updateAction = function() {
   var mem = this.runMem;
   if (!mem.timerStarted) {
     var status = mem.requestStatus;
     if (status.finished === true) {
+      if (status.error === true) {
+        return new ExecutionStatusError();
+      }
+      if (this.isLight && mem.ledPhase != null) {
+        var next = this.advanceLedPhase(mem);
+        if (next == "error") {
+          return new ExecutionStatusError();
+        }
+        if (next == "running") {
+          return new ExecutionStatusRunning();
+        }
+        if (next == "done") {
+          return new ExecutionStatusDone();
+        }
+        // next == "lit" → start duration timer
+      }
       mem.startTime = new Date().getTime();
       mem.timerStarted = true;
     } else {
-      return new ExecutionStatusRunning(); // Still running
+      return new ExecutionStatusRunning();
     }
   }
   if (new Date().getTime() >= mem.startTime + mem.duration) {
     if (!mem.offSent) {
-      //console.log("sending led off");
       mem.offSent = true;
       mem.timerStarted = false;
       mem.duration = 0;
       mem.requestStatus.finished = false;
       var device = DeviceFinch.getManager().getDevice(0);
       if (device != null) {
-        if (this.isBeak) {
-          device.setBeak(mem.requestStatus, 0, 0, 0);
-        } else if (this.isTail) {
-          device.setTail(mem.requestStatus, "all", 0, 0, 0);
+        if (this.isLight) {
+          if (!this.sendBothLeds(mem, 0, 0, 0, "done")) {
+            return new ExecutionStatusDone();
+          }
         } else if (this.isLEDArray) {
           device.setLedArray(mem.requestStatus, this.ledOffString);
         }
       } else {
         mem.requestStatus.finished = true;
       }
-      return new ExecutionStatusRunning(); // Still running
+      return new ExecutionStatusRunning();
     } else {
-      return new ExecutionStatusDone(); // Done running
+      return new ExecutionStatusDone();
     }
   } else {
-    return new ExecutionStatusRunning(); // Still running
+    return new ExecutionStatusRunning();
   }
-}
+};
 B_FBColor.prototype.updateColor = function() {
   if (this.isLEDArray) {
-    this.ledArrayImage.group.remove();
-    this.ledArrayImage = GuiElements.draw.ledArray(this.blockIcon.icon.group, this.ledStatusString, 20);
-    var iX = this.blockIcon.icon.width / (2 * this.blockIcon.icon.scaleX) - this.ledArrayImage.width / 2;
-    var iY = this.blockIcon.icon.height / (2 * this.blockIcon.icon.scaleY) - this.ledArrayImage.width / 2 - 35;
-    GuiElements.move.group(this.ledArrayImage.group, iX, iY);
-    /*
-    var values = this.ledStatusString.split("");
-    for (var i = 0; i < 25; i++) {
-      if (values[i] == "1") {
-        GuiElements.update.color(this.ledArray[i], Colors.black);
-      } else {
-        GuiElements.update.color(this.ledArray[i], Colors.iron);
-      }
-    }*/
+    this.redrawScreenLeds();
+    return;
+  }
+  var s = 255 / 100;
+  if ((this.red + this.green + this.blue) === 0) {
+    GuiElements.update.color(this.ledIcon, Colors.bbtDarkGray);
   } else {
-    var s = 255 / 100;
     this.colorHex = Colors.rgbToHex(this.red * s, this.green * s, this.blue * s);
     GuiElements.update.color(this.ledIcon, this.colorHex);
   }
-}
+};
+
+/**
+ * Overlay pink ON pixels onto stScreenBase according to ledStatusString.
+ * Keeps a transparent hit mask on top so taps/drags work on the whole icon.
+ */
+B_FBColor.prototype.redrawScreenLeds = function() {
+  if (this.blockIcon == null || this.blockIcon.icon == null) {
+    return;
+  }
+  if (this.ledOnGroup != null) {
+    this.ledOnGroup.remove();
+  }
+  var parent = this.blockIcon.icon.group;
+  this.ledOnGroup = GuiElements.create.group(0, 0, parent);
+  var geo = VectorPaths.stScreenLed;
+  var onColor = InputWidget.LedMatrix != null ? InputWidget.LedMatrix.onColor : "#E83B66";
+  var pattern = this.ledStatusString != null ? this.ledStatusString : "";
+  for (var row = 0; row < 5; row++) {
+    for (var col = 0; col < 5; col++) {
+      if (pattern.charAt(row * 5 + col) !== "1") {
+        continue;
+      }
+      var x = geo.originX + col * geo.stepX;
+      var y = geo.originY + row * geo.stepY;
+      var rect = GuiElements.draw.rect(x, y, geo.cell, geo.cell, onColor, 0.14, 0.14);
+      this.ledOnGroup.appendChild(rect);
+      TouchReceiver.addListenersChild(rect, this);
+    }
+  }
+  this.ensureScreenHitMask();
+};
+
+/**
+ * Invisible full-icon hit target so drags work even over dynamic LED rects.
+ */
+B_FBColor.prototype.ensureScreenHitMask = function() {
+  var icon = this.blockIcon.icon;
+  if (this.screenHitMask == null) {
+    this.screenHitMask = GuiElements.draw.rect(0, 0, icon.pathId.width, icon.pathId.height, "#FFFFFF");
+    this.screenHitMask.setAttributeNS(null, "pointer-events", "all");
+    GuiElements.update.opacity(this.screenHitMask, 0);
+    TouchReceiver.addListenersChild(this.screenHitMask, this);
+  }
+  // Keep mask above LED overlays.
+  icon.group.appendChild(this.screenHitMask);
+};
+
 B_FBColor.prototype.updateValues = function() {
   if (this.colorButton != null) {
     if (this.isLEDArray) {
@@ -36846,11 +38130,15 @@ B_FBColor.prototype.updateValues = function() {
     }
     this.updateColor();
 
-    if (this.colorButton.widgets.length == 2) {
-      this.duration = this.colorButton.values[1];
+    for (var i = 0; i < this.colorButton.widgets.length; i++) {
+      if (this.colorButton.widgets[i].type == "time") {
+        var vi = this.colorButton.widgets[i].index;
+        this.duration = this.colorButton.values[vi];
+        break;
+      }
     }
   }
-}
+};
 B_FBColor.prototype.addL2Button = function() {
   if (this.isLEDArray) {
     var options = ["0000001010000001000101110", //smiley face
@@ -36861,9 +38149,10 @@ B_FBColor.prototype.addL2Button = function() {
       "1111110001100011000111111", //square
       "0101011111111110111000100", //heart
       "0010001010100010101000100"
-    ] //diamond
+    ]; //diamond
     this.colorButton = new BlockButton(this);
     this.colorButton.addSlider("ledArray", options[3], options);
+    this.colorButton.addLedMatrix(0);
   } else {
     this.blue = 100;
     var color = {
@@ -36876,90 +38165,63 @@ B_FBColor.prototype.addL2Button = function() {
   }
   this.addPart(this.colorButton);
   this.updateColor();
-}
+};
 
 //********* Level 1 blocks *********
 
-function B_FBColorL1(x, y, type) {
-  B_FBColor.call(this, x, y, 1, type);
+function B_FBLightL1(x, y) {
+  B_FBColor.call(this, x, y, 1, "light");
+  this.addL2Button();
 }
-B_FBColorL1.prototype = Object.create(B_FBColor.prototype);
-B_FBColorL1.prototype.constructor = B_FBColorL1;
+B_FBLightL1.prototype = Object.create(B_FBColor.prototype);
+B_FBLightL1.prototype.constructor = B_FBLightL1;
 
-function B_FBBeakRed(x, y) {
-  B_FBColorL1.call(this, x, y, "beak");
-
-  this.red = 100;
-  this.updateColor();
-}
-B_FBBeakRed.prototype = Object.create(B_FBColorL1.prototype);
+// Legacy L1 names (XML import / old projects) → unified light block
+function B_FBBeakRed(x, y) { B_FBLightL1.call(this, x, y); }
+B_FBBeakRed.prototype = Object.create(B_FBLightL1.prototype);
 B_FBBeakRed.prototype.constructor = B_FBBeakRed;
 
-function B_FBTailRed(x, y) {
-  B_FBColorL1.call(this, x, y, "tail");
-
-  this.red = 100;
-  this.updateColor();
-}
-B_FBTailRed.prototype = Object.create(B_FBColorL1.prototype);
+function B_FBTailRed(x, y) { B_FBLightL1.call(this, x, y); }
+B_FBTailRed.prototype = Object.create(B_FBLightL1.prototype);
 B_FBTailRed.prototype.constructor = B_FBTailRed;
 
-function B_FBBeakGreen(x, y) {
-  B_FBColorL1.call(this, x, y, "beak");
-
-  this.green = 100;
-  this.updateColor();
-}
-B_FBBeakGreen.prototype = Object.create(B_FBColorL1.prototype);
+function B_FBBeakGreen(x, y) { B_FBLightL1.call(this, x, y); }
+B_FBBeakGreen.prototype = Object.create(B_FBLightL1.prototype);
 B_FBBeakGreen.prototype.constructor = B_FBBeakGreen;
 
-function B_FBTailGreen(x, y) {
-  B_FBColorL1.call(this, x, y, "tail");
-
-  this.green = 100;
-  this.updateColor();
-}
-B_FBTailGreen.prototype = Object.create(B_FBColorL1.prototype);
+function B_FBTailGreen(x, y) { B_FBLightL1.call(this, x, y); }
+B_FBTailGreen.prototype = Object.create(B_FBLightL1.prototype);
 B_FBTailGreen.prototype.constructor = B_FBTailGreen;
 
-function B_FBBeakBlue(x, y) {
-  B_FBColorL1.call(this, x, y, "beak");
-
-  this.blue = 100;
-  this.updateColor();
-}
-B_FBBeakBlue.prototype = Object.create(B_FBColorL1.prototype);
+function B_FBBeakBlue(x, y) { B_FBLightL1.call(this, x, y); }
+B_FBBeakBlue.prototype = Object.create(B_FBLightL1.prototype);
 B_FBBeakBlue.prototype.constructor = B_FBBeakBlue;
 
-function B_FBTailBlue(x, y) {
-  B_FBColorL1.call(this, x, y, "tail");
-
-  this.blue = 100;
-  this.updateColor();
-}
-B_FBTailBlue.prototype = Object.create(B_FBColorL1.prototype);
+function B_FBTailBlue(x, y) { B_FBLightL1.call(this, x, y); }
+B_FBTailBlue.prototype = Object.create(B_FBLightL1.prototype);
 B_FBTailBlue.prototype.constructor = B_FBTailBlue;
 
 //********* Level 2 blocks *********
 
 function B_FBColorL2(x, y, type) {
   B_FBColor.call(this, x, y, 2, type);
-
   this.addL2Button();
 }
 B_FBColorL2.prototype = Object.create(B_FBColor.prototype);
 B_FBColorL2.prototype.constructor = B_FBColorL2;
 
-function B_FBBeakL2(x, y) {
-  B_FBColorL2.call(this, x, y, "beak");
+function B_FBLightL2(x, y) {
+  B_FBColorL2.call(this, x, y, "light");
 }
-B_FBBeakL2.prototype = Object.create(B_FBColorL2.prototype);
+B_FBLightL2.prototype = Object.create(B_FBColorL2.prototype);
+B_FBLightL2.prototype.constructor = B_FBLightL2;
+
+function B_FBBeakL2(x, y) { B_FBLightL2.call(this, x, y); }
+B_FBBeakL2.prototype = Object.create(B_FBLightL2.prototype);
 B_FBBeakL2.prototype.constructor = B_FBBeakL2;
 
-function B_FBTailL2(x, y) {
-  B_FBColorL2.call(this, x, y, "tail");
-}
-B_FBTailL2.prototype = Object.create(B_FBColorL2.prototype);
+function B_FBTailL2(x, y) { B_FBLightL2.call(this, x, y); }
+B_FBTailL2.prototype = Object.create(B_FBLightL2.prototype);
 B_FBTailL2.prototype.constructor = B_FBTailL2;
 
 function B_FBLedArrayL2(x, y) {
@@ -36977,24 +38239,22 @@ function B_FBColorL3(x, y, type) {
   this.addL2Button();
 
   this.colorButton.addSlider("time", this.duration, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
-  /*
-   this.durationButton = new BlockButton(this);
-   this.durationButton.addSlider("time", this.duration, [1, 5, 10]);
-   this.addPart(this.durationButton);*/
 }
 B_FBColorL3.prototype = Object.create(B_FBColor.prototype);
 B_FBColorL3.prototype.constructor = B_FBColorL3;
 
-function B_FBBeakL3(x, y) {
-  B_FBColorL3.call(this, x, y, "beak");
+function B_FBLightL3(x, y) {
+  B_FBColorL3.call(this, x, y, "light");
 }
-B_FBBeakL3.prototype = Object.create(B_FBColorL3.prototype);
+B_FBLightL3.prototype = Object.create(B_FBColorL3.prototype);
+B_FBLightL3.prototype.constructor = B_FBLightL3;
+
+function B_FBBeakL3(x, y) { B_FBLightL3.call(this, x, y); }
+B_FBBeakL3.prototype = Object.create(B_FBLightL3.prototype);
 B_FBBeakL3.prototype.constructor = B_FBBeakL3;
 
-function B_FBTailL3(x, y) {
-  B_FBColorL3.call(this, x, y, "tail");
-}
-B_FBTailL3.prototype = Object.create(B_FBColorL3.prototype);
+function B_FBTailL3(x, y) { B_FBLightL3.call(this, x, y); }
+B_FBTailL3.prototype = Object.create(B_FBLightL3.prototype);
 B_FBTailL3.prototype.constructor = B_FBTailL3;
 
 function B_FBLedArrayL3(x, y) {
@@ -37020,7 +38280,13 @@ function B_FBMotion(x, y, direction, level) {
   CommandBlock.call(this, x, y, "motion_" + level);
 
   var icon = VectorPaths[B_FBMotion.iconPaths[direction]];
-  var blockIcon = new BlockIcon(this, icon, Colors.white, "moveFinch", 27);
+  // Turns are taller/thinner art; scale up so visual weight matches forward/back
+  var iconH = 27;
+  if (direction === "left" || direction === "right") {
+    var targetW = VectorIcon.computeWidth(VectorPaths.stForward, 27);
+    iconH = Math.min(52, targetW * icon.height / icon.width) * 0.95;
+  }
+  var blockIcon = new BlockIcon(this, icon, Colors.white, "moveFinch", iconH);
   blockIcon.isEndOfLine = true;
   this.addPart(blockIcon);
 }
@@ -37181,10 +38447,10 @@ B_FBMotion.prototype.updateValues = function() {
   }
 }
 B_FBMotion.iconPaths = {
-  "forward": "mjForward",
-  "right": "mjTurnRight",
-  "backward": "mjBack",
-  "left": "mjTurnLeft"
+  "forward": "stForward",
+  "right": "stTurnRight",
+  "backward": "stBack",
+  "left": "stTurnLeft"
 }
 
 //****  Level 1 Blocks ****//

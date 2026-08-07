@@ -43,23 +43,36 @@ SaveManager.backendOpen = function(fileName, data) {
  * @param {string} data - A string of XML data
  * TODO: Provide a way for loading to fail if critical tags are missing rather than opening a blank document
  */
-SaveManager.loadData = function(data) {
+SaveManager.loadData = function(data, isFallback) {
   if (data.length > 0) {
     if (data.charAt(0) === "%") {
       // The data haas an extra layer of encoding that needs to be removed
       data = decodeURIComponent(data);
     }
     const xmlDoc = XmlWriter.openDoc(data);
-    const project = XmlWriter.findElement(xmlDoc, "project");
+    const project = xmlDoc == null ? null : XmlWriter.findElement(xmlDoc, "project");
     if (project == null) {
-      // There's no project tag.  The data is seriously corrupt, so we just open an empty file
-      SaveManager.loadData(SaveManager.emptyProgData);
+      /* Corrupt: unparseable, or parseable with no <project> tag. It still opens
+       * empty — there is nothing else to show — but silence here was the problem:
+       * the child saw their file in the list, opened it, and found a blank canvas
+       * with no hint that anything had gone wrong. Saying so is the difference
+       * between "the file is damaged" and "the app lost my work". */
+      if (!isFallback) {
+        DialogManager.showAlertDialog(AppName,
+          Language.getStr("file_corrupt"), Language.getStr("OK"));
+      }
+      // isFallback guards the recursion: were emptyProgData ever malformed, this
+      // would call itself forever.
+      if (!isFallback) {
+        SaveManager.loadData(SaveManager.emptyProgData, true);
+      }
     } else {
       (DebugOptions.safeFunc(CodeManager.importXml))(project);
     }
-  } else {
-    // There's no data at all, so open an empty file
-    SaveManager.loadData(SaveManager.emptyProgData);
+  } else if (!isFallback) {
+    // There's no data at all, so open an empty file. Not an error: a new project
+    // legitimately has none.
+    SaveManager.loadData(SaveManager.emptyProgData, true);
   }
 };
 
@@ -530,7 +543,7 @@ SaveManager.saveAsNew = function() {
 SaveManager.markEdited = function() {
   CodeManager.updateModified();
   if (FinchBlox && typeof ProgramModeManager !== "undefined") {
-    // El canvas cambió: el mapa de marcadores de la placa quedó viejo
+    // The canvas changed, so the board's marker map is stale
     ProgramModeManager.invalidateMarkers();
   }
   if (SaveManager.fileName != null) {

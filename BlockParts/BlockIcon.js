@@ -23,6 +23,12 @@ function BlockIcon(parent, pathId, color, altText, height, rotation) {
   this.attachIconListeners();
   this.isSlot = false;
   this.xOffset = 0;
+  /* Initialised even though only the two-icon layouts use them: move() adds these
+   * to a coordinate whenever icon2 is set, and an undefined offset yields NaN,
+   * which makes the browser drop the whole transform and leave the icon at the
+   * group origin. That is what drew the forward-until-obstacle block wrong. */
+  this.icon2xOffset = 0;
+  this.icon2yOffset = 0;
 }
 BlockIcon.prototype = Object.create(BlockPart.prototype);
 BlockIcon.prototype.constructor = BlockIcon;
@@ -210,15 +216,22 @@ BlockIcon.prototype.addObstacle = function(color) {
   const r = 1.5; //2;
   const margin = 5;
   if (w > this.width) {
+    // The bar is wider than the icon: the icon centres inside the bar's width.
     this.xOffset = 0;
     this.icon2xOffset = w / 2 - this.width / 2;
     this.width = w;
   } else {
+    // The icon is the wider one, so it needs no horizontal shift — but the offset
+    // still has to be a number. Leaving it unset is what produced translate(NaN).
+    this.icon2xOffset = 0;
     this.xOffset = this.width / 2 - w / 2;
   }
   this.xOffset -= o;
   this.icon2yOffset = h + margin;
   this.height += h + margin;
+  /* icon2 aliases icon on purpose: this layout has a single icon that needs the
+   * vertical shift move() applies to icon2, so it is reused rather than adding a
+   * separate offset for the primary icon. xOffset then only positions the bar. */
   this.icon2 = this.icon;
 
   this.obstacle = GuiElements.draw.rect((-o), 0, w + 2 * o, h, color, r, r);

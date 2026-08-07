@@ -11,18 +11,18 @@ function compileOk(firstBlocks, options) {
   return result;
 }
 
-test("programa vacío -> E_EMPTY", function() {
+test("an empty program -> E_EMPTY", function() {
   const result = ProgramCompiler.compile([]);
   assert.strictEqual(result.ir, null);
   assert.deepStrictEqual(result.errors, [{ code: "E_EMPTY" }]);
 });
 
-test("stack con solo un hat (sin cuerpo) -> E_EMPTY", function() {
+test("a stack with only a hat and no body -> E_EMPTY", function() {
   const result = ProgramCompiler.compile([F.flagHat()]);
   assert.deepStrictEqual(result.errors, [{ code: "E_EMPTY" }]);
 });
 
-test("nota simple -> tone", function() {
+test("a single note -> tone", function() {
   const result = compileOk([F.sound(60, 5)]);
   assert.strictEqual(result.ir.handlers.length, 1);
   assert.strictEqual(result.ir.handlers[0].trigger, "start");
@@ -31,7 +31,7 @@ test("nota simple -> tone", function() {
   ]);
 });
 
-test("todas las clases de nota comparten encoder", function() {
+test("every note class shares one encoder", function() {
   const names = ["B_FBC", "B_FBD", "B_FBE", "B_FBF", "B_FBG", "B_FBA",
     "B_FBSoundL2", "B_FBSoundL3"];
   for (const name of names) {
@@ -64,12 +64,12 @@ test("tail usa target 1", function() {
   assert.strictEqual(result.ir.handlers[0].body[0].target, 1);
 });
 
-test("wait -> décimas de segundo a ms", function() {
+test("wait -> tenths of a second into ms", function() {
   const result = compileOk([F.wait(30)]);
   assert.deepStrictEqual(result.ir.handlers[0].body, [{ op: "wait", ms: 3000 }]);
 });
 
-test("repeat anidado dentro de forever", function() {
+test("a repeat nested inside a forever", function() {
   const inner = F.repeat(3, F.sound(60, 1));
   const outer = F.forever(inner);
   const result = compileOk([outer]);
@@ -84,7 +84,7 @@ test("repeat anidado dentro de forever", function() {
   }]);
 });
 
-test("repeat con cuerpo vacío no explota", function() {
+test("a repeat with an empty body does not blow up", function() {
   const result = compileOk([F.chain(F.repeat(5, null), F.wait(10))]);
   assert.deepStrictEqual(result.ir.handlers[0].body, [
     { op: "repeat", count: 5, body: [] },
@@ -92,7 +92,7 @@ test("repeat con cuerpo vacío no explota", function() {
   ]);
 });
 
-test("bloques después de forever -> warning y se descartan", function() {
+test("blocks after a forever -> a warning, and they are dropped", function() {
   const first = F.chain(F.forever(F.wait(1)), F.sound(60, 1));
   const result = compileOk([first]);
   assert.strictEqual(result.warnings.length, 1);
@@ -101,14 +101,14 @@ test("bloques después de forever -> warning y se descartan", function() {
   assert.strictEqual(result.ir.handlers[0].body[0].op, "repeat");
 });
 
-test("hat de bandera -> trigger start, cuerpo sin el hat", function() {
+test("the flag hat -> a start trigger, with the hat out of the body", function() {
   const result = compileOk([F.chain(F.flagHat(), F.sound(60, 5))]);
   assert.strictEqual(result.ir.handlers[0].trigger, "start");
   assert.strictEqual(result.ir.handlers[0].body.length, 1);
   assert.strictEqual(result.ir.handlers[0].body[0].op, "tone");
 });
 
-test("hats dark/clap -> triggers con umbrales del modo live", function() {
+test("the dark/clap hats -> triggers carrying live mode's thresholds", function() {
   const result = compileOk([
     F.chain(F.darkHat(), F.wait(1)),
     F.chain(F.clapHat(), F.wait(1))
@@ -119,7 +119,7 @@ test("hats dark/clap -> triggers con umbrales del modo live", function() {
   assert.strictEqual(result.ir.handlers[1].param, 50);
 });
 
-test("dos stacks -> dos handlers en orden", function() {
+test("two stacks -> two handlers, in order", function() {
   const result = compileOk([
     F.chain(F.flagHat(), F.sound(60, 1)),
     F.wait(20)
@@ -129,7 +129,7 @@ test("dos stacks -> dos handlers en orden", function() {
   assert.strictEqual(result.ir.handlers[1].body[0].op, "wait");
 });
 
-test("bloque desconocido -> E_UNSUPPORTED_BLOCK con el nombre", function() {
+test("an unknown block -> E_UNSUPPORTED_BLOCK naming it", function() {
   const bogus = { blockTypeName: "B_Bogus", nextBlock: null };
   const result = ProgramCompiler.compile([bogus]);
   assert.strictEqual(result.ir, null);
@@ -137,21 +137,21 @@ test("bloque desconocido -> E_UNSUPPORTED_BLOCK con el nombre", function() {
     { code: "E_UNSUPPORTED_BLOCK", blockType: "B_Bogus" });
 });
 
-test("bloque desconocido dentro de un repeat también falla", function() {
+test("an unknown block inside a repeat fails too", function() {
   const bogus = { blockTypeName: "B_Bogus", nextBlock: null };
   const result = ProgramCompiler.compile([F.repeat(2, bogus)]);
   assert.strictEqual(result.ir, null);
   assert.strictEqual(result.errors[0].code, "E_UNSUPPORTED_BLOCK");
 });
 
-test("motores rechazados en slice on-board", function() {
+test("motors rejected on the on-board slice", function() {
   const fwd = F.motion("B_FBForward", 50, 50, 497, 497);
   const result = ProgramCompiler.compile([fwd]);
   assert.strictEqual(result.ir, null);
   assert.strictEqual(result.errors[0].code, "E_UNSUPPORTED_ON_BOARD");
 });
 
-test("motores aceptados con allowMotors", function() {
+test("motors accepted with allowMotors", function() {
   const fwd = F.motion("B_FBForwardL2", 50, 50, 994, 994);
   const result = compileOk([fwd], { allowMotors: true });
   assert.deepStrictEqual(result.ir.handlers[0].body, [{
@@ -159,7 +159,7 @@ test("motores aceptados con allowMotors", function() {
   }]);
 });
 
-test("más de 4 stacks start -> E_TOO_MANY_STACKS", function() {
+test("more start stacks than the limit -> E_TOO_MANY_STACKS", function() {
   const stacks = [];
   for (let i = 0; i < 5; i++) {
     stacks.push(F.wait(1));
@@ -168,9 +168,9 @@ test("más de 4 stacks start -> E_TOO_MANY_STACKS", function() {
   assert.strictEqual(result.errors[0].code, "E_TOO_MANY_STACKS");
 });
 
-/* ---- Marcadores de bloque (options.emitMarkers) ---- */
+/* ---- Block markers (options.emitMarkers) ---- */
 
-test("emitMarkers: secuencia plana intercala marks y devuelve el mapa", function() {
+test("emitMarkers: a flat sequence interleaves marks and returns the map", function() {
   const s1 = F.sound(60, 1);
   const s2 = F.sound(62, 1);
   s1.nextBlock = s2;
@@ -186,7 +186,7 @@ test("emitMarkers: secuencia plana intercala marks y devuelve el mapa", function
   assert.strictEqual(result.markerMap[1], s2);
 });
 
-test("emitMarkers: bloques dentro de repeat quedan marcados", function() {
+test("emitMarkers: blocks inside a repeat get marked too", function() {
   const inner = F.sound(60, 1);
   const rep = F.repeat(3, inner);
   const result = compileOk([rep], { emitMarkers: true });
@@ -199,13 +199,13 @@ test("emitMarkers: bloques dentro de repeat quedan marcados", function() {
   assert.strictEqual(result.markerMap[1], inner);
 });
 
-test("sin emitMarkers no hay marks ni mapa", function() {
+test("without emitMarkers there are no marks and no map", function() {
   const result = compileOk([F.sound(60, 1)]);
   assert.strictEqual(result.markerMap, null);
   assert.strictEqual(result.ir.handlers[0].body[0].op, "tone");
 });
 
-test("emitMarkers: el mapa cubre múltiples stacks en orden", function() {
+test("emitMarkers: the map spans several stacks, in order", function() {
   const a = F.wait(1);
   const b = F.sound(60, 1);
   const result = compileOk([a, b], { emitMarkers: true });

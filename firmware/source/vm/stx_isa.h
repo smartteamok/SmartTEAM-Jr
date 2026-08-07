@@ -50,6 +50,19 @@ extern "C" {
 #define STX_HEADER_SIZE 12            // bytes de header antes de la tabla de eventos
 #define STX_EVENT_ENTRY_SIZE 4        // bytes por entrada de la tabla de eventos
 #define STX_MAX_IMAGE_SIZE 2048       // tamaño máximo de la imagen completa (header incluido)
+/* CONTEXTS is how many programs the board really runs, and it is the single
+ * source of truth for that number: the editor derives its stack limit from it
+ * (gen_js_constants.py -> STXConstants.js -> ProgramCompiler.MAX_HANDLERS ->
+ * the drag limit in BlockMoveManager). Raising it to 8 is this line plus
+ * `python3 tools/gen_js_constants.py`, and costs sizeof(stx_context_t) = 52 B
+ * of RAM per extra context; no execution code changes, since every loop in the
+ * VM iterates over STX_MAX_CONTEXTS already.
+ *
+ * It sits below EVENTS on purpose for now (the deployed hex runs 4). While they
+ * differ, stx_vm_start assigns contexts only to the first CONTEXTS events and
+ * drops the rest with no fault — what keeps that unreachable is the editor cap,
+ * which never emits more handlers than CONTEXTS. Anything that writes images
+ * without going through the editor must enforce the same bound. */
 #define STX_MAX_EVENTS 8              // entradas máximas en la tabla de eventos
 #define STX_MAX_CONTEXTS 4            // contextos de ejecución concurrentes en la VM
 #define STX_MAX_LOOP_DEPTH 8          // profundidad máxima de loops anidados por contexto

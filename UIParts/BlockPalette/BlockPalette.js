@@ -34,8 +34,8 @@ BlockPalette.setGraphics = function() {
 
   // Dimensions for the region with CategoryBNs
   if (FinchBlox) {
-    //Bandeja flotante SmartTEAM: separada de los bordes, tinte por categoría
-    //y muesca cóncava en el borde superior donde encastran las pestañas
+    //SmartTEAM floating tray: inset from the edges, tinted per category,
+    //with a concave notch along the top edge where the category tabs slot in
     BlockPalette.inset = 14;
     BlockPalette.cornerRadius = 26;
     BlockPalette.notchDepth = 34; //cuánto BAJA el borde superior en el centro
@@ -48,7 +48,7 @@ BlockPalette.setGraphics = function() {
     BlockPalette.catW = 300;
     BlockPalette.catX = GuiElements.width / 2 - BlockPalette.catW / 2;
     BlockPalette.catH = 56; //alto de las pestañas
-    //El borde inferior de la pestaña apoya en el piso de la muesca
+    //The tab's bottom edge rests on the floor of the notch
     BlockPalette.catY = BlockPalette.y + BlockPalette.notchDepth - BlockPalette.catH;
     BlockPalette.blockMargin = 20; // The horizontal spacing between Blocks
     BlockPalette.trashHeight = BlockPalette.height * 0.6;
@@ -125,7 +125,7 @@ BlockPalette.createCatBg = function() {
 BlockPalette.createPalBg = function() {
   let BP = BlockPalette;
   if (FinchBlox) {
-    //Bandeja flotante con esquinas redondeadas y muesca para las pestañas
+    //Floating tray with rounded corners and a notch for the tabs
     BP.palRect = GuiElements.create.path(GuiElements.layers.paletteBG);
     BP.palRect.setAttributeNS(null, "fill", BP.bg);
     BP.palRect.setAttributeNS(null, "d", BP.trayPathD());
@@ -136,9 +136,9 @@ BlockPalette.createPalBg = function() {
 };
 
 /**
- * Contorno de la bandeja FinchBlox: rectángulo redondeado con muesca cóncava
- * en el borde superior donde encastran las pestañas de categoría. Comandos
- * absolutos, simétrico.
+ * Outline of the FinchBlox tray: a rounded rectangle with a concave notch
+ * along the top edge where the category tabs slot in. Absolute commands,
+ * symmetric.
  * @return {string} - atributo "d" del path
  */
 BlockPalette.trayPathD = function() {
@@ -151,7 +151,7 @@ BlockPalette.trayPathD = function() {
   const sh = BP.notchShoulder;
   const cx = BP.width / 2;
 
-  //La muesca se adapta a la cantidad de pestañas visibles del nivel actual
+  //The notch adapts to how many tabs the current level shows
   let tabCount = 3;
   if (BP.categories != null && BP.categories.length > 0 && typeof LevelManager !== "undefined") {
     let visible = 0;
@@ -195,7 +195,7 @@ BlockPalette.createCategories = function() {
   const catCount = BlockList.catCount();
 
   if (FinchBlox) {
-    // Agrupa pestañas por nivel y centra cada fila (L1/L2/L3 pueden tener distinta cantidad)
+    // Groups tabs by level and centres each row (L1/L2/L3 may hold different counts)
     const byLevel = {};
     for (let i = 0; i < catCount; i++) {
       const id = BlockList.getCatId(i);
@@ -288,7 +288,7 @@ BlockPalette.showTrash = function() {
     BP.trash = GuiElements.create.group(0, 0);
     let trashBg;
     if (FinchBlox) {
-      //Usa el tinte de la categoría activa para fundirse con la bandeja
+      //Uses the active category's tint so it blends into the tray
       let bgColor = BP.bg;
       if (BP.selectedCat != null && Colors.blockPalette[BP.selectedCat.id] != null) {
         bgColor = Colors.blockPalette[BP.selectedCat.id];
@@ -360,6 +360,36 @@ BlockPalette.passRecursively = function(functionName) {
 };
 
 /**
+ * Greys out the hat blocks in the palette when the tab already holds as many
+ * programs as the board can run, and restores them when it does not.
+ *
+ * The limit itself is enforced on drop (BlockMoveManager), but enforcement alone
+ * is not feedback: the extra hat used to disappear when released, with no way for
+ * a child to tell that from the app losing their block. Greying makes the ceiling
+ * visible before they try.
+ *
+ * Only hats are greyed. Command blocks stay draggable so a child can keep
+ * building inside the programs they already have.
+ */
+BlockPalette.updateProgramLimit = function() {
+  if (!FinchBlox || BlockPalette.categories == null ||
+      typeof BlockMoveManager === "undefined") {
+    return;
+  }
+  const atLimit = BlockMoveManager.wouldExceedProgramLimit(null);
+  BlockPalette.categories.forEach(function(category) {
+    if (category.displayStacks == null) {
+      return;
+    }
+    category.displayStacks.forEach(function(stack) {
+      if (stack.firstBlock != null && stack.firstBlock.hasHat) {
+        stack.setDimmed(atLimit);
+      }
+    });
+  });
+};
+
+/**
  * Reloads all categories.  Called when a new file is opened.
  */
 BlockPalette.refresh = function() {
@@ -375,7 +405,7 @@ BlockPalette.setLevel = function() {
   BlockPalette.categories.forEach(function(category) {
     category.button.setHidden();
   })
-  //La muesca de la bandeja se adapta a la cantidad de pestañas del nivel
+  //The tray's notch adapts to the number of tabs in the level
   BlockPalette.palRect.setAttributeNS(null, "d", BlockPalette.trayPathD());
   //  switch (LevelMenu.currentLevel){
   switch (LevelManager.currentLevel) {
