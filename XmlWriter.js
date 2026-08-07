@@ -93,13 +93,22 @@ XmlWriter.downloadDoc = function(xmlDoc) {
 };
 
 /**
- * Creates a Document from an XML string
+ * Creates a Document from an XML string, or null if the string is not valid XML.
+ *
+ * DOMParser does not throw on malformed input: it hands back a document whose root
+ * is <parsererror>. Callers that did not know that treated a corrupt file as an
+ * empty-but-valid one, which is how a damaged save opened as a blank canvas with no
+ * explanation.
  * @param {string} xmlString
- * @return {Document}
+ * @return {Document|null}
  */
 XmlWriter.openDoc = function(xmlString) {
   const parser = new DOMParser();
-  return parser.parseFromString(xmlString, "text/xml");
+  const doc = parser.parseFromString(xmlString, "text/xml");
+  if (doc == null || doc.getElementsByTagName("parsererror").length > 0) {
+    return null;
+  }
+  return doc;
 };
 
 /**

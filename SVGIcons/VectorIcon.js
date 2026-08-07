@@ -106,7 +106,61 @@ VectorIcon.prototype.draw = function() {
 	this.pathE = this.pathEs[0];
 };
 
+/* Diagnostic instrumentation, meant to be removed once the layout bug it exposes
+ * is fixed.
+ *
+ * A non-finite coordinate here yields transform="translate(NaN,...)", which the
+ * browser rejects outright: the icon silently fails to position and the console
+ * shows only `<g> attribute transform: Expected number`, naming neither the icon
+ * nor the computation that produced it. setTransform is the one choke point every
+ * path goes through (constructor via draw, update, move), so checking here
+ * catches all of them and the attached stack points at the real caller. */
+VectorIcon.BAD_TRANSFORM_LOG_LIMIT = 5;
+VectorIcon.badTransformCount = 0;
+
+/** Best-effort name of a VectorPaths entry, for a readable diagnostic. */
+VectorIcon.pathName = function(pathId) {
+  if (pathId == null) {
+    return "(no pathId)";
+  }
+  if (typeof VectorPaths !== "undefined") {
+    const keys = Object.keys(VectorPaths);
+    for (let i = 0; i < keys.length; i++) {
+      if (VectorPaths[keys[i]] === pathId) {
+        return keys[i];
+      }
+    }
+  }
+  return "(unknown, " + pathId.width + "x" + pathId.height + ")";
+};
+
+VectorIcon.prototype.warnIfNotFinite = function() {
+  if (VectorIcon.badTransformCount >= VectorIcon.BAD_TRANSFORM_LOG_LIMIT) {
+    return;
+  }
+  // Only the fields that actually get interpolated into the transform string.
+  const fields = ["x", "y", "scaleX", "scaleY"];
+  if (this.rotation != null) {
+    fields.push("width", "height", "rotation");
+  }
+  const bad = fields.filter(function(f) { return !isFinite(this[f]); }, this);
+  if (bad.length === 0) {
+    return;
+  }
+  VectorIcon.badTransformCount++;
+  // Not JSON.stringify: it turns NaN and Infinity into null, hiding the very
+  // value we are after.
+  const values = fields.map(function(f) {
+    return f + "=" + String(this[f]);
+  }, this).join(" ");
+  console.error("[VectorIcon] non-finite transform values (" +
+    bad.join(", ") + ") on icon '" + VectorIcon.pathName(this.pathId) +
+    "': " + values + "\ncaller stack:",
+    new Error("invalid transform").stack);
+};
+
 VectorIcon.prototype.setTransform = function() {
+  this.warnIfNotFinite();
   if (this.rotation != null) {
     this.group.setAttributeNS(null, "transform", "rotate(" + this.rotation + ", " + (this.x+(this.width/2)) + ", " + (this.y+(this.height/2)) + ") translate(" + this.x + "," + this.y + ") scale(" + this.scaleX + ", " + this.scaleY + ")");
   } else {

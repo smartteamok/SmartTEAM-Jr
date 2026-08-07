@@ -718,6 +718,13 @@ TouchReceiver.touchmove = function(e) {
       /* If the user drags a Block that is in a DisplayStack,
        the DisplayStack copies to a new BlockStack, which can be dragged. */
       if (TR.targetType === "displayStack") {
+        // A dimmed palette block cannot be dragged: the tab already holds as many
+        // programs as the board can run. Refusing here, rather than letting the
+        // block be picked up and vanish on release, is what makes the limit
+        // readable. See BlockPalette.updateProgramLimit.
+        if (TR.target.stack.dimmed) {
+          return;
+        }
         const x = TR.target.stack.getAbsX();
         const y = TR.target.stack.getAbsY();
         // The first block of the duplicated BlockStack is the new target.

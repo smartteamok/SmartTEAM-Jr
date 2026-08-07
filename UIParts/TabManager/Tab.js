@@ -64,11 +64,27 @@ Tab.prototype.activate = function() {
 };
 
 /**
+ * The number of top-level stacks is the number of programs the board will be
+ * asked to run, so the palette has to reflect the limit whenever it changes.
+ * addStack/removeStack are the only two places that number moves.
+ *
+ * Guarded because both run during startup and while loading a file, before the
+ * palette exists.
+ */
+Tab.programCountChanged = function() {
+  if (typeof BlockPalette !== "undefined" &&
+      typeof BlockPalette.updateProgramLimit === "function") {
+    BlockPalette.updateProgramLimit();
+  }
+};
+
+/**
  * Adds a stack to the list.  Called by stack constructor.
  * @param {BlockStack} stack
  */
 Tab.prototype.addStack = function(stack) {
   this.stackList.push(stack);
+  Tab.programCountChanged();
 };
 
 /**
@@ -78,6 +94,7 @@ Tab.prototype.addStack = function(stack) {
 Tab.prototype.removeStack = function(stack) {
   const index = this.stackList.indexOf(stack);
   this.stackList.splice(index, 1);
+  Tab.programCountChanged();
 };
 
 /**
@@ -155,7 +172,7 @@ Tab.prototype.fitBox = function(box) {
  * Adds a new start block to the tab. Used in FinchBlox.
  */
 Tab.prototype.addStartBlock = function() {
-  //Centrado verticalmente en la zona de programación (entre barra y bandeja)
+  //Centred vertically in the programming area, between the title bar and the tray
   let blockY = TitleBar.height + (BlockPalette.y - TitleBar.height) / 2 - 30;
   let stack = new BlockStack(new B_WhenFlagTapped(50, blockY), this);
 }

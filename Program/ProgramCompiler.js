@@ -1,52 +1,71 @@
 "use strict";
 
 /**
- * ProgramCompiler compila el árbol vivo de bloques FinchBlox a una
- * representación intermedia (IR) JSON, independiente del bytecode.
- * Es puro: no toca GuiElements/TabManager/DeviceFinch, así que puede
- * testearse en Node con fixtures duck-typed. Quien junta los stacks del
- * editor (TabManager.activeTab.stackList) es ProgramModeManager.
+ * ProgramCompiler turns the live FinchBlox block tree into a JSON intermediate
+ * representation (IR) that is independent of the bytecode.
+ * It is pure: it touches no GuiElements/TabManager/DeviceFinch, so it can be tested
+ * under Node with duck-typed fixtures. Collecting the editor's stacks
+ * (TabManager.activeTab.stackList) is ProgramModeManager's job.
  *
  * IR = { version: 1, handlers: [Handler] }
  * Handler = { trigger: "start"|"dark"|"loud", param: number, body: [Op] }
  * Op:
- *   {op:"tone", note, ms}                — bloqueante (el assembler emite TONE+WAIT)
- *   {op:"ledMatrix", pattern}            — string de 25 chars "0"/"1", row-major
+ *   {op:"tone", note, ms}                — blocking (the assembler emits TONE+WAIT)
+ *   {op:"ledMatrix", pattern}            — a 25-char "0"/"1" string, row-major
  *   {op:"ledClear"}
- *   {op:"rgb", target, r, g, b}          — target 0=beak 1=tail; valores 0-100
+ *   {op:"rgb", target, r, g, b}          — target 0=beak 1=tail; values 0-100
  *   {op:"wait", ms}
  *   {op:"motors", speedL, speedR, ticksL, ticksR}   — kit v2
  *   {op:"motorsFree", speedL, speedR}               — kit v2
  *   {op:"motorsStop"}                               — kit v2
  *   {op:"waitUntil", cond, param}        — cond: "dark"|"loud"|"obstacle"
  *   {op:"repeat", count, body:[Op]}      — count 0 = forever
- *   {op:"mark", index}                   — bloque en ejecución (options.emitMarkers)
+ *   {op:"mark", index}                   — the running block (options.emitMarkers)
  *
- * Con options.emitMarkers el resultado incluye markerMap: array índice→Block
- * (las referencias a Block viven solo en la app; NO forman parte del IR, que
- * sigue siendo puro/serializable).
+ * With options.emitMarkers the result also carries markerMap: an index→Block array
+ * (Block references live only in the app; they are NOT part of the IR, which
+ * stays pure and serialisable).
  */
 function ProgramCompiler() {}
 
-/** Umbrales idénticos al modo live (BlockDefs_control.js:558-589) */
+/* Dual-load, same as BytecodeAssembler: STX is a global in the browser (script
+ * tag) but has to be required under Node, where the tests run. */
+ProgramCompiler.STX = (function() {
+  if (typeof STX !== "undefined") {
+    return STX;
+  }
+  if (typeof require !== "undefined") {
+    return require("./STXConstants.js");
+  }
+  return null;
+})();
+
+/** Thresholds identical to live mode (BlockDefs_control.js:558-589). */
 ProgramCompiler.DARK_THRESHOLD = 5;
 ProgramCompiler.LOUD_THRESHOLD = 50;
-/** Umbral de obstáculo en cm (BlockDefs_fbMotion.js, B_FBForwardUntilObstacle) */
+/** Obstacle threshold in cm (BlockDefs_fbMotion.js, B_FBForwardUntilObstacle). */
 ProgramCompiler.OBSTACLE_THRESHOLD_CM = 20;
-/** Límites que impone la VM (ver firmware/source/vm/stx_isa.h) */
-ProgramCompiler.MAX_HANDLERS = 8;
-ProgramCompiler.MAX_START_HANDLERS = 4;
+/* Handler limit imposed by the VM. It is STX.MAX_CONTEXTS, not STX.MAX_EVENTS:
+ * the image format holds up to MAX_EVENTS (8) entries, but stx_vm_start only
+ * assigns a context to the first MAX_CONTEXTS (4) of them and drops the rest
+ * with no fault or warning (firmware/source/vm/stx_vm.c). Compiling up to
+ * MAX_EVENTS produced programs that transferred and persisted fine while their
+ * 5th..8th stacks silently never ran. Derived from the generated constants so
+ * this tracks the firmware automatically if the VM gains contexts — do not
+ * hardcode. */
+ProgramCompiler.MAX_HANDLERS = ProgramCompiler.STX.MAX_CONTEXTS;
+ProgramCompiler.MAX_START_HANDLERS = ProgramCompiler.STX.MAX_CONTEXTS;
 
-/** Máximo de marcadores por programa (OP_MARK lleva índice u8) */
+/** Maximum markers per program (OP_MARK carries a u8 index). */
 ProgramCompiler.MAX_MARKERS = 256;
 
-/* Estado de marcadores de la compilación en curso (el compilador es síncrono);
- * null = sin marcadores */
+/* Marker state for the compilation in progress (the compiler is synchronous);
+ * null = no markers. */
 ProgramCompiler._markerMap = null;
 
 /**
- * Punto de entrada.
- * @param {Array} firstBlocks - primer Block de cada stack top-level, en orden
+ * Entry point.
+ * @param {Array} firstBlocks - the first Block of each top-level stack, in order
  * @param {object} [options] - {allowMotors: boolean, emitMarkers: boolean}
  * @return {{ir: object|null, markerMap: Array|null, errors: Array, warnings: Array}}
  */
@@ -90,8 +109,8 @@ ProgramCompiler.compile = function(firstBlocks, options) {
 };
 
 /**
- * Compila un stack completo a un Handler. El hat (si hay) define el trigger;
- * un stack sin hat es un handler "start" directo (niveles 1-2).
+ * Compiles a whole stack into a Handler. The hat, if any, sets the trigger; a stack
+ * with no hat is a plain "start" handler (levels 1-2).
  */
 ProgramCompiler.compileStack = function(firstBlock, errors, warnings) {
   let trigger = "start";
@@ -104,7 +123,7 @@ ProgramCompiler.compileStack = function(firstBlock, errors, warnings) {
     param = hat.param;
     bodyStart = firstBlock.nextBlock;
   } else if (firstBlock.isStartBlock) {
-    // Hat desconocido (ej. bloque nuevo de BirdBlox): error explícito
+    // Unknown hat (a new BirdBlox block, say): report it rather than guess
     errors.push(ProgramCompiler.unsupportedError(firstBlock.blockTypeName));
     return null;
   }
@@ -114,9 +133,9 @@ ProgramCompiler.compileStack = function(firstBlock, errors, warnings) {
 };
 
 /**
- * Sigue la cadena nextBlock y concatena la IR de cada bloque.
- * @param {object|null} block - primer Block de la secuencia
- * @return {Array} lista de Ops
+ * Walks the nextBlock chain and concatenates each block's IR.
+ * @param {object|null} block - the first Block of the sequence
+ * @return {Array} a list of Ops
  */
 ProgramCompiler.compileSequence = function(block, errors, warnings) {
   const ops = [];
@@ -154,7 +173,7 @@ ProgramCompiler.unsupportedError = function(blockTypeName) {
   return { code: "E_UNSUPPORTED_BLOCK", blockType: blockTypeName };
 };
 
-/** Validaciones globales post-compilación */
+/** Whole-program checks, run after compiling. */
 ProgramCompiler.validate = function(handlers, options, errors, warnings) {
   let totalOps = 0;
   let startCount = 0;
@@ -208,8 +227,8 @@ ProgramCompiler.usesOps = function(body, opNames) {
 };
 
 /* ---------------------------------------------------------------------------
- * Tabla de hats: blockTypeName -> trigger de handler.
- * Umbrales idénticos a los del modo live.
+ * Hat table: blockTypeName -> handler trigger.
+ * Thresholds identical to live mode's.
  */
 ProgramCompiler.hats = {
   B_WhenFlagTapped: { trigger: "start", param: 0 },
@@ -218,9 +237,9 @@ ProgramCompiler.hats = {
 };
 
 /* ---------------------------------------------------------------------------
- * Tabla de encoders: blockTypeName -> function(block, errors, warnings) -> [Op].
- * Se construye programáticamente: un encoder compartido registrado bajo N
- * nombres. Los campos leídos son los que cada bloque cachea vía updateValues()
+ * Encoder table: blockTypeName -> function(block, errors, warnings) -> [Op].
+ * Built programmatically: one shared encoder registered under N names. The fields
+ * read are the ones each block caches through updateValues()
  * (ver BlockDefs_fbSound.js:18, BlockDefs_fbColor.js:18-23,
  * BlockDefs_fbMotion.js:92-177, BlockDefs_control.js:69/176).
  */
@@ -235,13 +254,13 @@ ProgramCompiler.encoders = {};
     }
   }
 
-  // Sound: nota midi + beats (cada beat = 0.1 s, igual que el modo live)
+  // Sound: midi note + beats (one beat = 0.1 s, same as live mode)
   register(["B_FBC", "B_FBD", "B_FBE", "B_FBF", "B_FBG", "B_FBA",
     "B_FBSoundL2", "B_FBSoundL3"], function(block) {
     return [{ op: "tone", note: block.midiNote, ms: block.beats * 100 }];
   });
 
-  // LED array: patrón + duración (duration en décimas de segundo) + apagar
+  // LED array: pattern + duration (in tenths of a second) + clear
   register(["B_FBLedArrayL2", "B_FBLedArrayL3"], function(block) {
     return [
       { op: "ledMatrix", pattern: block.ledStatusString },
@@ -250,7 +269,7 @@ ProgramCompiler.encoders = {};
     ];
   });
 
-  // Beak/Tail: color RGB (0-100) + duración + apagar
+  // Beak/Tail: an RGB colour (0-100) + duration + off
   register(["B_FBBeakRed", "B_FBBeakGreen", "B_FBBeakBlue", "B_FBBeakL2", "B_FBBeakL3",
     "B_FBTailRed", "B_FBTailGreen", "B_FBTailBlue", "B_FBTailL2", "B_FBTailL3"],
     function(block) {
@@ -262,26 +281,26 @@ ProgramCompiler.encoders = {};
       ];
     });
 
-  // Wait: slider en décimas de segundo
+  // Wait: the slider is in tenths of a second
   register(["B_Wait"], function(block) {
     return [{ op: "wait", ms: block.timeSelection * 100 }];
   });
 
-  // Repeat: cuerpo en blockSlot1
+  // Repeat: the body lives in blockSlot1
   register(["B_Repeat"], function(block, errors, warnings) {
     const child = block.blockSlot1 != null ? block.blockSlot1.child : null;
     const body = ProgramCompiler.compileSequence(child, errors, warnings);
     return [{ op: "repeat", count: block.countSelection, body: body }];
   });
 
-  // Forever: repeat con count 0
+  // Forever: a repeat with count 0
   register(["B_Forever"], function(block, errors, warnings) {
     const child = block.blockSlot1 != null ? block.blockSlot1.child : null;
     const body = ProgramCompiler.compileSequence(child, errors, warnings);
     return [{ op: "repeat", count: 0, body: body }];
   });
 
-  // Motion: los ticks/speeds ya vienen calculados por updateValues()
+  // Motion: ticks/speeds already come computed by updateValues()
   register(["B_FBForward", "B_FBBackward", "B_FBRight", "B_FBLeft",
     "B_FBForwardL2", "B_FBBackwardL2", "B_FBRightL2", "B_FBLeftL2",
     "B_FBForwardL3", "B_FBBackwardL3", "B_FBRightL3", "B_FBLeftL3"],
@@ -295,7 +314,7 @@ ProgramCompiler.encoders = {};
       }];
     });
 
-  // Avanzar hasta condición: primitivas motores + waitUntil + stop
+  // Drive until a condition: motor primitives + waitUntil + stop
   register(["B_FBForwardUntilDark"], function(block) {
     return [
       { op: "motorsFree", speedL: 50, speedR: 50 },

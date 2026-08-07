@@ -1,12 +1,12 @@
 "use strict";
 
 /**
- * BytecodeAssembler convierte la IR de ProgramCompiler en una imagen STX1
- * (Uint8Array) lista para transferir a la micro:bit. El formato lo define
- * firmware/source/vm/stx_isa.h (fuente de verdad); las constantes vienen de
- * STXConstants.js (generado). Puro y dual-load para testear en Node.
+ * BytecodeAssembler turns ProgramCompiler's IR into an STX1 image (a Uint8Array)
+ * ready to transfer to the micro:bit. The format is defined by
+ * firmware/source/vm/stx_isa.h (the source of truth); the constants come from
+ * STXConstants.js (generated). Pure and dual-load, so it can be tested under Node.
  *
- * Lanza Error con .code = "E_TOO_LARGE" si la imagen supera STX.MAX_IMAGE_SIZE.
+ * Throws an Error with .code = "E_TOO_LARGE" if the image exceeds STX.MAX_IMAGE_SIZE.
  */
 function BytecodeAssembler() {}
 
@@ -18,6 +18,16 @@ function BytecodeAssembler() {}
     STXRef = require("./STXConstants.js");
   }
   BytecodeAssembler.STX = STXRef;
+})();
+
+BytecodeAssembler.Sensors = (function() {
+  if (typeof MicrobitSensors !== "undefined") {
+    return MicrobitSensors;
+  }
+  if (typeof require !== "undefined") {
+    return require("./MicrobitSensors.js");
+  }
+  return null;
 })();
 
 BytecodeAssembler.TRIGGERS = {
@@ -50,7 +60,11 @@ BytecodeAssembler.assemble = function(ir) {
     }
     events.push({
       type: triggerFn(S),
-      param: handler.param | 0,
+      // The editor's threshold is a percentage; the VM compares against the
+      // sensor's native value, so convert it here.
+      param: BytecodeAssembler.sensorParam(
+        BytecodeAssembler.Sensors.TRIGGER_SCALE[handler.trigger],
+        handler.param | 0),
       offset: code.length
     });
     BytecodeAssembler.emitOps(handler.body, code, S);
@@ -72,7 +86,7 @@ BytecodeAssembler.assemble = function(ir) {
   image[5] = events.length;
   image[6] = code.length & 0xFF;
   image[7] = (code.length >> 8) & 0xFF;
-  // crc32 va en [8..11] al final
+  // the crc32 goes in [8..11], last
 
   let pos = S.HEADER_SIZE;
   for (let i = 0; i < events.length; i++) {
@@ -94,14 +108,15 @@ BytecodeAssembler.assemble = function(ir) {
   return image;
 };
 
-/** Emite la lista de Ops de la IR como bytes de código */
+/** Emits the IR's list of Ops as code bytes. */
 BytecodeAssembler.emitOps = function(body, code, S) {
   for (let i = 0; i < body.length; i++) {
     const op = body[i];
     switch (op.op) {
       case "tone":
-        // TONE es no bloqueante en la VM; el bloque del editor es bloqueante
-        code.push(S.OP_TONE, op.note & 0xFF);
+        // TONE is non-blocking in the VM; the editor's block is blocking
+        code.push(S.OP_TONE,
+          BytecodeAssembler.u8(op.note, "E_BAD_VALUE", "note"));
         BytecodeAssembler.pushU16(code, op.ms);
         code.push(S.OP_WAIT_MS);
         BytecodeAssembler.pushU16(code, op.ms);
@@ -116,7 +131,7 @@ BytecodeAssembler.emitOps = function(body, code, S) {
         code.push(S.OP_LED_CLEAR);
         break;
       case "rgb":
-        // IR trae 0-100 (rango del editor); la VM espera 0-255
+        // the IR carries 0-100 (the editor's range); the VM expects 0-255
         code.push(S.OP_RGB_SET,
           BytecodeAssembler.scale100(op.r),
           BytecodeAssembler.scale100(op.g),
@@ -137,20 +152,27 @@ BytecodeAssembler.emitOps = function(body, code, S) {
         if (condFn == null) {
           throw BytecodeAssembler.error("E_BAD_COND", op.cond);
         }
-        code.push(S.OP_WAIT_UNTIL, condFn(S), op.param & 0xFF);
+        code.push(S.OP_WAIT_UNTIL, condFn(S),
+          BytecodeAssembler.u8(
+            BytecodeAssembler.sensorParam(
+              BytecodeAssembler.Sensors.CONDITION_SCALE[op.cond], op.param),
+            "E_BAD_VALUE", "param"));
         break;
       }
       case "repeat":
         if (op.count === 0) {
           code.push(S.OP_LOOP_FOREVER);
         } else {
-          code.push(S.OP_LOOP_N, op.count & 0xFF);
+          // count 0 is OP_LOOP_FOREVER above, so a wrap to 0 here would turn a
+          // bounded repeat into an endless one.
+          code.push(S.OP_LOOP_N,
+            BytecodeAssembler.u8(op.count, "E_BAD_VALUE", "repeat"));
         }
         BytecodeAssembler.emitOps(op.body, code, S);
         code.push(S.OP_LOOP_END);
         break;
       case "motors":
-        // Los bloques FinchBlox siempre generan ticksL === ticksR
+        // FinchBlox blocks always produce ticksL === ticksR
         code.push(S.OP_MOTORS_TICKS,
           BytecodeAssembler.i8(op.speedL),
           BytecodeAssembler.i8(op.speedR));
@@ -180,14 +202,27 @@ BytecodeAssembler.i8 = function(value) {
   return v & 0xFF;
 };
 
+/**
+ * Converts a sensor threshold to the board's native scale, or leaves it alone
+ * when that condition is not percentage-based ("obstacle" travels in centimetres).
+ * @param {string|undefined} scale - "light" | "sound" | undefined
+ * @param {number} value - threshold as the editor expresses it
+ */
+BytecodeAssembler.sensorParam = function(scale, value) {
+  if (scale == null) {
+    return value;
+  }
+  return BytecodeAssembler.Sensors.fromPercent(scale, value);
+};
+
 BytecodeAssembler.scale100 = function(value) {
   const v = Math.max(0, Math.min(100, Math.round(value)));
   return Math.round(v * 255 / 100);
 };
 
 /**
- * Empaqueta un patrón de 25 chars "0"/"1" (row-major) en 4 bytes.
- * Bit k del byte j = LED de índice j*8+k (LSB-first).
+ * Packs a 25-char "0"/"1" pattern (row-major) into 4 bytes.
+ * Bit k of byte j = the LED at index j*8+k (LSB-first).
  */
 BytecodeAssembler.packLedPattern = function(str25) {
   const bytes = [0, 0, 0, 0];
@@ -199,7 +234,7 @@ BytecodeAssembler.packLedPattern = function(str25) {
   return bytes;
 };
 
-/** CRC-32/IEEE (el mismo que zlib), sobre un Uint8Array */
+/** CRC-32/IEEE (the same one zlib uses), over a Uint8Array. */
 BytecodeAssembler.crc32 = function(bytes) {
   let table = BytecodeAssembler.crcTable;
   if (table == null) {
@@ -218,6 +253,22 @@ BytecodeAssembler.crc32 = function(bytes) {
     crc = table[(crc ^ bytes[i]) & 0xFF] ^ (crc >>> 8);
   }
   return (crc ^ 0xFFFFFFFF) >>> 0;
+};
+
+/**
+ * Asserts a value fits in one byte, instead of letting `& 0xFF` wrap it.
+ * A silent wrap changes what the program does on the board: `repeat 256` would
+ * emit OP_LOOP_N with a count byte of 0, and the VM reads count 0 as "loop
+ * forever" (stx_vm.c). Not reachable from the FinchBlox UI today — its sliders
+ * are bounded — but the assembler is the boundary where the ISA contract has to
+ * hold, whatever feeds it.
+ */
+BytecodeAssembler.u8 = function(value, code, what) {
+  const v = Math.round(value);
+  if (!(v >= 0 && v <= 0xFF)) {
+    throw BytecodeAssembler.error(code, what + " " + String(value));
+  }
+  return v;
 };
 
 BytecodeAssembler.error = function(code, detail) {

@@ -266,7 +266,7 @@ CodeManager.stop = function() {
   Sound.stopAllSounds() // Stops all sounds and tones
   BlockPalette.passRecursively("passRecursively", "stop"); //Stop any block running in the block palette
   if (FinchBlox && typeof ProgramModeManager !== "undefined") {
-    // El stopAll llegó a la placa como CMD_STOP: limpiar la ejecución remota
+    // stopAll reached the board as CMD_STOP: clear the remote-execution state
     ProgramModeManager.onRemoteStopped();
   }
   // Note: Tones are not allowed to be async, so they
@@ -580,12 +580,12 @@ CodeManager.checkBroadcastRunning = function(message) {
 
 /**
  * Recursively passes on the message that the flag button was tapped.
- * En FinchBlox con modo programa activo, la bandera corre el programa ya
- * transferido a la placa en vez de ejecutar los bloques en vivo.
+ * In FinchBlox with program mode on, the flag runs the program already transferred
+ * to the board instead of executing the blocks live.
  */
 CodeManager.eventFlagClicked = function() {
   if (FinchBlox && ProgramModeManager.isProgramMode()) {
-    ProgramModeManager.flagClicked();
+    ProgramModeManager.playClicked();
     return;
   }
   TabManager.eventFlagClicked();

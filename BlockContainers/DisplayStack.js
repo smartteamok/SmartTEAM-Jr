@@ -221,6 +221,30 @@ DisplayStack.prototype.remove = function() {
   this.group.remove();
 };
 
+/** Opacity used for a palette block that cannot be dragged right now. */
+DisplayStack.dimmedOpacity = 0.35;
+
+/**
+ * Greys out this palette block and marks it undraggable, or restores it.
+ *
+ * Used for the hat blocks once the board's program limit is reached. Without it
+ * the extra hat could still be picked up and simply vanished when dropped, which
+ * for a pre-reader reads as the app losing their block rather than as a limit.
+ * TouchReceiver checks `dimmed` to refuse the drag before it starts.
+ * @param {boolean} dimmed
+ */
+DisplayStack.prototype.setDimmed = function(dimmed) {
+  if (this.dimmed === dimmed) {
+    return;
+  }
+  this.dimmed = dimmed;
+  if (dimmed) {
+    this.group.setAttributeNS(null, "opacity", DisplayStack.dimmedOpacity);
+  } else {
+    this.group.removeAttributeNS(null, "opacity");
+  }
+};
+
 /**
  * @param deviceClass
  */

@@ -12,13 +12,23 @@ import subprocess
 my_path = os.path.dirname(os.path.realpath(__file__))
 path_prefix = my_path + "/"
 
+# Matches a script tag that loads a file, whatever order its attributes are in.
+# The previous version stripped one exact attribute spelling and returned whatever
+# was left, so an inline <script>...</script> in the HTML came back as a bogus
+# path and the build died with FileNotFoundError. It had been broken since an
+# inline script was added, which is why the bundles were stale.
+SCRIPT_SRC_RE = re.compile(r"<script\b[^>]*\bsrc\s*=\s*[\"']([^\"']+)[\"']")
+
+
 def get_path_from_line(line):
-    line = line.strip()
-    if len(line) < 4 or line[0:7] != "<script":
+    match = SCRIPT_SRC_RE.search(line.strip())
+    if match is None:
         return ""
-    line = line.replace("<script type=\"text/javascript\" src=\"", "")
-    line = line.replace("\"></script>", "")
-    return path_prefix + line
+    src = match.group(1)
+    # Only local files belong in the bundle.
+    if src.startswith("http://") or src.startswith("https://") or src.startswith("//"):
+        return ""
+    return path_prefix + src
 
 def get_paths_from_lines(lines):
     result = []
